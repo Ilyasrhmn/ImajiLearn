@@ -1,73 +1,35 @@
 "use client";
-
 import { useState } from "react";
-import Link from "next/link";
-import { Archive, BookOpen, Upload } from "lucide-react";
-
-function BookCharacter() {
-  return (
-    <svg viewBox="0 0 240 220" fill="none" aria-hidden="true">
-      <g stroke="#243e43" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M85 175 76 199m67-24 12 24" />
-        <ellipse cx="68" cy="201" rx="17" ry="8" fill="#243e43" />
-        <ellipse cx="162" cy="201" rx="17" ry="8" fill="#243e43" />
-        <path d="M56 121q-24 1-27 23m145-29q23-6 25-28m0 0-8-7m8 7 9-9" />
-        <g transform="rotate(-8 119 101)">
-          <rect x="57" y="25" width="119" height="151" rx="14" fill="#fff1cf" />
-          <path d="M80 25H71q-14 0-14 14v123q0 14 14 14h9Z" fill="#6da798" />
-          <path d="M137 26v32l10-7 12 7V26" fill="#e39574" />
-          <ellipse cx="108" cy="94" rx="10" ry="14" fill="white" stroke="none" />
-          <ellipse cx="144" cy="94" rx="10" ry="14" fill="white" stroke="none" />
-          <ellipse cx="110" cy="97" rx="4.5" ry="7" fill="#243e43" stroke="none" />
-          <ellipse cx="146" cy="97" rx="4.5" ry="7" fill="#243e43" stroke="none" />
-          <circle cx="97" cy="115" r="5" fill="#ec928e" stroke="none" />
-          <circle cx="155" cy="115" r="5" fill="#ec928e" stroke="none" />
-          <path d="M117 116q10 17 21 0Z" fill="#243e43" />
-          <path d="M95 150h54m-54 9h38" stroke="#b4a68a" strokeWidth="2" />
-        </g>
-      </g>
-    </svg>
-  );
-}
+import Image from "next/image";
+import { Archive, BookOpen, CalendarDays, ClipboardPenLine, Files, FolderCog, LogOut, Scissors, Search, Upload } from "lucide-react";
+import { Mascot } from "./mascot";
 
 export default function Dashboard() {
   const [archive, setArchive] = useState(false);
-  return (
-    <>
-      <a className="skip-link" href="#main">Lewati ke isi</a>
-      <header className="workspace-header">
-        <div className="workspace-shell header-inner">
-          <Link className="brand" href="/dashboard" aria-label="ImajiLearn, dashboard">
-            <BookOpen aria-hidden="true" size={30} strokeWidth={2} />
-            <span>Imaji<span>Learn</span></span>
-          </Link>
-          <span className="workspace-name">Studio guru</span>
-        </div>
-      </header>
-      <main id="main" className="workspace-shell dashboard">
-        <section className="welcome" aria-labelledby="welcome-title">
-          <div><h1 id="welcome-title">Besok mengajar apa,<br />Guru?</h1></div>
-          <div className="welcome-character"><BookCharacter /></div>
-        </section>
-        <section className="materials" aria-labelledby="materials-title">
-          <div className="materials-heading">
-            <h2 id="materials-title">{archive ? "Arsip" : "Materi"}</h2>
-            <div className="material-actions">
-              <button className="archive-toggle" type="button" aria-pressed={archive} onClick={() => setArchive(!archive)}>
-                {archive ? <BookOpen size={19} aria-hidden="true" /> : <Archive size={19} aria-hidden="true" />}
-                {archive ? "Materi" : "Arsip"}
-              </button>
-              <button className="upload-button" type="button" disabled title="Unggah materi belum tersedia">
-                <Upload size={19} aria-hidden="true" />Unggah materi
-              </button>
-            </div>
-          </div>
-          <div className="empty-library" key={String(archive)}>
-            <span className="empty-icon">{archive ? <Archive size={35} aria-hidden="true" /> : <BookOpen size={35} aria-hidden="true" />}</span>
-            <p role="status">{archive ? "Belum ada materi di arsip." : "Belum ada materi."}</p>
-          </div>
-        </section>
-      </main>
-    </>
-  );
+  const [query, setQuery] = useState("");
+  return <>
+    <a className="skip-link" href="#main">Lewati ke isi</a>
+    <header className="workspace-header"><div className="header-inner">
+      <a className="brand" href="/dashboard" aria-label="ImajiLearn, dashboard"><Image src="/brand/imajilearn-mark.svg" width={52} height={52} alt="" /><Image src="/brand/imajilearn-wordmark.svg" width={153} height={33} alt="" className="brand-wordmark" /></a>
+      <div className="account-actions"><button type="button" className="avatar" disabled aria-label="Pengaturan akun belum tersedia">G</button><button type="button" className="logout" disabled aria-label="Keluar belum tersedia"><LogOut size={20} /></button></div>
+    </div></header>
+    <main id="main" className="workspace-shell dashboard">
+      <nav className="studio-sections" aria-label="Navigasi studio">
+        <a href="/dashboard" aria-current="page"><BookOpen size={20} />Materi</a>
+        <button type="button" disabled><Scissors size={20} />LKPD</button>
+        <button type="button" disabled><ClipboardPenLine size={20} />Soal &amp; ujian</button>
+        <button type="button" disabled><CalendarDays size={20} />Jadwal</button>
+      </nav>
+      <section className="welcome" aria-labelledby="welcome-title">
+        <div><h1 id="welcome-title">Besok mengajar apa,<br />Guru?</h1><button className="upload-button" type="button" disabled><Upload size={20} />Unggah materi</button></div>
+        <div className="welcome-character" aria-hidden="true"><Mascot kind="book" /><Mascot kind="pencil" mood="think" /></div>
+      </section>
+      <section className="materials" aria-labelledby="materials-title">
+        <h2 id="materials-title">{archive ? "Arsip materi" : "Materi"}</h2>
+        <div className="material-actions"><div className="filters" role="group" aria-label="Tampilan materi"><button type="button" aria-pressed={!archive} onClick={() => setArchive(false)}><Files size={18} />Aktif</button><button type="button" aria-pressed={archive} onClick={() => setArchive(true)}><Archive size={18} />Arsip</button></div><button className="manage" type="button" disabled><FolderCog size={20} />Kelola mapel</button></div>
+        <label className="search-label">Cari materi<span className="search-box"><Search size={20} aria-hidden="true" /><input type="search" placeholder="Nama materi" value={query} onChange={e => setQuery(e.target.value)} /></span></label>
+        <div className="empty-library" role="status"><Mascot kind="correction" mood="calm" /><h3>{query ? "Materi tidak ditemukan" : archive ? "Belum ada materi di arsip" : "Materi pertama"}</h3>{!archive && !query && <button type="button" className="upload-button" disabled><Upload size={20} />Unggah materi</button>}</div>
+      </section>
+    </main>
+  </>;
 }
