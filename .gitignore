@@ -9,3 +9,5 @@ build/
 *.log
 .DS_Store
 /docs/
+/DESIGN.md
+AGENTS.md

@@ -19,4 +19,3 @@ npm run lint
 npm run build
 ```
 
-Keduanya masih halaman awal. Manifest, service worker, backend, dan penyimpanan bersama belum diimplementasikan.
