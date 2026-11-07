@@ -1,0 +1,21 @@
+{
+  "name": "imajilearn-logicodix",
+  "version": "0.1.0",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "concurrently -k -n WEB,PWA -c cyan,magenta \"npm run dev --workspace=@imajilearn/web\" \"npm run dev --workspace=@imajilearn/pwa\"",
+    "dev:web": "npm run dev --workspace=@imajilearn/web",
+    "dev:pwa": "npm run dev --workspace=@imajilearn/pwa",
+    "build": "npm run build --workspaces --if-present",
+    "lint": "eslint ."
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1",
+    "eslint": "^9.39.5",
+    "eslint-config-next": "16.4.5"
+  }
+}
