@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 import { BookOpen, Check, FileText, GitBranch, Music2, Presentation } from "lucide-react";
-import Modal, { closeModal } from "./modal";
+import Modal from "./modal";
 import Disclosure from "./disclosure";
 import { updateMaterial } from "../lib/materials";
 
@@ -53,7 +53,6 @@ export default function MaterialDetail({ material, onClose, onSaved }) {
       </>}
       {material.file && <button type="button" className="source-secondary format-source-file" onClick={downloadFile}><FileText size={19} aria-hidden="true" />{material.file.name}</button>}
       {material.text && <Disclosure title="Lihat teks sumber"><p className="format-source-text">{material.text}</p></Disclosure>}
-      <button className="format-cancel" type="button" onClick={() => closeModal(onClose)}>Tutup</button>
     </div>
   </Modal>;
 }
