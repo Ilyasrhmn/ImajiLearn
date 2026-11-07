@@ -38,7 +38,7 @@ export default function Dashboard() {
     return () => { active = false; window.removeEventListener("popstate", syncLocation); };
   }, []);
   const activeFolder = folders.find(folder => folder.id === folderId);
-  const visible = materials.filter(item => Boolean(item.archived) === archive && (query.trim() ? true : folderId ? item.folderId === folderId : !item.folderId) && `${item.title} ${item.file?.name || ""}`.toLocaleLowerCase("id").includes(query.trim().toLocaleLowerCase("id"))).sort((a, b) => Number(Boolean(b.pinned)) - Number(Boolean(a.pinned)) || b.createdAt - a.createdAt);
+  const visible = materials.filter(item => Boolean(item.archived) === archive && (folderId ? item.folderId === folderId : archive || query.trim() || !item.folderId) && `${item.title} ${item.file?.name || ""}`.toLocaleLowerCase("id").includes(query.trim().toLocaleLowerCase("id"))).sort((a, b) => Number(Boolean(b.pinned)) - Number(Boolean(a.pinned)) || b.createdAt - a.createdAt);
   function openFolder(id) {
     const url = new URL(window.location.href);
     if (id) url.searchParams.set("folder", id); else url.searchParams.delete("folder");
