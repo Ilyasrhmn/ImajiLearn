@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import { BookOpen, Check, FileText, GitBranch, Music2, Presentation } from "lucide-react";
+import { BookOpen, Check, FileText, GitBranch, Music2, Presentation, Scissors } from "lucide-react";
 import Modal from "./modal";
 import Disclosure from "./disclosure";
 import { updateMaterial } from "../lib/materials";
@@ -51,6 +51,7 @@ export default function MaterialDetail({ material, onClose, onSaved }) {
         {error && <p className="source-error" role="alert">{error}</p>}
         <div className="media-selection-actions"><button type="button" className="format-select-all" onClick={() => setSelected(selected.length === formats.length ? [] : formats.map(format => format.id))}>{selected.length === formats.length ? "Batalkan semua" : "Pilih semua"}</button><button type="button" className="upload-button" onClick={save} disabled={busy}>{busy ? "Menyimpan..." : "Simpan pilihan"}<Check size={18} aria-hidden="true" /></button></div>
       </>}
+      {!material.archived && <div className="material-lkpd-action"><a className="source-secondary" href={`/lkpd?material=${encodeURIComponent(material.id)}`}><Scissors size={20} aria-hidden="true" />Buat LKPD</a></div>}
       {material.file && <button type="button" className="source-secondary format-source-file" onClick={downloadFile}><FileText size={19} aria-hidden="true" />{material.file.name}</button>}
       {material.text && <Disclosure title="Lihat teks sumber"><p className="format-source-text">{material.text}</p></Disclosure>}
     </div>

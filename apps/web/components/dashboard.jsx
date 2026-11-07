@@ -86,7 +86,7 @@ export default function Dashboard() {
     <main id="main" className="workspace-shell dashboard">
       <nav className="studio-sections" aria-label="Navigasi studio">
         <a href="/dashboard" aria-current="page"><BookOpen size={20} />Materi</a>
-        <button type="button" disabled><Scissors size={20} />LKPD</button>
+        <a href="/lkpd"><Scissors size={20} />LKPD</a>
         <button type="button" disabled><ClipboardPenLine size={20} />Soal &amp; ujian</button>
         <button type="button" disabled><CalendarDays size={20} />Jadwal</button>
       </nav>
