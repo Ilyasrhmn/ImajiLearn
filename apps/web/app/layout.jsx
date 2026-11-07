@@ -1,3 +1,4 @@
+import "@fontsource-variable/nunito-sans";
 import "./globals.css";
 
 export const metadata = {
