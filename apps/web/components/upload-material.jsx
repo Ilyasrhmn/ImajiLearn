@@ -5,7 +5,7 @@ import Modal, { closeModal } from "./modal";
 import { Mascot } from "./mascot";
 import { saveMaterial } from "../lib/materials";
 
-export default function UploadMaterial({ onClose, onSaved }) {
+export default function UploadMaterial({ onClose, onSaved, initialFolder = "" }) {
   const [title, setTitle] = useState("");
   const [file, setFile] = useState(null);
   const [text, setText] = useState("");
@@ -45,7 +45,7 @@ export default function UploadMaterial({ onClose, onSaved }) {
     setSaving(true);
     setError("");
     try {
-      const material = { id: globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2)}`, title: title.trim(), file, text: text.trim(), createdAt: Date.now() };
+      const material = { id: globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2)}`, title: title.trim(), folderId: initialFolder, file, text: text.trim(), createdAt: Date.now() };
       await saveMaterial(material);
       onSaved(material);
     } catch { setError("Materi belum tersimpan. Periksa ruang penyimpanan browser dan coba lagi."); setSaving(false); }
