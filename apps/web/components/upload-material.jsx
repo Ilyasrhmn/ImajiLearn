@@ -2,11 +2,13 @@
 import { useRef, useState } from "react";
 import { FileText, Upload } from "lucide-react";
 import Modal, { closeModal } from "./modal";
+import ThemedSelect from "./themed-select";
 import { Mascot } from "./mascot";
 import { saveMaterial } from "../lib/materials";
 
-export default function UploadMaterial({ onClose, onSaved, initialFolder = "" }) {
+export default function UploadMaterial({ onClose, onSaved, folders, initialFolder = "" }) {
   const [title, setTitle] = useState("");
+  const [folderId, setFolderId] = useState(initialFolder);
   const [file, setFile] = useState(null);
   const [text, setText] = useState("");
   const [error, setError] = useState("");
@@ -45,7 +47,7 @@ export default function UploadMaterial({ onClose, onSaved, initialFolder = "" })
     setSaving(true);
     setError("");
     try {
-      const material = { id: globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2)}`, title: title.trim(), folderId: initialFolder, file, text: text.trim(), createdAt: Date.now() };
+      const material = { id: globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2)}`, title: title.trim(), folderId, file, text: text.trim(), createdAt: Date.now() };
       await saveMaterial(material);
       onSaved(material);
     } catch { setError("Materi belum tersimpan. Periksa ruang penyimpanan browser dan coba lagi."); setSaving(false); }
@@ -53,6 +55,7 @@ export default function UploadMaterial({ onClose, onSaved, initialFolder = "" })
   return <Modal title="Unggah materi" onClose={onClose} wide>
     <form className="source-form" onSubmit={submit}>
       <div className="source-heading"><h2>Unggah materi</h2><Mascot kind="pen" mood="think" /></div>
+      <div className="source-field source-folder-field"><label htmlFor="upload-folder">Mata pelajaran (opsional)</label><ThemedSelect id="upload-folder" value={folderId} onChange={event => setFolderId(event.target.value)}><option value="">Belum masuk folder</option>{folders.map(folder => <option key={folder.id} value={folder.id}>{folder.name}</option>)}</ThemedSelect></div>
       <div className="source-upload" onDragOver={e => e.preventDefault()} onDrop={e => { e.preventDefault(); choose(e.dataTransfer.files[0]); }}>
         {file ? <FileText size={30} /> : <Upload size={30} />}
         <div><strong>{file?.name || "Unggah bahan ajar"}</strong><p>{file ? "Siap disimpan" : "PDF atau TXT, maksimal 10 MB"}</p></div>

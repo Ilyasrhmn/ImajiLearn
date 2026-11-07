@@ -8,6 +8,7 @@ import {
   useState,
 } from "react";
 import { Check, ChevronDown } from "lucide-react";
+import "./themed-select.css";
 
 function optionText(children) {
   return Children.toArray(children)

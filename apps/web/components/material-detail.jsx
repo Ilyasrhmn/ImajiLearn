@@ -5,7 +5,7 @@ import Modal, { closeModal } from "./modal";
 import Disclosure from "./disclosure";
 import { updateMaterial } from "../lib/materials";
 
-const formats = [
+export const formats = [
   { id: "reading", label: "Bacaan bergambar", description: "Baca dan tanya jawab bersama.", Icon: BookOpen },
   { id: "mindmap", label: "Peta konsep", description: "Lihat hubungan antaride.", Icon: GitBranch },
   { id: "slides", label: "Slide", description: "Jelaskan satu per satu.", Icon: Presentation },
