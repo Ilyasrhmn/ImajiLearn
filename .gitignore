@@ -8,3 +8,4 @@ build/
 *.pem
 *.log
 .DS_Store
+/docs/
