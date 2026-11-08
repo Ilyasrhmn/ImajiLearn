@@ -87,7 +87,7 @@ export default function Dashboard() {
       <nav className="studio-sections" aria-label="Navigasi studio">
         <a href="/dashboard" aria-current="page"><BookOpen size={20} />Materi</a>
         <a href="/lkpd"><Scissors size={20} />LKPD</a>
-        <button type="button" disabled><ClipboardPenLine size={20} />Soal &amp; ujian</button>
+        <a href="/ujian"><ClipboardPenLine size={20} />Soal &amp; ujian</a>
         <button type="button" disabled><CalendarDays size={20} />Jadwal</button>
       </nav>
       <section className="welcome" aria-labelledby="welcome-title">
