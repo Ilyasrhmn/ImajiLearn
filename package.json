@@ -11,7 +11,8 @@
     "dev:web": "npm run dev --workspace=@imajilearn/web",
     "dev:pwa": "npm run dev --workspace=@imajilearn/pwa",
     "build": "npm run build --workspaces --if-present",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "test": "node --test tests/contracts.test.mjs"
   },
   "devDependencies": {
     "concurrently": "^9.2.1",
