@@ -15,6 +15,7 @@ model Teacher {
   school       String   @default("") @db.VarChar(100)
   grade        String   @default("") @db.VarChar(1)
   createdAt    DateTime @default(now()) @db.Timestamptz(3)
+  sessions     Session[]
   worksheetLibrary WorksheetLibrary?
 }
 
@@ -50,4 +51,24 @@ model WorksheetDocument {
   @@unique([ownerId, cacheKey])
   @@index([ownerId, updatedAt(sort: Desc), id(sort: Desc)])
   @@index([ownerId, sourceMaterialId])
+}
+
+model Session {
+  tokenHash String   @id @db.Char(64)
+  userId    String   @db.Uuid
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  lastSeen  DateTime @default(now()) @db.Timestamptz(3)
+  expiresAt DateTime @db.Timestamptz(3)
+  teacher   Teacher  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model RateLimit {
+  key         String   @id @db.Char(64)
+  count       Int
+  windowStart DateTime @db.Timestamptz(3)
+
+  @@index([windowStart])
 }

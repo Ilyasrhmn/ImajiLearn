@@ -13,7 +13,7 @@
     "dev:pwa": "npm run dev --workspace=@imajilearn/pwa",
     "build": "npm run build --workspaces --if-present",
     "lint": "eslint .",
-    "test": "node --test --test-concurrency=1 tests/*.test.mjs",
+    "test": "node --test --test-concurrency=1 tests/*.test.mjs apps/web/server/documents/worksheets/*.test.mjs",
     "postinstall": "prisma generate",
     "db:generate": "prisma generate",
     "db:validate": "prisma validate",
