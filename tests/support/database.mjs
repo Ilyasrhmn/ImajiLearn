@@ -27,6 +27,11 @@ export async function testDatabase() {
   const migrations = (await readdir(new URL("../../prisma/migrations/", import.meta.url))).filter(x => /^\d/.test(x)).sort();
   return {
     db, connect, migrations,
+    connectionUrl() {
+      const url = new URL(connectionString);
+      url.searchParams.set("schema", schema);
+      return url.toString();
+    },
     sql: (query, params) => engine ? engine.query(query, params) : admin.query(query, params),
     connectFromUrlSchema() {
       const url = new URL(connectionString);

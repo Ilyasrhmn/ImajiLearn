@@ -28,7 +28,19 @@ export function createWorksheetRepository({ database, getOwnedMaterial, getTeach
   if (typeof database?.$transaction !== "function" || typeof getOwnedMaterial !== "function" || typeof getTeacherProfile !== "function") {
     throw new TypeError("Worksheet repository requires a Prisma database and transactional core readers.");
   }
+  return repositoryFor(database, (tx, ownerId) => ({
+    async getOwnedMaterial(id) { return uuid(id) ? getOwnedMaterial(tx, ownerId, id) : null; },
+    async getTeacherProfile() { return getTeacherProfile(tx, ownerId); },
+  }));
+}
 
+// Saved-document routes do not ingest sources and need no material/profile reader.
+export function createWorksheetDocumentRepository({ database }) {
+  if (typeof database?.$transaction !== "function") throw new TypeError("Worksheet repository requires a Prisma database.");
+  return repositoryFor(database);
+}
+
+function repositoryFor(database, coreReaders) {
   return Object.freeze({
     async withTeacherTransaction(ownerId, action) {
       if (!uuid(ownerId) || typeof action !== "function") throw new TypeError("A teacher UUID and transaction callback are required.");
@@ -73,10 +85,6 @@ export function createWorksheetRepository({ database, getOwnedMaterial, getTeach
             const result = await tx.worksheetDocument.deleteMany({ where: { ownerId, id, resourceVersion: expectedVersion } });
             return result.count === 1;
           },
-          async getOwnedMaterial(id) {
-            return uuid(id) ? getOwnedMaterial(tx, ownerId, id) : null;
-          },
-          async getTeacherProfile() { return getTeacherProfile(tx, ownerId); },
           // Called by a transactional material-deletion integration, without
           // deleting accepted documents or changing their source snapshot.
           async detachSource(materialId) {
@@ -84,6 +92,7 @@ export function createWorksheetRepository({ database, getOwnedMaterial, getTeach
             const result = await tx.worksheetDocument.updateMany({ where: { ownerId, sourceMaterialId: materialId }, data: { sourceMaterialId: null } });
             return result.count;
           },
+          ...coreReaders?.(tx, ownerId),
         });
         return action(port);
       }, { isolationLevel: "ReadCommitted", maxWait: 5000, timeout: 10000 });
