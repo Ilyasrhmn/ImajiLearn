@@ -66,7 +66,7 @@ try {
   const detail = await send("GET", own); assert.equal(detail.status, 200); assert.equal(detail.headers.get("etag"), '"1"');
   assert.deepEqual((await detail.json()).data.source, documents[0].source);
   assert.equal((await send("GET", foreign)).status, 404);
-  assert.equal((await send("PATCH", own, { theme: "color" })).status, 400);
+  assert.equal((await send("PATCH", own, { theme: "color" })).status, 428);
   assert.equal((await send("PATCH", own, { ownerId: teachers[1].id }, { "if-match": '"1"' })).status, 422);
   const patched = await send("PATCH", own, { theme: "color" }, { "if-match": '"1"' });
   assert.equal(patched.status, 200); assert.equal(patched.headers.get("etag"), '"2"');

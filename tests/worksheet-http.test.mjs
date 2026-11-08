@@ -124,7 +124,7 @@ test("write requests require a single, strong numeric If-Match ETag", async () =
     for (const method of ["PATCH", "DELETE"]) {
       const req = request(method, "", method === "PATCH" ? { theme: "color" } : undefined, { headers: { "if-match": value } });
       const response = await handlers[method === "PATCH" ? "update" : "remove"](req, context(document.id));
-      assert.equal(response.status, 400);
+      assert.equal(response.status, value === null ? 428 : 400);
     }
   }
   assert.equal((await storage.db.worksheetDocument.findUnique({ where: { id: document.id } })).resourceVersion, 1);

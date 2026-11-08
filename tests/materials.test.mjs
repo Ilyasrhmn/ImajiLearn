@@ -145,14 +145,16 @@ test("material migration preserves existing teachers and worksheets", async () =
     const content = { templateId: "fold", title: "Existing worksheet", instructions: ["Buka kartu."],
       items: ["a", "b", "c", "d"].map(id => ({ id, front: id, back: "Penjelasan", assetId: null })),
       pairs: [], order: [], groups: [], teacher: { preparation: ["Siapkan kertas."], notes: "" } };
+    const select = { id: true, ownerId: true, sourceId: true, sourceTitle: true, sourceRevision: true,
+      templateId: true, content: true, displayOrder: true, cacheKey: true, createdAt: true, updatedAt: true };
     const worksheet = await upgrade.db.worksheetDocument.create({ data: {
       id: randomUUID(), ownerId: teacher.id, sourceId: randomUUID(), sourceTitle: "Historical source", sourceRevision: "full-existing-revision",
       templateId: "fold", grade: "4", language: "id", theme: "ink", content, displayOrder: ["a", "b", "c", "d"],
       cacheKey: "a".repeat(64), createdAt: new Date("2026-11-08T00:00:00Z"), updatedAt: new Date("2026-11-08T00:00:00Z"),
-    } });
+    }, select });
     for (const migration of upgrade.migrations.slice(materialIndex)) await upgrade.migrate(migration);
     assert.deepEqual(await upgrade.db.teacher.findUnique({ where: { id: teacher.id } }), teacher);
-    assert.deepEqual(await upgrade.db.worksheetDocument.findUnique({ where: { id: worksheet.id } }), worksheet);
+    assert.deepEqual(await upgrade.db.worksheetDocument.findUnique({ where: { id: worksheet.id }, select }), worksheet);
     assert.equal(await upgrade.db.material.count(), 0);
   } finally { await upgrade.close(); }
 });

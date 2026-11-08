@@ -5,6 +5,8 @@ import { testDatabase } from "./support/database.mjs";
 import { createWorksheetRepository } from "../apps/web/server/documents/worksheets/repository.mjs";
 import { createWorksheetService } from "../apps/web/server/documents/worksheets/service.mjs";
 import { createWorksheetRecord } from "../apps/web/server/documents/worksheets/document.mjs";
+import { getOwnedMaterial } from "../apps/web/server/materials/readers.mjs";
+import { createMaterialService } from "../apps/web/server/materials/service.mjs";
 
 const clock = () => new Date("2026-11-08T02:00:00.000Z");
 function content() {
@@ -37,13 +39,8 @@ test("worksheet Prisma repository persists B2 documents in PostgreSQL storage", 
     } })));
     const [teacherA, teacherB] = teachers;
     const requests = teachers.map(teacher => ({ teacherId: teacher.id }));
-    const sources = new Map();
     const coreReaders = {
-      // Until the core materials module exists, only this test uses synthetic sources.
-      getOwnedMaterial: async (tx, ownerId, id) => {
-        assert.equal(typeof tx.teacher.findUnique, "function");
-        return sources.get(`${ownerId}:${id}`) ?? null;
-      },
+      getOwnedMaterial,
       getTeacherProfile: (tx, ownerId) => tx.teacher.findUnique({ where: { id: ownerId }, select: { grade: true } }),
     };
     const repositoryFor = database => createWorksheetRepository({ database, ...coreReaders });
@@ -51,9 +48,9 @@ test("worksheet Prisma repository persists B2 documents in PostgreSQL storage", 
       requireTeacher: async request => request?.teacherId ? { id: request.teacherId } : null });
     const repository = repositoryFor(storage.db);
     const service = serviceFor(storage.db);
-    function fixture(ownerId = teacherA.id) {
-      const source = { id: randomUUID(), title: "Sumber tumbuhan", revision: randomUUID(), archived: false, extractionStatus: "ready", text: "Materi tumbuhan." };
-      sources.set(`${ownerId}:${source.id}`, source);
+    async function fixture(ownerId = teacherA.id) {
+      const source = await createMaterialService(storage.db).create(ownerId,
+        { title: `Sumber ${randomUUID()}`, text: "Materi tumbuhan." }, randomUUID());
       const document = createWorksheetRecord({ ownerId, source, templateId: "fold", grade: "4", content: content() }, clock);
       return { source, document, command: { materialId: source.id, templateId: "fold", content: content() } };
     }
@@ -67,7 +64,8 @@ test("worksheet Prisma repository persists B2 documents in PostgreSQL storage", 
     t.beforeEach(async () => {
       await storage.db.worksheetDocument.deleteMany();
       await storage.db.worksheetLibrary.deleteMany();
-      sources.clear();
+      await storage.db.material.deleteMany();
+      await storage.db.idempotency.deleteMany();
     });
 
     await t.test("core readers are required, with no fallback to synthetic or unauthenticated data", () => {
@@ -75,7 +73,7 @@ test("worksheet Prisma repository persists B2 documents in PostgreSQL storage", 
     });
 
     await t.test("documents survive a new Prisma connection with full snapshots and metadata", async () => {
-      const sample = fixture();
+      const sample = await fixture();
       const created = await service.storeDocument(requests[0], sample.command, sample.source.revision);
       fresh = storage.connect();
       assert.deepEqual(await serviceFor(fresh).get(requests[0], created.id), created);
@@ -87,7 +85,7 @@ test("worksheet Prisma repository persists B2 documents in PostgreSQL storage", 
     });
 
     await t.test("all saved-document operations isolate two teachers and malformed IDs return not found", async () => {
-      const sample = fixture(); await seed([sample.document]);
+      const sample = await fixture(); await seed([sample.document]);
       for (const id of [sample.document.id, "opaque-missing-id", randomUUID()]) {
         await assert.rejects(() => service.get(requests[1], id), { code: "WORKSHEET_NOT_FOUND" });
         await assert.rejects(() => service.update(requests[1], id, { theme: "color" }, 1), { code: "WORKSHEET_NOT_FOUND" });
@@ -99,9 +97,9 @@ test("worksheet Prisma repository persists B2 documents in PostgreSQL storage", 
     });
 
     await t.test("pagination executes owner and cursor filtering before the database limit", async () => {
-      const documents = Array.from({ length: 5 }, () => fixture().document);
+      const documents = (await Promise.all(Array.from({ length: 5 }, () => fixture()))).map(item => item.document);
       documents[0].updatedAt = "2026-11-08T02:01:00.000Z";
-      await seed([...documents, fixture(teacherB.id).document]);
+      await seed([...documents, (await fixture(teacherB.id)).document]);
       const seen = []; let cursor;
       do {
         const page = await service.list(requests[0], { limit: 2, cursor });
@@ -114,7 +112,7 @@ test("worksheet Prisma repository persists B2 documents in PostgreSQL storage", 
     });
 
     await t.test("atomic versions reject a second edit or deletion from the old version", async () => {
-      const sample = fixture(); await seed([sample.document]);
+      const sample = await fixture(); await seed([sample.document]);
       const outcomes = await Promise.allSettled(["ink", "color"].map(theme => service.update(requests[0], sample.document.id, { theme }, 1)));
       assert.equal(outcomes.filter(item => item.status === "fulfilled").length, 1);
       assert.equal(outcomes.find(item => item.status === "rejected").reason.code, "WORKSHEET_VERSION_CONFLICT");
@@ -128,8 +126,8 @@ test("worksheet Prisma repository persists B2 documents in PostgreSQL storage", 
     });
 
     await t.test("quota allows the twentieth document and rejects the twenty-first under concurrent calls", async () => {
-      await seed(Array.from({ length: 19 }, () => fixture().document));
-      const samples = [fixture(), fixture()];
+      await seed((await Promise.all(Array.from({ length: 19 }, () => fixture()))).map(item => item.document));
+      const samples = await Promise.all([fixture(), fixture()]);
       const outcomes = await Promise.allSettled(samples.map(sample => service.storeDocument(requests[0], sample.command, sample.source.revision)));
       assert.equal(outcomes.filter(item => item.status === "fulfilled").length, 1);
       assert.equal(outcomes.find(item => item.status === "rejected").reason.code, "WORKSHEET_LIMIT_REACHED");
@@ -137,7 +135,7 @@ test("worksheet Prisma repository persists B2 documents in PostgreSQL storage", 
     });
 
     await t.test("cache hits return persisted teacher edits; deletion never resurrects on read", async () => {
-      const sample = fixture();
+      const sample = await fixture();
       const first = await service.storeDocument(requests[0], sample.command, sample.source.revision);
       const edited = await service.update(requests[0], first.id, { theme: "color" }, 1);
       assert.deepEqual(await service.storeDocument(requests[0], sample.command, sample.source.revision), edited);
@@ -148,11 +146,11 @@ test("worksheet Prisma repository persists B2 documents in PostgreSQL storage", 
     });
 
     await t.test("detaching a deleted source retains snapshots, content and cache in the database", async () => {
-      const sample = fixture(); const other = fixture(teacherB.id);
+      const sample = await fixture(); const other = await fixture(teacherB.id);
       await seed([sample.document, other.document]);
       const count = await repository.withTeacherTransaction(teacherA.id, tx => tx.detachSource(sample.source.id));
       assert.equal(count, 1);
-      sources.delete(`${teacherA.id}:${sample.source.id}`);
+      await storage.db.material.delete({ where: { id: sample.source.id } });
       assert.equal((await storage.db.worksheetDocument.findUnique({ where: { id: sample.document.id } })).sourceMaterialId, null);
       const saved = await service.get(requests[0], sample.document.id);
       assert.deepEqual(saved.source, sample.document.source); assert.deepEqual(saved.content, sample.document.content);
@@ -161,7 +159,7 @@ test("worksheet Prisma repository persists B2 documents in PostgreSQL storage", 
     });
 
     await t.test("rollback removes partial writes, allowing an explicit retry", async () => {
-      const sample = fixture();
+      const sample = await fixture();
       await assert.rejects(() => repository.withTeacherTransaction(teacherA.id, async tx => {
         await tx.insertSaved(sample.document); throw new Error("Synthetic transaction failure");
       }), /Synthetic transaction failure/);
@@ -170,10 +168,10 @@ test("worksheet Prisma repository persists B2 documents in PostgreSQL storage", 
     });
 
     await t.test("database constraints enforce ownership references, cache uniqueness and document enums", async () => {
-      const sample = fixture(); await seed([sample.document]);
+      const sample = await fixture(); await seed([sample.document]);
       await assert.rejects(() => repository.withTeacherTransaction(teacherA.id, tx => tx.insertSaved({ ...sample.document, id: randomUUID() })), { code: "P2002" });
       for (const change of [{ theme: "dark" }, { templateId: "unknown" }, { grade: "7" }, { schemaVersion: 2 }]) {
-        const invalid = fixture().document;
+        const invalid = (await fixture()).document;
         await assert.rejects(() => repository.withTeacherTransaction(teacherA.id, tx => tx.insertSaved({ ...invalid, ...change })));
       }
       await assert.rejects(() => storage.db.teacher.delete({ where: { id: teacherA.id } }), { code: "P2003" });

@@ -5,6 +5,7 @@ const uuid = value => typeof value === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-
 function toRecord(row) {
   if (!row) return null;
   const { sourceId, sourceTitle, sourceRevision, createdAt, updatedAt, ...rest } = row;
+  delete rest.sourceOwnerId;
   return { ...rest, source: { id: sourceId, title: sourceTitle, revision: sourceRevision },
     createdAt: createdAt.toISOString(), updatedAt: updatedAt.toISOString() };
 }
@@ -13,7 +14,7 @@ function toRow(record, ownerId) {
   if (record.ownerId !== ownerId) throw new TypeError("Worksheet owner does not match the transaction.");
   const { id, sourceMaterialId, source, schemaVersion, resourceVersion, templateId, templateVersion,
     assetVersion, grade, language, theme, content, displayOrder, cacheKey, createdAt, updatedAt } = record;
-  return { id, ownerId, sourceMaterialId, sourceId: source.id, sourceTitle: source.title, sourceRevision: source.revision,
+  return { id, ownerId, sourceMaterialId, sourceOwnerId: sourceMaterialId ? ownerId : null, sourceId: source.id, sourceTitle: source.title, sourceRevision: source.revision,
     schemaVersion, resourceVersion, templateId, templateVersion, assetVersion, grade, language, theme,
     content, displayOrder, cacheKey, createdAt: new Date(createdAt), updatedAt: new Date(updatedAt) };
 }
@@ -89,7 +90,7 @@ function repositoryFor(database, coreReaders) {
           // deleting accepted documents or changing their source snapshot.
           async detachSource(materialId) {
             if (!uuid(materialId)) return 0;
-            const result = await tx.worksheetDocument.updateMany({ where: { ownerId, sourceMaterialId: materialId }, data: { sourceMaterialId: null } });
+            const result = await tx.worksheetDocument.updateMany({ where: { ownerId, sourceMaterialId: materialId }, data: { sourceMaterialId: null, sourceOwnerId: null } });
             return result.count;
           },
           ...coreReaders?.(tx, ownerId),

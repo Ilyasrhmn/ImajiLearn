@@ -1,5 +1,6 @@
 import { ApiError } from "../../core/errors.mjs";
 import { endpoint, readJson } from "../../core/http.mjs";
+import { expectedVersion, etag } from "../../core/version.mjs";
 import { WorksheetVersionConflictError } from "./document.mjs";
 import { WorksheetValidationError } from "./schema.mjs";
 import { createWorksheetService, WorksheetServiceError } from "./service.mjs";
@@ -16,16 +17,13 @@ function apiError(error) {
 }
 
 function version(request) {
-  const header = request.headers.get("if-match");
-  if (header === null) throw new ApiError(400, "IF_MATCH_REQUIRED", "Sertakan If-Match dari versi LKPD yang dibuka.");
-  const match = /^"([1-9]\d{0,15})"$/.exec(header);
-  const value = match ? Number(match[1]) : NaN;
-  if (!Number.isSafeInteger(value)) throw new ApiError(400, "INVALID_IF_MATCH", "If-Match harus memuat satu ETag versi LKPD.");
+  const value = expectedVersion(request);
+  if (value < 1) throw new ApiError(400, "INVALID_VERSION", "Versi LKPD harus lebih besar dari nol.");
   return value;
 }
 
 function resourceResponse(document) {
-  return Response.json({ data: document }, { headers: { etag: `"${document.resourceVersion}"` } });
+  return Response.json({ data: document }, { headers: etag(document.resourceVersion) });
 }
 
 function pageQuery(request) {
@@ -46,7 +44,7 @@ export function createWorksheetHandlers({ repository, requireTeacher, origin }) 
   if (typeof requireTeacher !== "function" || typeof repository?.withTeacherTransaction !== "function") {
     throw new TypeError("Worksheet handlers require core authentication and a document repository.");
   }
-  const route = action => (request, context) => endpoint(async current => {
+  const route = action => endpoint(async (current, context) => {
     try {
       // Authenticate before parsing query, body or version. This request-scoped
       // principal comes from core sessions, never from a body or URL parameter.
@@ -55,7 +53,7 @@ export function createWorksheetHandlers({ repository, requireTeacher, origin }) 
       const service = createWorksheetService({ repository, requireTeacher: async () => teacher });
       return await action(current, context, service);
     } catch (error) { throw apiError(error); }
-  }, origin)(request);
+  }, origin);
   const id = async context => (await context.params).id;
   return Object.freeze({
     list: route(async (request, _context, service) => Response.json(await service.list(request, pageQuery(request)))),
