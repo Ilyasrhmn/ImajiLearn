@@ -229,3 +229,42 @@ Error tidak mengembalikan data parsial, stack atau detail database. Seluruh
 respons memakai Cache-Control:no-store dan requestId. Simpan preferensi tidak
 mengubah sumber materi, membuat dokumen, atau menjalankan AI.
 
+## Pemeriksaan integrasi backend
+
+```sh
+npm ci
+npm run db:validate
+npm test
+npm run lint
+npm run build
+npm run test:http
+```
+
+`test:http` menjalankan build produksi web pada port localhost yang tersedia,
+membuat schema tes acak, menerapkan migrasi, lalu menguji registrasi, sesi,
+materi, GET/PUT preferensi, dan endpoint dokumen LKPD. Data guru/sumber yang
+digunakan seluruhnya sintetis. Setelah selesai atau gagal, proses server tes
+dihentikan dan schema tes dibersihkan. Build harus tersedia terlebih dahulu.
+Perintah ini memakai database tes terisolasi dan tidak memigrasikan
+`DATABASE_URL` aplikasi.
+
+Tanpa `TEST_DATABASE_URL`, tes memakai PGlite. Tes concurrency yang membutuhkan
+PostgreSQL penuh ditandai skip pada `npm test`. Untuk menjalankan seluruh kasus
+termasuk concurrency, set `TEST_DATABASE_URL` ke PostgreSQL UTF8 khusus tes:
+
+```powershell
+$env:TEST_DATABASE_URL = "postgresql://imajilearn:local_password@localhost:5432/imajilearn_test"
+npm test
+npm run test:http
+```
+
+Workflow `Backend verification` memakai PostgreSQL 17 UTF8 dan Node.js 24 pada
+push/pull request ke branch `backend`, serta dapat dipicu manual. Pipeline
+memasang dependensi dari lockfile, memvalidasi schema, menguji migrate/replay,
+menjalankan seluruh tes, lint, build web/PWA, dan smoke HTTP produksi. Workflow
+ini hanya memeriksa kode; tidak melakukan deploy, push atau merge.
+
+Lingkup B1 backend adalah penyimpanan preferensi dan endpoint GET/PUT dengan
+validasi, ownership, versi, serta proteksi arsip/race. Form/frontend, upload
+PDF/TXT, dan provider AI berada pada tahap integrasi masing-masing.
+

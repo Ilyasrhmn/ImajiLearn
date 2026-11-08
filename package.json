@@ -14,6 +14,7 @@
     "build": "npm run build --workspaces --if-present",
     "lint": "eslint .",
     "test": "node --test --test-concurrency=1 tests/*.test.mjs",
+    "test:http": "node tests/backend-http-smoke.mjs",
     "postinstall": "prisma generate",
     "db:generate": "prisma generate",
     "db:validate": "prisma validate",
