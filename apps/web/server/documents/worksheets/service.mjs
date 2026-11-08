@@ -1,7 +1,6 @@
 import { Buffer } from "node:buffer";
-import { applyWorksheetPatch, assertWorksheetVersion, toWorksheetDto, WorksheetVersionConflictError } from "./document.mjs";
-import { createWorksheetCacheKey } from "./identity.mjs";
-import { WORKSHEET_LIMIT, WorksheetValidationError, validateDisplayOrder, validateWorksheetContent } from "./schema.mjs";
+import { applyWorksheetPatch, assertWorksheetVersion, createWorksheetRecord, toWorksheetDto, WorksheetVersionConflictError } from "./document.mjs";
+import { WORKSHEET_LIMIT, WorksheetValidationError } from "./schema.mjs";
 
 export class WorksheetServiceError extends Error {
   constructor(code, message) {
@@ -50,9 +49,9 @@ function decodeCursor(value) {
 /**
  * Repository port (no default or in-memory production implementation):
  * withTeacherTransaction(ownerId, callback) supplies a teacher-scoped transaction.
- * The adapter must lock the owner's saved documents AND generation reservations,
- * and coordinate source reads with material archive/delete/revision writes.
- * All writes and candidate consumption must commit or roll back together.
+ * The adapter must lock the owner's document capacity and coordinate source reads
+ * with material archive/delete/revision writes. All writes commit or roll back
+ * together. Generation/layout approval belongs to the calling module.
  *
  * tx.getSaved(id), getSavedByCacheKey(key), listSaved({ limit, after }), countSaved()
  * operate only on accepted, saved documents belonging to that teacher.
@@ -60,13 +59,10 @@ function decodeCursor(value) {
  * replaceSaved(id, expectedVersion, record) and deleteSaved(id, expectedVersion)
  * return false on a failed atomic version comparison.
  *
- * Publication additionally uses getCandidate(id), getOwnedMaterial(id),
- * countOtherReservations(candidateId), insertSaved(record), and
- * consumeCandidate(candidateId, resultId). Candidate layoutState/layoutVersion,
- * expiresAt and resultId are server-owned fields; they never come from a body.
- * countOtherReservations counts all live reservations except the current candidate.
- * Saved IDs and owner+cacheKey must be unique; consumed candidates are tombstoned
- * so a retry after document deletion cannot resurrect that document.
+ * Internal storage uses getOwnedMaterial(id), getTeacherProfile() and insertSaved(record).
+ * Core material/profile reads must be scoped to the transaction's teacher.
+ * Saved IDs and owner+cacheKey must be unique. Cache lookup only searches existing
+ * saved documents; deleting one removes it from cache eligibility.
  */
 export function createWorksheetService({ requireTeacher, repository, clock = () => new Date() }) {
   if (typeof requireTeacher !== "function" || typeof repository?.withTeacherTransaction !== "function" || typeof clock !== "function") {
@@ -115,52 +111,35 @@ export function createWorksheetService({ requireTeacher, repository, clock = () 
       });
     },
 
-    // Internal publication boundary for the layout/job module. There is no public
-    // create endpoint accepting client content, owner, source revision or cache key.
-    async publishApprovedCandidate(request, candidateId, expectedVersion) {
+    // Internal storage command for the generation module after its approval checks.
+    // expectedSourceRevision is the module's server snapshot, never a client field.
+    // Not a public POST endpoint; no provider, job or layout lifecycle is implemented here.
+    async storeDocument(request, command, expectedSourceRevision) {
       return withTeacher(request, async (tx, ownerId) => {
-        const candidate = await tx.getCandidate(identifier(candidateId));
-        if (!candidate || candidate.ownerId !== ownerId) throw notFound();
-        const record = owned(candidate.record, ownerId);
-        assertWorksheetVersion(record, expectedVersion);
-        if (candidate.resultId) return toWorksheetDto(owned(await tx.getSaved(candidate.resultId), ownerId));
-        if (record.schemaVersion !== 1 || record.templateVersion !== 1 || record.assetVersion !== 1 ||
-          record.language !== "id" || !["ink", "color"].includes(record.theme)) {
-          throw new WorksheetValidationError("candidate", "Versi atau tema kandidat LKPD tidak sesuai.");
+        const keys = ["materialId", "templateId", "content"];
+        if (!command || typeof command !== "object" || Array.isArray(command) || Object.keys(command).length !== keys.length ||
+          !keys.every(key => Object.hasOwn(command, key))) {
+          throw new WorksheetValidationError("document", "Isian penyimpanan LKPD tidak sesuai.");
         }
-        if (candidate.layoutState !== "accepted" || candidate.layoutVersion !== record.resourceVersion) {
-          throw new WorksheetServiceError("WORKSHEET_LAYOUT_REQUIRED", "LKPD belum lolos pemeriksaan layout untuk versi ini.");
+        const { materialId, templateId, content } = command;
+        const material = await tx.getOwnedMaterial(identifier(materialId));
+        if (!material || material.id !== materialId) throw new WorksheetServiceError("MATERIAL_NOT_FOUND", "Materi tidak ditemukan.");
+        if (typeof expectedSourceRevision !== "string" || !expectedSourceRevision.trim()) {
+          throw new WorksheetValidationError("sourceRevision", "Snapshot revisi sumber dari server wajib tersedia.");
         }
-        const now = clock();
-        const expiresAt = Date.parse(candidate.expiresAt);
-        if (!(now instanceof Date) || !Number.isFinite(now.getTime()) || !Number.isFinite(expiresAt)) {
-          throw new TypeError("Candidate expiry and service clock must be valid timestamps.");
-        }
-        if (expiresAt <= now.getTime()) throw new WorksheetServiceError("WORKSHEET_CANDIDATE_EXPIRED", "Kandidat LKPD telah kedaluwarsa.");
-        const material = await tx.getOwnedMaterial(record.sourceMaterialId);
-        if (!material || material.id !== record.source.id) throw new WorksheetServiceError("MATERIAL_NOT_FOUND", "Materi tidak ditemukan.");
+        if (material.revision !== expectedSourceRevision) throw new WorksheetServiceError("SOURCE_CHANGED", "Materi telah berubah. Gunakan snapshot sumber terbaru.");
         if (material.archived !== false || material.extractionStatus !== "ready" || typeof material.text !== "string" || !material.text.trim()) {
           throw new WorksheetServiceError("SOURCE_NOT_READY", "Materi belum siap digunakan.");
         }
-        if (material.revision !== record.source.revision) throw new WorksheetServiceError("SOURCE_CHANGED", "Materi telah berubah. Buat LKPD kembali.");
-        const cacheKey = createWorksheetCacheKey({ ownerId, sourceRevision: material.revision, templateId: record.templateId, grade: record.grade });
-        if (cacheKey !== record.cacheKey) throw new WorksheetValidationError("cacheKey", "Metadata kandidat LKPD tidak sesuai.");
-        validateWorksheetContent(record.content, record.templateId);
-        validateDisplayOrder(record.displayOrder, record.content.items.map(item => item.id));
-        const existing = await tx.getSavedByCacheKey(cacheKey);
-        if (existing) {
-          owned(existing, ownerId);
-          await tx.consumeCandidate(candidateId, existing.id);
-          return toWorksheetDto(existing);
-        }
+        const profile = await tx.getTeacherProfile();
+        if (!profile) throw new TypeError("Core teacher profile is required for the worksheet snapshot.");
+        const record = createWorksheetRecord({ ownerId, source: material, templateId, grade: profile.grade, content }, clock);
+        const existing = await tx.getSavedByCacheKey(record.cacheKey);
+        if (existing) return toWorksheetDto(owned(existing, ownerId));
         const saved = await tx.countSaved();
-        const reserved = await tx.countOtherReservations(candidateId);
-        if (![saved, reserved].every(value => Number.isSafeInteger(value) && value >= 0)) {
-          throw new TypeError("Worksheet capacity counts must be nonnegative integers.");
-        }
-        if (saved + reserved >= WORKSHEET_LIMIT) throw new WorksheetServiceError("WORKSHEET_LIMIT_REACHED", "Maksimal 20 LKPD termasuk kapasitas yang sedang dipesan.");
+        if (!Number.isSafeInteger(saved) || saved < 0) throw new TypeError("Worksheet count must be a nonnegative integer.");
+        if (saved >= WORKSHEET_LIMIT) throw new WorksheetServiceError("WORKSHEET_LIMIT_REACHED", "Maksimal 20 LKPD tersimpan.");
         await tx.insertSaved(record);
-        await tx.consumeCandidate(candidateId, record.id);
         return toWorksheetDto(record);
       });
     },
