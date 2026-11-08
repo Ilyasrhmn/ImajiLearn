@@ -17,6 +17,8 @@ model Teacher {
   createdAt    DateTime @default(now()) @db.Timestamptz(3)
   sessions     Session[]
   worksheetLibrary WorksheetLibrary?
+  materials    Material[]
+  idempotency  Idempotency[]
 }
 
 model WorksheetLibrary {
@@ -71,4 +73,35 @@ model RateLimit {
   windowStart DateTime @db.Timestamptz(3)
 
   @@index([windowStart])
+}
+
+model Material {
+  id              String   @id @default(uuid()) @db.Uuid
+  userId          String   @db.Uuid
+  title           String   @db.VarChar(120)
+  text            String
+  revision        String   @db.Char(64)
+  archived        Boolean  @default(false)
+  resourceVersion Int      @default(1)
+  lockVersion     BigInt   @default(0)
+  createdAt       DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt       DateTime @default(now()) @db.Timestamptz(3)
+  teacher         Teacher  @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@unique([id, userId])
+  @@index([userId, updatedAt, id])
+}
+
+model Idempotency {
+  userId      String   @db.Uuid
+  route       String   @db.VarChar(100)
+  key         String   @db.VarChar(100)
+  requestHash String   @db.Char(64)
+  response    Json?    @db.JsonB
+  expiresAt   DateTime @db.Timestamptz(3)
+  lockVersion BigInt   @default(0)
+  teacher     Teacher  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, route, key])
+  @@index([expiresAt])
 }

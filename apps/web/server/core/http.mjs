@@ -2,14 +2,14 @@ import { randomUUID } from "node:crypto";
 import { ApiError, errorResponse } from "./errors.mjs";
 
 export function endpoint(handler, origin) {
-  return async request => {
+  return async (request, ...args) => {
     const requestId = randomUUID();
     try {
       if (!["GET", "HEAD", "OPTIONS"].includes(request.method) &&
           (request.headers.get("origin") !== origin || request.headers.get("sec-fetch-site") === "cross-site")) {
         throw new ApiError(403, "ORIGIN_REJECTED", "Asal permintaan tidak diizinkan.");
       }
-      const response = await handler(request);
+      const response = await handler(request, ...args);
       response.headers.set("cache-control", "no-store");
       response.headers.set("x-request-id", requestId);
       return response;

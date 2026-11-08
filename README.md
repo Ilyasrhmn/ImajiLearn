@@ -116,3 +116,44 @@ Konfigurasi proxy tepercaya sama dengan registrasi. Semua write tetap memerlukan
 Origin yang benar dan semua respons auth memakai Cache-Control:no-store.
 Integrasi form frontend dan guard halaman privat belum termasuk tahap API ini.
 
+## Materi teks milik guru
+
+Tahap ini menyediakan tiga endpoint dengan sesi guru yang sama:
+
+| Method | Path | Body/ketentuan |
+| --- | --- | --- |
+| POST | `/api/v1/materials` | JSON `{title,text}` dan header `Idempotency-Key` |
+| GET | `/api/v1/materials/:materialId` | Detail materi milik guru |
+| PATCH | `/api/v1/materials/:materialId` | JSON `{archived:boolean}` dan header `If-Match` |
+
+Judul di-trim, wajib nonempty, maksimal 120 unit UTF-16. Teks wajib memiliki isi
+non-spasi, maksimal 40.000 unit UTF-16; spasi dan baris baru asli dipertahankan.
+Karakter NUL ditolak. Body POST dibatasi 256 KiB. Unknown field ditolak;
+identitas pemilik, status awal, ID, revisi sumber, dan waktu diterbitkan server.
+Materi teks manual langsung memiliki `extractionStatus:ready`, `file:null`,
+`folderId:null`, dan `pinned:false`. Hash revisi SHA-256 berasal dari judul dan
+teks tersimpan. Arsip/pemulihan tidak mengubah isi atau revisi sumber.
+
+POST sukses 201; GET/PATCH 200. Respons `{data:...}` menyertakan ETag sesuai
+`resourceVersion`. Detail memuat teks dan waktu ISO UTC, tanpa owner atau lock
+internal. Materi akun lain dan ID hilang sama-sama menghasilkan 404; tanpa sesi
+401. PATCH memakai `If-Match: "N"` dari respons terakhir: tanpa versi 428,
+format tidak valid 400, versi usang 412. Hanya status arsip yang dapat diubah.
+
+`Idempotency-Key` wajib berupa 1–100 karakter ASCII non-spasi. Ruang key terpisah
+per guru dan route. Key sama dengan payload tervalidasi yang sama mengembalikan
+respons create asli selama 24 jam; payload berbeda menghasilkan 409. Transaksi
+menyimpan materi dan respons idempotensi bersama, sehingga retry bersamaan dan
+kegagalan database tidak membuat duplikat atau reservasi setengah jadi.
+
+Modul `createMaterialService(database)` menyediakan pembacaan sumber milik guru,
+batch 1–100 sumber dengan ownership seluruhnya, dan `withOwnedMaterial` untuk
+operasi yang memerlukan lock materi. Reader transaksi
+`getOwnedMaterial(transaction,userId,id)` dapat dipakai modul dokumen dan
+mengembalikan snapshot sumber atau null. Transaksi pemanggil harus tetap terbuka
+sampai operasi yang memakai sumber selesai. Lock materi tidak mengubah versi
+atau waktu pembaruan publik; arsip dan operasi berikutnya memakai lock yang sama.
+
+Upload PDF/TXT, ekstraksi, list/search, folder, file privat, penghapusan, integrasi
+frontend, dan penyimpanan preferensi media belum termasuk tahap materi teks ini.
+
