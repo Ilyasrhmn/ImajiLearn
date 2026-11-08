@@ -21,3 +21,11 @@ export function registrationConfig() {
     trustedIpHeader: process.env.TRUSTED_CLIENT_IP_HEADER || undefined,
   };
 }
+
+export function sessionConfig() {
+  return { ...registrationConfig(),
+    sessionIdleSeconds: positive("SESSION_IDLE_SECONDS", 86400),
+    loginFailureLimit: positive("LOGIN_FAILURE_LIMIT", 5),
+    loginIpLimit: positive("LOGIN_IP_LIMIT", 30),
+  };
+}

@@ -5,7 +5,8 @@ export function endpoint(handler, origin) {
   return async request => {
     const requestId = randomUUID();
     try {
-      if (request.headers.get("origin") !== origin || request.headers.get("sec-fetch-site") === "cross-site") {
+      if (!["GET", "HEAD", "OPTIONS"].includes(request.method) &&
+          (request.headers.get("origin") !== origin || request.headers.get("sec-fetch-site") === "cross-site")) {
         throw new ApiError(403, "ORIGIN_REJECTED", "Asal permintaan tidak diizinkan.");
       }
       const response = await handler(request);

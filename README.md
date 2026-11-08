@@ -43,8 +43,8 @@ untuk modular monolit. `database()` memakai `DATABASE_URL` dan mempertahankan
 satu Prisma Client per proses. `createDatabase()` menyediakan koneksi terpisah
 untuk pengujian dan proses yang mengelola lifecycle sendiri; tutup dengan
 `$disconnect()` setelah selesai. Tabel dasar `Teacher` menyimpan UUID, email
-unik, nama, hash password, profil awal, dan waktu pembuatan. Login dan pengelolaan
-sesi menyusul pada tahap berikutnya.
+unik, nama, hash password, profil awal, dan waktu pembuatan. Modul akun memakai
+database yang sama untuk sesi dan pembatasan percobaan.
 
 Secara default, tes database memakai PGlite khusus tes tanpa instalasi
 PostgreSQL. Untuk memakai PostgreSQL penuh, set `TEST_DATABASE_URL` ke database
@@ -82,5 +82,37 @@ jika reverse proxy menghapus dan mengganti header tersebut; header kiriman
 client seperti X-Forwarded-For diabaikan secara default. Percobaan dibatasi
 sebelum hashing; input yang gagal validasi tidak memakai kuota registrasi.
 Batas tercapai menghasilkan 429 dengan Retry-After. Frontend registrasi belum
-dihubungkan ke API; login, baca sesi, dan logout belum tersedia pada tahap ini.
+dihubungkan ke API.
+
+## Sesi guru
+
+- `POST /api/v1/auth/login` menerima `{email,password}`. Email dinormalisasi
+  seperti registrasi; password 1–128 unit UTF-16 diterima untuk verifikasi,
+  tanpa trim. Kredensial salah selalu 401 `INVALID_CREDENTIALS`, baik email
+  ada maupun tidak. Unknown field ditolak. Login sukses 200 memakai bentuk
+  `{data:{user:{id,name,email,school,grade},expiresAt}}` dan cookie sesi baru.
+- `GET /api/v1/auth/session` mengembalikan identitas guru dan waktu kedaluwarsa
+  absolut dalam bentuk yang sama, atau JSON401 `SESSION_REQUIRED`. GET tidak
+  memerlukan Origin. Password hash dan token tidak dikirim dalam JSON.
+- `POST /api/v1/auth/logout` mencabut sesi dari cookie dan menghapus cookie.
+  Respons 204 tanpa body; mengulang logout tetap 204 dan tidak menghapus akun.
+
+Cookie yang dikirim saat login sukses dicabut dalam transaksi yang sama dengan
+pembuatan sesi baru. Password salah atau kegagalan pembuatan sesi tidak mencabut
+sesi lama. Logout hanya mencabut sesi yang dikirim, bukan seluruh perangkat.
+Cookie malformed/duplikat ditolak saat membaca sesi.
+
+Sesi kedaluwarsa setelah 7 hari secara absolut atau 24 jam tanpa aktivitas;
+atur `SESSION_ABSOLUTE_SECONDS` dan `SESSION_IDLE_SECONDS` pada server. Membaca
+sesi memperbarui waktu aktivitas, tanpa memperpanjang batas absolut. Modul
+`createSessionHandlers(database,config).requireTeacher(request)` menyediakan
+identitas terverifikasi untuk modul backend berikutnya dan menolak dengan401
+bila sesi tidak valid.
+
+Login dibatasi default 5 kegagalan per kombinasi email+IP dan 30 percobaan perIP
+dalam 15 menit (`LOGIN_FAILURE_LIMIT`, `LOGIN_IP_LIMIT`). Throttle disimpan di
+database dan memberi 429+Retry-After; logout tidak dibatasi throttle login.
+Konfigurasi proxy tepercaya sama dengan registrasi. Semua write tetap memerlukan
+Origin yang benar dan semua respons auth memakai Cache-Control:no-store.
+Integrasi form frontend dan guard halaman privat belum termasuk tahap API ini.
 
