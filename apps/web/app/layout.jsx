@@ -1,5 +1,6 @@
 import "@fontsource-variable/nunito-sans";
 import "./globals.css";
+import "../components/icon-motion.css";
 
 export const metadata = {
   title: "ImajiLearn",
