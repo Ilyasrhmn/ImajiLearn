@@ -55,7 +55,7 @@ export default function UploadMaterial({ onClose, onSaved, folders, initialFolde
   return <Modal title="Unggah materi" onClose={onClose} wide>
     <form className="source-form" onSubmit={submit}>
       <div className="source-heading"><h2>Unggah materi</h2><Mascot kind="pen" mood="think" /></div>
-      <div className="source-field source-folder-field"><label htmlFor="upload-folder">Mata pelajaran (opsional)</label><ThemedSelect id="upload-folder" value={folderId} onChange={event => setFolderId(event.target.value)}><option value="">Belum masuk folder</option>{folders.map(folder => <option key={folder.id} value={folder.id}>{folder.name}</option>)}</ThemedSelect></div>
+      <div className="source-field source-folder-field"><label htmlFor="upload-folder">Mata pelajaran (opsional)</label><ThemedSelect id="upload-folder" value={folderId} onChange={event => setFolderId(event.target.value)}><option value="">Tanpa mata pelajaran</option>{folders.map(folder => <option key={folder.id} value={folder.id}>{folder.name}</option>)}</ThemedSelect></div>
       <div className="source-upload" onDragOver={e => e.preventDefault()} onDrop={e => { e.preventDefault(); choose(e.dataTransfer.files[0]); }}>
         {file ? <FileText size={30} /> : <Upload size={30} />}
         <div><strong>{file?.name || "Unggah bahan ajar"}</strong><p>{file ? "Siap disimpan" : "PDF atau TXT, maksimal 10 MB"}</p></div>
