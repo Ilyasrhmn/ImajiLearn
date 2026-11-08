@@ -1,9 +1,10 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
 import Image from "next/image";
-import { Archive, ArchiveRestore, BookOpen, CalendarDays, ClipboardPenLine, FileText, Files, Folder, FolderClosed, FolderCog, FolderInput, ArrowLeft, LogOut, Pin, PinOff, Scissors, Search, Trash2, Upload } from "lucide-react";
+import { Archive, ArchiveRestore, BookOpen, CalendarDays, ClipboardPenLine, FileText, Files, Folder, FolderClosed, FolderCog, FolderInput, ArrowLeft, Pin, PinOff, Scissors, Search, Trash2, Upload } from "lucide-react";
 import { Mascot } from "./mascot";
 import AccountAvatar from "./account-avatar";
+import LogoutButton from "./logout-button";
 import UploadMaterial from "./upload-material";
 import MaterialDetail, { formats } from "./material-detail";
 import Notice from "./notice";
@@ -82,7 +83,7 @@ export default function Dashboard() {
     <a className="skip-link" href="#main">Lewati ke isi</a>
     <header className="workspace-header"><div className="header-inner">
       <a className="brand" href="/dashboard" aria-label="ImajiLearn, dashboard"><Image src="/brand/imajilearn-mark.svg" width={52} height={52} alt="" /><Image src="/brand/imajilearn-wordmark.svg" width={153} height={33} alt="" className="brand-wordmark" /></a>
-      <div className="account-actions"><AccountAvatar /><button type="button" className="logout" disabled aria-label="Keluar belum tersedia"><LogOut size={20} /></button></div>
+      <div className="account-actions"><AccountAvatar /><LogoutButton /></div>
     </div></header>
     <main id="main" className="workspace-shell dashboard">
       <nav className="studio-sections" aria-label="Navigasi studio">
