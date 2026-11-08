@@ -1,5 +1,5 @@
 @media (prefers-reduced-motion: no-preference) {
-  @scope (.dashboard, .account-main, .exam-main, .lkpd-main, .schedule-main, .workspace-header, .modal) {
+  @scope (.dashboard, .account-main, .exam-main, .lkpd-main, .schedule-main, .workspace-header, .modal, .auth-page) {
     :where(svg.lucide, svg[data-icon]) {
       --icon-hover-motion: scale(1.06);
       transform-origin: center;
