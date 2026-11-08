@@ -163,8 +163,8 @@ frontend, dan penyimpanan preferensi media belum termasuk tahap materi teks ini.
 menyediakan `get(userId,materialId)` dan
 `save(userId,materialId,{selectedMedia,songTemplateId},expectedVersion)` untuk
 pemanggil backend. `userId` harus berasal dari sesi guru terverifikasi; store
-memeriksa kepemilikan materi lagi melalui modul materi. Endpoint HTTP preferensi
-belum ditambahkan pada tahap ini.
+memeriksa kepemilikan materi lagi melalui modul materi. Endpoint baca batch
+dijelaskan di bawah; endpoint ubah preferensi belum ditambahkan pada tahap ini.
 
 Satu materi memiliki paling banyak satu record preferensi. Media yang diizinkan
 adalah `reading`, `mindmap`, `slides`, `song`; pilihan harus unik, 0–4 media.
@@ -186,4 +186,25 @@ Preferensi lama tetap utuh untuk dipakai setelah pemulihan. Constraint database
 menjaga katalog, keunikan pilihan, template, versi positif, dan kecocokan pemilik
 dengan materi melalui foreign key komposit. Save tidak mengubah revisi, versi,
 atau waktu pembaruan materi, serta tidak menjalankan AI.
+
+## GET batch preferensi media
+
+`GET /api/v1/media-preferences?materialIds=id1,id2` memerlukan sesi guru. Kirim
+tepat satu parameter `materialIds` berisi 1–100 ID unik; parameter lain, ID
+berulang, daftar kosong atau lebih dari 100 ID ditolak dengan 422. UUID dipetakan
+ke bentuk kanonis sehingga perbedaan huruf besar/kecil tidak membuat preferensi
+terbaca sebagai default kosong.
+
+Respons 200 berbentuk `{data:[...],page:{nextCursor:null}}`, mengikuti urutan ID
+permintaan. Setiap item memuat `materialId`, `selectedMedia`, `songTemplateId`,
+`resourceVersion`, dan `updatedAt`; preferensi belum tersimpan memakai default
+versi 0 tanpa membuat record baru. Materi arsip tetap dapat dibaca. Endpoint tidak
+mengirim teks sumber atau identitas pemilik dan memakai Cache-Control:no-store.
+
+Semua materi wajib milik guru yang sedang masuk. Jika satu ID hilang/asing,
+seluruh batch gagal 404 tanpa hasil parsial; tanpa sesi menghasilkan JSON 401.
+Pemeriksaan pemilik dan pembacaan preferensi memakai satu snapshot transaksi,
+sehingga hasil tidak mencampur dua keadaan database saat ada save bersamaan.
+Pembacaan batch memakai dua query tanpa mengambil teks sumber atau mengunci
+baris materi. Endpoint PUT dan integrasi frontend masih tahap berikutnya.
 

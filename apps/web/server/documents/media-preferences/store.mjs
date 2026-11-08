@@ -1,6 +1,7 @@
 import { parseMediaPreference } from "../../../../../packages/contracts/media-preferences.mjs";
 import { ApiError } from "../../core/errors.mjs";
 import { createMaterialService } from "../../materials/service.mjs";
+import { getOwnedMaterialIds } from "../../materials/readers.mjs";
 
 function dto(materialId, row) {
   return { materialId, selectedMedia: row?.selectedMedia ?? [], songTemplateId: row?.songTemplateId ?? "balonku",
@@ -10,6 +11,14 @@ function dto(materialId, row) {
 export function createMediaPreferenceStore(database) {
   const materials = createMaterialService(database);
   return {
+    list(userId, ids) {
+      return database.$transaction(async tx => {
+        const canonical = await getOwnedMaterialIds(tx, userId, ids);
+        const rows = await tx.mediaPreference.findMany({ where: { userId, materialId: { in: canonical } } });
+        const byId = new Map(rows.map(row => [row.materialId, row]));
+        return canonical.map(id => dto(id, byId.get(id)));
+      }, { isolationLevel: "RepeatableRead", maxWait: 5000, timeout: 10000 });
+    },
     get(userId, materialId) {
       return materials.withOwnedMaterial(userId, materialId, async (tx, material) => {
         const row = await tx.mediaPreference.findUnique({ where: { materialId_userId: { materialId: material.id, userId } } });

@@ -30,7 +30,12 @@ assert.equal(read.status, 200); assert.equal(read.headers.get("cache-control"), 
 const archived = await send("PATCH", `materials/${material.id}`, { archived: true }, a, { "if-match": '"1"' });
 assert.equal(archived.status, 200); assert.equal(archived.headers.get("etag"), '"2"');
 assert.equal((await archived.json()).data.archived, true);
+const preferences = await send("GET", `media-preferences?materialIds=${material.id.toUpperCase()}`, undefined, a);
+assert.equal(preferences.status, 200); assert.equal(preferences.headers.get("cache-control"), "no-store");
+assert.deepEqual(await preferences.json(), { data: [{ materialId: material.id, selectedMedia: [], songTemplateId: "balonku", resourceVersion: 0, updatedAt: null }], page: { nextCursor: null } });
+assert.equal((await send("GET", `media-preferences?materialIds=${material.id}`, undefined, b)).status, 404);
+assert.equal((await send("GET", `media-preferences?materialIds=${material.id}&materialIds=${material.id}`, undefined, a)).status, 422);
 assert.equal((await send("PATCH", `materials/${material.id}`, { archived: false }, a, { "if-match": '"1"' })).status, 412);
 const restored = await send("PATCH", `materials/${material.id}`, { archived: false }, a, { "if-match": '"2"' });
 assert.equal(restored.status, 200); assert.equal((await restored.json()).data.revision, material.revision);
-console.log("Materials HTTP smoke passed: exact text, replay, ownership, authentication, ETags, archive/restore.");
+console.log("Materials/preference-read HTTP smoke passed: text, replay, ownership, ETags, archive/restore, default preference batch.");
