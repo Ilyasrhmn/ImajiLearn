@@ -4,5 +4,5 @@ import nextVitals from "eslint-config-next/core-web-vitals";
 export default defineConfig([
   ...nextVitals,
   { settings: { next: { rootDir: ["apps/web/", "apps/pwa/"] } } },
-  globalIgnores(["**/.next/**", "**/out/**", "**/build/**"]),
+  globalIgnores(["**/.next/**", "**/out/**", "**/build/**", "apps/web/server/generated/**", "docs/**"]),
 ]);
