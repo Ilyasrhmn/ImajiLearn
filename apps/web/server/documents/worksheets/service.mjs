@@ -1,6 +1,7 @@
 import { Buffer } from "node:buffer";
 import { applyWorksheetPatch, assertWorksheetVersion, createWorksheetRecord, toWorksheetDto, WorksheetVersionConflictError } from "./document.mjs";
 import { WORKSHEET_LIMIT, WorksheetValidationError } from "./schema.mjs";
+import { legacyWorksheetCacheKey } from "./identity.mjs";
 
 export class WorksheetServiceError extends Error {
   constructor(code, message) {
@@ -134,7 +135,12 @@ export function createWorksheetService({ requireTeacher, repository, clock = () 
         const profile = await tx.getTeacherProfile();
         if (!profile) throw new TypeError("Core teacher profile is required for the worksheet snapshot.");
         const record = createWorksheetRecord({ ownerId, source: material, templateId, grade: profile.grade, content }, clock);
-        const existing = await tx.getSavedByCacheKey(record.cacheKey);
+        let existing = await tx.getSavedByCacheKey(record.cacheKey);
+        if (!existing) {
+          const legacyKey = legacyWorksheetCacheKey({ ownerId, sourceRevision: material.revision, templateId, grade: profile.grade });
+          const legacy = await tx.getSavedByCacheKey(legacyKey);
+          if (legacy?.source.id === material.id) existing = legacy;
+        }
         if (existing) return toWorksheetDto(owned(existing, ownerId));
         const saved = await tx.countSaved();
         if (!Number.isSafeInteger(saved) || saved < 0) throw new TypeError("Worksheet count must be a nonnegative integer.");

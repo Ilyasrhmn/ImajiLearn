@@ -168,6 +168,27 @@ test("concurrent HTTP edits return one success and one 412", async () => {
   assert.deepEqual(results.map(response => response.status).sort(), [200, 412]);
 });
 
+test("PostgreSQL-incompatible text returns JSON422 instead of an internal database error", async () => {
+  const document = fixture(); await seed(document);
+  for (const front of ["A\0B", "A\ud800", "A\udfff"]) {
+    const content = structuredClone(document.content); content.items[0].front = front;
+    const response = await handlers.update(request("PATCH", "", { content }, { headers: { "if-match": '"1"' } }), context(document.id));
+    assert.equal(response.status, 422); assert.equal((await response.json()).error.code, "INVALID_WORKSHEET");
+  }
+  assert.equal((await storage.db.worksheetDocument.findUnique({ where: { id: document.id } })).resourceVersion, 1);
+});
+
+test("resource-version exhaustion returns JSON409 without exceeding PostgreSQL integer capacity", async () => {
+  const document = fixture(); await seed(document);
+  await storage.db.worksheetDocument.update({ where: { id: document.id }, data: { resourceVersion: 2147483646 } });
+  const last = await handlers.update(request("PATCH", "", { theme: "color" }, { headers: { "if-match": '"2147483646"' } }), context(document.id));
+  assert.equal(last.status, 200); assert.equal(last.headers.get("etag"), '"2147483647"');
+  const exhausted = await handlers.update(request("PATCH", "", { theme: "ink" }, { headers: { "if-match": '"2147483647"' } }), context(document.id));
+  assert.equal(exhausted.status, 409); assert.equal((await exhausted.json()).error.code, "WORKSHEET_VERSION_EXHAUSTED");
+  const saved = await storage.db.worksheetDocument.findUnique({ where: { id: document.id } });
+  assert.equal(saved.resourceVersion, 2147483647); assert.equal(saved.theme, "color");
+});
+
 test("DELETE requires the current version and returns 204 with no body", async () => {
   const document = fixture(); await seed(document);
   assert.equal((await handlers.remove(request("DELETE", "", undefined, { headers: { "if-match": '"2"' } }), context(document.id))).status, 412);

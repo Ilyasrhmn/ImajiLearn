@@ -95,7 +95,7 @@ test("rejects unknown or missing fields at every object boundary", () => {
 
 test("rejects malformed JSON structures and mismatched templates with domain errors", () => {
   for (const value of [null, undefined, [], "text", 1, {}, { templateId: "fold" }]) rejects(value, "fold");
-  rejects(fixture(), "unknown"); rejects(fixture(), "cube");
+  for (const template of ["unknown", "cube", null, [], {}, { toString: "fold" }]) rejects(fixture(), template);
   const cyclic = fixture(); cyclic.self = cyclic; rejects(cyclic);
   const oversized = fixture(); oversized.title = "x".repeat(30_001); rejects(oversized);
   for (const [template, field] of [["match", "pairs"], ["group", "groups"]]) {
@@ -171,14 +171,56 @@ test("display order preserves fixed templates and shuffles other templates witho
 });
 
 test("cache key is stable and separates owners, source revisions, activities and grades", () => {
-  const metadata = { ownerId: "teacher-a", sourceRevision: "server-revision-1", templateId: "fold", grade: "4" };
+  const metadata = { ownerId: "teacher-a", sourceId: "source-a", sourceRevision: "server-revision-1", templateId: "fold", grade: "4" };
   const key = createWorksheetCacheKey(metadata);
   assert.match(key, /^[a-f0-9]{64}$/);
   assert.equal(key, createWorksheetCacheKey({ ...metadata }));
-  for (const change of [{ ownerId: "teacher-b" }, { sourceRevision: "server-revision-2" }, { templateId: "cube" }, { grade: "" }]) {
+  for (const change of [{ ownerId: "teacher-b" }, { sourceId: "source-b" }, { sourceRevision: "server-revision-2" }, { templateId: "cube" }, { grade: "" }]) {
     assert.notEqual(key, createWorksheetCacheKey({ ...metadata, ...change }));
   }
-  for (const change of [{ ownerId: "" }, { sourceRevision: null }, { templateId: "unknown" }, { grade: 4 }, { grade: "7" }, { language: "en" }]) {
+  for (const change of [{ ownerId: "" }, { sourceId: undefined }, { sourceId: "" }, { sourceRevision: null }, { templateId: "unknown" }, { grade: 4 }, { grade: "7" }, { language: "en" }]) {
     assert.throws(() => createWorksheetCacheKey({ ...metadata, ...change }), WorksheetValidationError);
   }
+});
+
+test("text rejects NUL and unpaired surrogates before PostgreSQL JSONB persistence", () => {
+  for (const value of ["A\0B", "A\ud800", "A\udfff"]) {
+    const doc = fixture(); doc.items[0].front = value; rejects(doc);
+  }
+  const doc = fixture(); doc.items[0].front = "Daun 🌱";
+  validateWorksheetContent(doc, "fold");
+});
+
+test("sparse arrays cannot pass content or display-order validation", () => {
+  for (const [template, field] of [["fold", "instructions"], ["fold", "items"], ["match", "pairs"], ["sequence", "order"], ["group", "groups"]]) {
+    const doc = fixture(template); delete doc[field][0]; rejects(doc);
+  }
+  const doc = fixture(); delete doc.teacher.preparation[0]; rejects(doc);
+  const order = ["a", "b"]; delete order[0];
+  assert.throws(() => validateDisplayOrder(order, ["a", "b"]), WorksheetValidationError);
+});
+
+test("otherwise valid content accepts exactly 30,000 JSON characters and rejects 30,001", () => {
+  const doc = fixture("group", 9);
+  const fill = (label, length) => label + "\u0001".repeat(length - label.length);
+  doc.title = fill("A", 90); doc.instructions = Array.from({ length: 3 }, () => fill("A", 140));
+  doc.items.forEach((item, i) => { item.id = fill(`id-${i}`, 60); item.front = fill("A", 64); item.back = fill("A", 180); });
+  doc.groups.forEach((group, i) => { group.id = fill(`g-${i}`, 60); group.label = fill(`G-${i}`, 48); group.itemIds = doc.items.slice(i * 3, i * 3 + 3).map(item => item.id); });
+  doc.teacher.preparation = Array.from({ length: 5 }, () => fill("A", 160)); doc.teacher.notes = fill("A", 600);
+  const excess = JSON.stringify(doc).length - 30000;
+  assert.ok(excess > 20);
+  let tabs = (5 - excess % 5) % 5;
+  let plain = (excess - 4 * tabs) / 5;
+  const targets = [[doc.teacher, "notes"], ...doc.items.flatMap(item => [[item, "front"], [item, "back"]])];
+  for (const [object, key] of targets) {
+    object[key] = object[key].replace(/\u0001/g, char => {
+      if (plain > 0) { plain--; return "a"; }
+      if (tabs > 0) { tabs--; return "\t"; }
+      return char;
+    });
+  }
+  assert.equal(plain + tabs, 0); assert.equal(JSON.stringify(doc).length, 30000);
+  validateWorksheetContent(doc, "group");
+  doc.teacher.notes = doc.teacher.notes.replace("a", "\t");
+  assert.equal(JSON.stringify(doc).length, 30001); rejects(doc);
 });

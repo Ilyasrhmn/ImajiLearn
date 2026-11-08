@@ -9,6 +9,7 @@ import { createWorksheetRecord } from "../apps/web/server/documents/worksheets/d
 import { createWorksheetStorage } from "../apps/web/server/documents/worksheets/storage.mjs";
 import { createWorksheetDocumentRepository } from "../apps/web/server/documents/worksheets/repository.mjs";
 import { createWorksheetHandlers } from "../apps/web/server/documents/worksheets/http.mjs";
+import { legacyWorksheetCacheKey } from "../apps/web/server/documents/worksheets/identity.mjs";
 
 const origin = "http://localhost:3000";
 let storage, internalStorage, materials, repository, api, a, b;
@@ -80,6 +81,32 @@ test("cache preserves edits and later profile changes do not mutate the earlier 
   assert.equal(next.grade, "6"); assert.notEqual(next.id, first.id);
   const old = (await (await api.detail(request(), context(first.id))).json()).data;
   assert.equal(old.grade, "4"); assert.equal(old.theme, "color");
+});
+
+test("identical source text and titles do not share another material's cached document", async () => {
+  const body = { title: "Materi kembar", text: "Teks identik." };
+  const first = await materials.create(a.id, body, randomUUID());
+  const second = await materials.create(a.id, body, randomUUID());
+  assert.equal(first.revision, second.revision); assert.notEqual(first.id, second.id);
+  const one = await internalStorage.storeDocument(request(), command(first), first.revision);
+  const two = await internalStorage.storeDocument(request(), command(second), second.revision);
+  assert.notEqual(one.id, two.id); assert.notEqual(one.cacheKey, two.cacheKey);
+  assert.equal(one.source.id, first.id); assert.equal(two.source.id, second.id);
+});
+
+test("legacy cache lookup preserves edits only for the exact stored source identity", async () => {
+  const body = { title: "Legacy cache", text: "Teks identik." };
+  const first = await materials.create(a.id, body, randomUUID());
+  const second = await materials.create(a.id, body, randomUUID());
+  const old = createWorksheetRecord({ ownerId: a.id, source: first, templateId: "fold", grade: "4", content: content() });
+  old.cacheKey = legacyWorksheetCacheKey({ ownerId: a.id, sourceRevision: first.revision, templateId: "fold", grade: "4" });
+  old.theme = "color"; old.content.items[0].front = "Edit guru"; old.resourceVersion = 2;
+  await repository.withTeacherTransaction(a.id, tx => tx.insertSaved(old));
+  const other = await internalStorage.storeDocument(request(), command(second), second.revision);
+  assert.notEqual(other.id, old.id); assert.equal(other.source.id, second.id);
+  const cached = await internalStorage.storeDocument(request(), command(first), first.revision);
+  assert.equal(cached.id, old.id); assert.equal(cached.cacheKey, old.cacheKey); assert.equal(cached.resourceVersion, 2);
+  assert.equal(cached.content.items[0].front, "Edit guru"); assert.equal(cached.theme, "color");
 });
 
 test("database source deletion clears both live FK fields and preserves accepted document snapshots", async () => {

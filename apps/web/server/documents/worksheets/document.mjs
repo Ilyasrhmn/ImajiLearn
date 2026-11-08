@@ -10,6 +10,14 @@ export class WorksheetVersionConflictError extends Error {
   }
 }
 
+export class WorksheetVersionExhaustedError extends RangeError {
+  constructor() {
+    super("Versi LKPD sudah mencapai batas.");
+    this.name = "WorksheetVersionExhaustedError";
+    this.code = "WORKSHEET_VERSION_EXHAUSTED";
+  }
+}
+
 function requireString(value, field, max = Infinity) {
   if (typeof value !== "string" || !value.trim() || value.length > max) {
     throw new WorksheetValidationError(field, "Metadata LKPD tidak sesuai.");
@@ -32,7 +40,7 @@ export function createWorksheetRecord({ ownerId, source, templateId, grade, cont
   requireString(source?.id, "source.id", 100);
   requireString(source?.title, "source.title", 120);
   requireString(source?.revision, "source.revision");
-  const cacheKey = createWorksheetCacheKey({ ownerId, sourceRevision: source.revision, templateId, grade });
+  const cacheKey = createWorksheetCacheKey({ ownerId, sourceId: source.id, sourceRevision: source.revision, templateId, grade });
   const validated = validateWorksheetContent(content, templateId);
   const now = timestamp(clock);
   return {
@@ -56,6 +64,7 @@ export function assertWorksheetVersion(record, expectedVersion) {
 // this check alone does not protect against concurrent database writers.
 export function applyWorksheetPatch(record, patch, expectedVersion, clock = () => new Date()) {
   assertWorksheetVersion(record, expectedVersion);
+  if (record.resourceVersion >= 2147483647) throw new WorksheetVersionExhaustedError();
   const validated = validateWorksheetPatch(patch, record.templateId);
   if (validated.content) {
     const previousIds = record.content.items.map(item => item.id);

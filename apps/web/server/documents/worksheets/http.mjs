@@ -1,7 +1,7 @@
 import { ApiError } from "../../core/errors.mjs";
 import { endpoint, readJson } from "../../core/http.mjs";
 import { expectedVersion, etag } from "../../core/version.mjs";
-import { WorksheetVersionConflictError } from "./document.mjs";
+import { WorksheetVersionConflictError, WorksheetVersionExhaustedError } from "./document.mjs";
 import { WorksheetValidationError } from "./schema.mjs";
 import { createWorksheetService, WorksheetServiceError } from "./service.mjs";
 
@@ -11,6 +11,7 @@ export const WORKSHEET_PATCH_MAX_BYTES = 256 * 1024;
 function apiError(error) {
   if (error instanceof WorksheetValidationError) return new ApiError(422, error.code, error.message, error.fields);
   if (error instanceof WorksheetVersionConflictError) return new ApiError(412, error.code, error.message);
+  if (error instanceof WorksheetVersionExhaustedError) return new ApiError(409, error.code, error.message);
   if (error instanceof WorksheetServiceError && error.code === "WORKSHEET_NOT_FOUND") return new ApiError(404, error.code, error.message);
   if (error instanceof WorksheetServiceError && error.code === "UNAUTHENTICATED") return new ApiError(401, error.code, error.message);
   return error;

@@ -29,21 +29,22 @@ function object(value, keys, field) {
 }
 
 function string(value, max, field, empty = false) {
-  requireValue(typeof value === "string" && value.length <= max && (empty || value.trim().length > 0), field);
+  requireValue(typeof value === "string" && value.isWellFormed() && !value.includes("\0") &&
+    value.length <= max && (empty || value.trim().length > 0), field);
 }
 
 function strings(value, maxItems, maxLength, field) {
   requireValue(Array.isArray(value) && value.length >= 1 && value.length <= maxItems, field);
-  value.forEach((item, i) => string(item, maxLength, `${field}.${i}`));
+  Array.from(value).forEach((item, i) => string(item, maxLength, `${field}.${i}`));
 }
 
 export function validateDisplayOrder(order, ids) {
   requireValue(Array.isArray(order) && order.length === ids.length && new Set(order).size === ids.length &&
-    order.every(id => ids.includes(id)), "displayOrder", "Urutan harus mencakup setiap kartu tepat sekali.");
+    Array.from(order).every(id => ids.includes(id)), "displayOrder", "Urutan harus mencakup setiap kartu tepat sekali.");
 }
 
 export function validateWorksheetContent(content, templateId) {
-  requireValue(Object.hasOwn(TEMPLATE_CAPACITIES, templateId), "templateId", "Jenis aktivitas tidak tersedia.");
+  requireValue(typeof templateId === "string" && Object.hasOwn(TEMPLATE_CAPACITIES, templateId), "templateId", "Jenis aktivitas tidak tersedia.");
   let serialized;
   try { serialized = JSON.stringify(content); } catch {
     throw new WorksheetValidationError("content", "Isi LKPD harus berupa JSON.");
@@ -55,7 +56,7 @@ export function validateWorksheetContent(content, templateId) {
   string(content.title, 90, "content.title");
   strings(content.instructions, 3, 140, "content.instructions");
   requireValue(Array.isArray(content.items) && TEMPLATE_CAPACITIES[templateId].includes(content.items.length), "content.items");
-  content.items.forEach((item, i) => {
+  Array.from(content.items).forEach((item, i) => {
     const path = `content.items.${i}`;
     object(item, ["id", "front", "back", "assetId"], path);
     string(item.id, 60, `${path}.id`);
@@ -67,7 +68,7 @@ export function validateWorksheetContent(content, templateId) {
   requireValue(new Set(ids).size === ids.length, "content.items", "ID kartu harus unik.");
   for (const field of ["pairs", "order", "groups"]) requireValue(Array.isArray(content[field]), `content.${field}`);
   if (templateId === "match") {
-    content.pairs.forEach((pair, i) => {
+    Array.from(content.pairs).forEach((pair, i) => {
       object(pair, ["itemId", "target"], `content.pairs.${i}`);
       string(pair.target, 110, `content.pairs.${i}.target`);
     });
@@ -77,7 +78,7 @@ export function validateWorksheetContent(content, templateId) {
   else requireValue(content.order.length === 0, "content.order");
   if (templateId === "group") {
     requireValue(content.groups.length === ids.length / 3, "content.groups");
-    content.groups.forEach((group, i) => {
+    Array.from(content.groups).forEach((group, i) => {
       const path = `content.groups.${i}`;
       object(group, ["id", "label", "itemIds"], path);
       string(group.id, 60, `${path}.id`);
@@ -96,7 +97,7 @@ export function validateWorksheetContent(content, templateId) {
 }
 
 function isPermutation(values, ids) {
-  return values.length === ids.length && new Set(values).size === ids.length && values.every(id => ids.includes(id));
+  return values.length === ids.length && new Set(values).size === ids.length && Array.from(values).every(id => ids.includes(id));
 }
 
 export function validateWorksheetPatch(patch, templateId) {
