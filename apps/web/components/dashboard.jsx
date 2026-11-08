@@ -88,7 +88,7 @@ export default function Dashboard() {
         <a href="/dashboard" aria-current="page"><BookOpen size={20} />Materi</a>
         <a href="/lkpd"><Scissors size={20} />LKPD</a>
         <a href="/ujian"><ClipboardPenLine size={20} />Soal &amp; ujian</a>
-        <button type="button" disabled><CalendarDays size={20} />Jadwal</button>
+        <a href="/jadwal"><CalendarDays size={20} />Jadwal</a>
       </nav>
       <section className="welcome" aria-labelledby="welcome-title">
         <div><h1 id="welcome-title">Besok mengajar apa,<br />Guru?</h1><button className="upload-button" type="button" onClick={() => setUploading(true)}><Upload size={20} />Unggah materi</button></div>
