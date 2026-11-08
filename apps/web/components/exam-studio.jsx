@@ -2,13 +2,14 @@
 import { useCallback, useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { BookOpen, CalendarDays, ClipboardPenLine, LogOut, Scissors } from "lucide-react";
+import { BookOpen, CalendarDays, ClipboardPenLine, Scissors } from "lucide-react";
 import ExamConfiguration from "./exam-configuration";
 import ExamDocumentViewer from "./exam-document-viewer";
 import Modal, { closeModal } from "./modal";
 import Notice from "./notice";
 import { Mascot } from "./mascot";
 import AccountAvatar from "./account-avatar";
+import LogoutButton from "./logout-button";
 import { listMaterials, listFolders } from "../lib/materials";
 import { PROFILE_KEY, readProfile } from "../lib/teacher-profile.mjs";
 import { EXAMS_KEY, EXAM_LIMIT, createExam, parseExams, copyRemedial, duplicateExam } from "../lib/exams.mjs";
@@ -40,7 +41,7 @@ export default function ExamStudio() {
   }
   function update(exam) { persist(exams.map(item => item.id === exam.id ? { ...exam, updatedAt: new Date().toISOString() } : item)); }
   const opened = exams.find(item => item.id === openedId);
-  return <><a className="skip-link" href="#main">Lewati ke isi</a><header className="workspace-header"><div className="header-inner"><Link className="brand" href="/dashboard" aria-label="ImajiLearn, dashboard"><Image src="/brand/imajilearn-mark.svg" width={52} height={52} alt="" /><Image src="/brand/imajilearn-wordmark.svg" width={153} height={33} alt="" className="brand-wordmark" /></Link><div className="account-actions"><AccountAvatar /><button type="button" className="logout" disabled aria-label="Keluar belum tersedia"><LogOut size={20} /></button></div></div></header>
+  return <><a className="skip-link" href="#main">Lewati ke isi</a><header className="workspace-header"><div className="header-inner"><Link className="brand" href="/dashboard" aria-label="ImajiLearn, dashboard"><Image src="/brand/imajilearn-mark.svg" width={52} height={52} alt="" /><Image src="/brand/imajilearn-wordmark.svg" width={153} height={33} alt="" className="brand-wordmark" /></Link><div className="account-actions"><AccountAvatar /><LogoutButton /></div></div></header>
     <main id="main" className="workspace-shell exam-main"><nav className="studio-sections" aria-label="Navigasi studio"><Link href="/dashboard"><BookOpen size={20} />Materi</Link><Link href="/lkpd"><Scissors size={20} />LKPD</Link><Link href="/ujian" aria-current="page"><ClipboardPenLine size={20} />Soal &amp; ujian</Link><a href="/jadwal"><CalendarDays size={20} />Jadwal</a></nav>
       {!ready ? <div className="materials-skeleton" role="status" aria-label="Memuat ujian"><span /><span /></div> : loadError ? <p role="alert">Materi tidak dapat dimuat. Periksa penyimpanan browser.</p> : opened ? <ExamDocumentViewer key={opened.id} exam={opened} saved={saved} onChange={update} onBack={() => open(null)} onRemedial={() => add(copyRemedial(opened))} /> : <ExamConfiguration materials={materials} folders={folders} exams={exams} profile={profile} onCreate={config => add(createExam(config, profile))} onOpen={open} onDelete={setDeleteId} onDuplicate={exam => add(duplicateExam(exam))} onRename={(id, title) => { const item = exams.find(exam => exam.id === id); if (item) update({ ...item, title }); }} />}
     </main>

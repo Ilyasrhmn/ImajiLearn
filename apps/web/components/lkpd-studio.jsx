@@ -2,9 +2,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowRight, BookOpen, CalendarDays, Check, ClipboardPenLine, FileText, LoaderCircle, LogOut, Scissors, Trash2, X } from "lucide-react";
+import { ArrowRight, BookOpen, CalendarDays, Check, ClipboardPenLine, FileText, LoaderCircle, Scissors, Trash2, X } from "lucide-react";
 import { Mascot } from "./mascot";
 import AccountAvatar from "./account-avatar";
+import LogoutButton from "./logout-button";
 import ThemedSelect from "./themed-select";
 import Modal, { closeModal } from "./modal";
 import Notice from "./notice";
@@ -73,7 +74,7 @@ export default function LkpdStudio() {
   }
   const opened = documents.find(item => item.id === openedId);
   return <>
-    <a className="skip-link" href="#main">Lewati ke isi</a><header className="workspace-header"><div className="header-inner"><Link className="brand" href="/dashboard" aria-label="ImajiLearn, dashboard"><Image src="/brand/imajilearn-mark.svg" width={52} height={52} alt="" /><Image src="/brand/imajilearn-wordmark.svg" width={153} height={33} alt="" className="brand-wordmark" /></Link><div className="account-actions"><AccountAvatar /><button type="button" className="logout" disabled aria-label="Keluar belum tersedia"><LogOut size={20} /></button></div></div></header>
+    <a className="skip-link" href="#main">Lewati ke isi</a><header className="workspace-header"><div className="header-inner"><Link className="brand" href="/dashboard" aria-label="ImajiLearn, dashboard"><Image src="/brand/imajilearn-mark.svg" width={52} height={52} alt="" /><Image src="/brand/imajilearn-wordmark.svg" width={153} height={33} alt="" className="brand-wordmark" /></Link><div className="account-actions"><AccountAvatar /><LogoutButton /></div></div></header>
     <main id="main" className="workspace-shell lkpd-main"><nav className="studio-sections" aria-label="Navigasi studio"><Link href="/dashboard"><BookOpen size={20} />Materi</Link><Link href="/lkpd" aria-current="page"><Scissors size={20} />LKPD</Link><a href="/ujian"><ClipboardPenLine size={20} />Soal &amp; ujian</a><a href="/jadwal"><CalendarDays size={20} />Jadwal</a></nav>
       {!ready ? <div className="materials-skeleton" role="status" aria-label="Memuat LKPD"><span /><span /></div> : loadError ? <p role="alert">Materi tidak dapat dimuat. Periksa penyimpanan browser.</p> : opened ? <LkpdViewer key={opened.id} document={opened} saved={saved} onBack={() => open(null)} onChange={next => persist(documents.map(item => item.id === next.id ? { ...next, updatedAt: new Date().toISOString() } : item))} /> : <>
         <div className="lkpd-heading"><h1>LKPD</h1><Mascot kind="pencil" mood="think" /></div>

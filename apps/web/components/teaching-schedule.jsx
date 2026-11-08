@@ -2,13 +2,14 @@
 import { useCallback, useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { BookOpen, CalendarDays, ClipboardPenLine, Clock, FolderCog, LogOut, PencilLine, Plus, Scissors, Trash2 } from "lucide-react";
+import { BookOpen, CalendarDays, ClipboardPenLine, Clock, FolderCog, PencilLine, Plus, Scissors, Trash2 } from "lucide-react";
 import Modal, { closeModal } from "./modal";
 import FolderManager from "./folder-manager";
 import ThemedSelect from "./themed-select";
 import Notice from "./notice";
 import { Mascot } from "./mascot";
 import AccountAvatar from "./account-avatar";
+import LogoutButton from "./logout-button";
 import { changeSchedule, listFolders, listSchedule } from "../lib/materials";
 import "./teaching-schedule.css";
 
@@ -60,7 +61,7 @@ export default function TeachingSchedule() {
     } catch (err) { setError(err.message); }
     finally { setBusy(false); }
   }
-  return <><a className="skip-link" href="#main">Lewati ke isi</a><header className="workspace-header"><div className="header-inner"><Link className="brand" href="/dashboard" aria-label="ImajiLearn, dashboard"><Image src="/brand/imajilearn-mark.svg" width={52} height={52} alt="" /><Image src="/brand/imajilearn-wordmark.svg" width={153} height={33} alt="" className="brand-wordmark" /></Link><div className="account-actions"><AccountAvatar /><button type="button" className="logout" disabled aria-label="Keluar belum tersedia"><LogOut size={20} /></button></div></div></header>
+  return <><a className="skip-link" href="#main">Lewati ke isi</a><header className="workspace-header"><div className="header-inner"><Link className="brand" href="/dashboard" aria-label="ImajiLearn, dashboard"><Image src="/brand/imajilearn-mark.svg" width={52} height={52} alt="" /><Image src="/brand/imajilearn-wordmark.svg" width={153} height={33} alt="" className="brand-wordmark" /></Link><div className="account-actions"><AccountAvatar /><LogoutButton /></div></div></header>
     <main id="main" className="workspace-shell schedule-main"><nav className="studio-sections" aria-label="Navigasi studio"><Link href="/dashboard"><BookOpen size={20} />Materi</Link><Link href="/lkpd"><Scissors size={20} />LKPD</Link><Link href="/ujian"><ClipboardPenLine size={20} />Soal &amp; ujian</Link><Link href="/jadwal" aria-current="page"><CalendarDays size={20} />Jadwal</Link></nav>
       {!ready ? <div className="materials-skeleton" role="status" aria-label="Memuat jadwal"><span /><span /></div> : loadError ? <p role="alert">Jadwal tidak dapat dimuat. Periksa penyimpanan browser.</p> : <>
         <div className="schedule-page-heading"><h1>Jadwal mengajar</h1><div className="schedule-heading-actions"><button className="upload-button" type="button" disabled={!validYear} onClick={() => edit(blank())}><Plus size={20} />Tambah jadwal</button><Mascot kind="book" /></div></div>
