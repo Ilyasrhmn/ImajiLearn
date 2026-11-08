@@ -157,3 +157,33 @@ atau waktu pembaruan publik; arsip dan operasi berikutnya memakai lock yang sama
 Upload PDF/TXT, ekstraksi, list/search, folder, file privat, penghapusan, integrasi
 frontend, dan penyimpanan preferensi media belum termasuk tahap materi teks ini.
 
+## Penyimpanan internal preferensi media
+
+`createMediaPreferenceStore(database)` di modul `documents/media-preferences`
+menyediakan `get(userId,materialId)` dan
+`save(userId,materialId,{selectedMedia,songTemplateId},expectedVersion)` untuk
+pemanggil backend. `userId` harus berasal dari sesi guru terverifikasi; store
+memeriksa kepemilikan materi lagi melalui modul materi. Endpoint HTTP preferensi
+belum ditambahkan pada tahap ini.
+
+Satu materi memiliki paling banyak satu record preferensi. Media yang diizinkan
+adalah `reading`, `mindmap`, `slides`, `song`; pilihan harus unik, 0–4 media.
+Urutan disimpan sesuai katalog. Array kosong sah. Template lagu adalah
+`balonku`, `cicak_dinding`, atau `potong_bebek`; field yang tidak dikirim memakai
+default `balonku`. Template yang dikirim tetap tersimpan walaupun `song` tidak
+dipilih. Simpan kedua field untuk mempertahankan template pilihan sebelumnya.
+
+Materi tanpa record mengembalikan pilihan kosong, `songTemplateId:balonku`,
+`resourceVersion:0`, dan `updatedAt:null` tanpa membuat record baru. Gunakan versi
+0 untuk penyimpanan pertama; versi naik pada setiap save yang diterima. Versi
+preferensi terpisah dari versi materi. Versi usang menghasilkan 412, tanpa versi
+428, dan input tidak valid 422. ID asing/hilang sama-sama 404. ID UUID dengan
+huruf besar mengacu ke materi yang sama dan dikembalikan dalam bentuk kanonis.
+
+Store memakai lock transaksi yang sama dengan arsip/pemulihan materi. Materi
+arsip tetap dapat dibaca, tetapi save ditolak dengan 409 `MATERIAL_ARCHIVED`.
+Preferensi lama tetap utuh untuk dipakai setelah pemulihan. Constraint database
+menjaga katalog, keunikan pilihan, template, versi positif, dan kecocokan pemilik
+dengan materi melalui foreign key komposit. Save tidak mengubah revisi, versi,
+atau waktu pembaruan materi, serta tidak menjalankan AI.
+

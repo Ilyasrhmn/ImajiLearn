@@ -137,7 +137,9 @@ test("failed material persistence rolls the idempotency reservation back for a c
 test("material migration preserves existing teachers and worksheets", async () => {
   const upgrade = await testDatabase();
   try {
-    for (const migration of upgrade.migrations.filter(name => !name.includes("owned_materials"))) await upgrade.migrate(migration);
+    const materialIndex = upgrade.migrations.findIndex(name => name.includes("owned_materials"));
+    assert.ok(materialIndex > 0);
+    for (const migration of upgrade.migrations.slice(0, materialIndex)) await upgrade.migrate(migration);
     const teacher = await upgrade.db.teacher.create({ data: { name: "Upgrade", email: "material-upgrade@example.test", passwordHash: "synthetic-hash" } });
     await upgrade.db.worksheetLibrary.create({ data: { ownerId: teacher.id } });
     const content = { templateId: "fold", title: "Existing worksheet", instructions: ["Buka kartu."],
@@ -148,7 +150,7 @@ test("material migration preserves existing teachers and worksheets", async () =
       templateId: "fold", grade: "4", language: "id", theme: "ink", content, displayOrder: ["a", "b", "c", "d"],
       cacheKey: "a".repeat(64), createdAt: new Date("2026-11-08T00:00:00Z"), updatedAt: new Date("2026-11-08T00:00:00Z"),
     } });
-    for (const migration of upgrade.migrations.filter(name => name.includes("owned_materials"))) await upgrade.migrate(migration);
+    for (const migration of upgrade.migrations.slice(materialIndex)) await upgrade.migrate(migration);
     assert.deepEqual(await upgrade.db.teacher.findUnique({ where: { id: teacher.id } }), teacher);
     assert.deepEqual(await upgrade.db.worksheetDocument.findUnique({ where: { id: worksheet.id } }), worksheet);
     assert.equal(await upgrade.db.material.count(), 0);
