@@ -164,7 +164,7 @@ menyediakan `get(userId,materialId)` dan
 `save(userId,materialId,{selectedMedia,songTemplateId},expectedVersion)` untuk
 pemanggil backend. `userId` harus berasal dari sesi guru terverifikasi; store
 memeriksa kepemilikan materi lagi melalui modul materi. Endpoint baca batch
-dijelaskan di bawah; endpoint ubah preferensi belum ditambahkan pada tahap ini.
+dijelaskan di bawah; penyimpanan melalui HTTP memakai endpoint PUT terpisah.
 
 Satu materi memiliki paling banyak satu record preferensi. Media yang diizinkan
 adalah `reading`, `mindmap`, `slides`, `song`; pilihan harus unik, 0–4 media.
@@ -206,5 +206,26 @@ seluruh batch gagal 404 tanpa hasil parsial; tanpa sesi menghasilkan JSON 401.
 Pemeriksaan pemilik dan pembacaan preferensi memakai satu snapshot transaksi,
 sehingga hasil tidak mencampur dua keadaan database saat ada save bersamaan.
 Pembacaan batch memakai dua query tanpa mengambil teks sumber atau mengunci
-baris materi. Endpoint PUT dan integrasi frontend masih tahap berikutnya.
+baris materi. Integrasi frontend tetap tahap terpisah.
+
+## PUT preferensi media
+
+`PUT /api/v1/media-preferences/:materialId` memerlukan sesi guru, Origin yang
+benar, Content-Type application/json, dan `If-Match: "N"` dari versi preferensi
+terakhir. Body maksimal 4 KiB berisi `{selectedMedia,songTemplateId}`; aturan
+katalog dan penyimpanan internal di atas tetap berlaku. Gunakan `If-Match: "0"`
+untuk preferensi yang belum tersimpan. Versi materi tidak dipakai sebagai versi
+preferensi.
+
+Respons sukses 200 berbentuk `{data:...}` dengan item preferensi yang sama seperti
+GET dan ETag baru. GET berikutnya membaca hasil tersimpan. Array kosong dapat
+dipakai untuk “Batalkan semua”; template lagu yang dikirim tetap disimpan meski
+media lagu tidak dipilih. Unknown field seperti userId/resourceVersion ditolak.
+
+Tanpa sesi 401; Origin salah 403; materi asing/hilang 404; tanpa If-Match 428;
+format If-Match salah 400; versi usang 412; materi arsip 409 MATERIAL_ARCHIVED;
+isian tidak valid 422; JSON rusak 400; MIME salah 415; body terlalu besar 413.
+Error tidak mengembalikan data parsial, stack atau detail database. Seluruh
+respons memakai Cache-Control:no-store dan requestId. Simpan preferensi tidak
+mengubah sumber materi, membuat dokumen, atau menjalankan AI.
 

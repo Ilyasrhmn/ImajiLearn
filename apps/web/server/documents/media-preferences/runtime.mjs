@@ -5,10 +5,10 @@ import { errorResponse } from "../../core/errors.mjs";
 import { createMediaPreferenceHandlers } from "./http.mjs";
 
 export function mediaPreferenceRoute(name) {
-  return async request => {
+  return async (request, context) => {
     try {
       const config = sessionConfig();
-      return await createMediaPreferenceHandlers(database(), config)[name](request);
+      return await createMediaPreferenceHandlers(database(), config)[name](request, (await context?.params)?.materialId);
     } catch (error) { return errorResponse(error, randomUUID()); }
   };
 }
