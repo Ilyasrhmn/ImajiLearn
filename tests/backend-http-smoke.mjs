@@ -20,9 +20,10 @@ try {
   const env = { ...process.env, NODE_ENV: "production", DATABASE_URL: storage.connectionUrl(),
     APP_ORIGIN: "https://backend-smoke.example.test", TEST_APP_ORIGIN: "https://backend-smoke.example.test",
     TEST_BASE_URL: `http://127.0.0.1:${port}`, REGISTER_IP_LIMIT: "100",
+    GOOGLE_CLIENT_ID: "synthetic-http.apps.googleusercontent.com", GOOGLE_CLIENT_SECRET: "synthetic-http-secret",
   };
   server = startNode(["node_modules/next/dist/bin/next", "start", "apps/web", "--hostname", "127.0.0.1", "--port", String(port)], { env });
-  for (const suite of ["registration-http-smoke", "sessions-http-smoke", "materials-http-smoke", "workspace-http-smoke", "worksheets-http-smoke"]) {
+  for (const suite of ["registration-http-smoke", "sessions-http-smoke", "google-http-smoke", "materials-http-smoke", "workspace-http-smoke", "worksheets-http-smoke"]) {
     await runNode([`tests/${suite}.mjs`], { env });
   }
   console.log("Backend HTTP integration passed using isolated synthetic data.");

@@ -268,3 +268,34 @@ Lingkup B1 backend adalah penyimpanan preferensi dan endpoint GET/PUT dengan
 validasi, ownership, versi, serta proteksi arsip/race. Form/frontend, upload
 PDF/TXT, dan provider AI berada pada tahap integrasi masing-masing.
 
+
+## Login Google
+
+Google sign-in uses the existing private teacher session. Configure `GOOGLE_CLIENT_ID`
+and `GOOGLE_CLIENT_SECRET` on the web server alongside `APP_ORIGIN` and `DATABASE_URL`.
+For Next.js local development, keep these in `apps/web/.env.local` (ignored by Git).
+Do not expose the client secret through a `NEXT_PUBLIC_` variable.
+
+Register a Web application OAuth client in Google Auth Platform. The authorized
+redirect URI must exactly equal `APP_ORIGIN` followed by `/api/v1/auth/google/callback`:
+
+- Local: `http://localhost:3000/api/v1/auth/google/callback`
+- Production: `https://imajilearn.ai.id/api/v1/auth/google/callback`
+
+The application requests only `openid email profile`. While the Google project is
+in testing mode, configure the intended test accounts in Google Auth Platform.
+Production deployment must configure its own environment and authorized origin.
+
+The sign-in/register pages show the Google action when configured. New verified
+Google identities create a teacher account. Existing email/password accounts must
+first sign in with their password, then explicitly connect the same Google email
+in account settings. Email matches never automatically merge accounts. Google-only
+accounts continue using Google; creating a local password or unlinking Google is
+not part of this flow. Existing teacher data stays associated with its teacher ID.
+
+Start login with `POST /api/v1/auth/google`. Connect an existing account with
+`POST /api/v1/me/google/link` and JSON `{currentPassword}` using the current session,
+Origin and `X-Teacher-Id`. Both return `{data:{url}}` and a temporary browser-binding
+cookie; navigate to that Google URL. Callback verification and the resulting
+session are server-side. Errors are fixed safe UI messages; no provider tokens
+or secrets are returned to the application frontend.
