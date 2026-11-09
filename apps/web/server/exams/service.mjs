@@ -1,5 +1,6 @@
+import { randomUUID } from "node:crypto";
 import { ContractError, text } from "../../../../packages/contracts/validation.mjs";
-import { createExam, EXAM_LIMIT, filterExams } from "../../lib/exams.mjs";
+import { copyRemedial, createExam, duplicateExam, EXAM_LIMIT, filterExams } from "../../lib/exams.mjs";
 import { ApiError } from "../core/errors.mjs";
 import { withIdempotency } from "../core/idempotency.mjs";
 import { canonicalMaterialId, getOwnedMaterial } from "../materials/readers.mjs";
@@ -9,10 +10,11 @@ const notFound = () => new ApiError(404, "EXAM_NOT_FOUND", "Naskah tidak ditemuk
 const stale = () => new ApiError(412, "RESOURCE_CHANGED", "Data sudah berubah. Muat ulang sebelum menyimpan.");
 const dto = row => ({ ...row.document, resourceVersion: row.resourceVersion });
 
-async function ownExam(db, userId, id) {
+async function ownExam(db, userId, id, includeSources = false) {
   const canonical = canonicalMaterialId(id);
   if (!canonical) throw notFound();
-  const row = await db.examDocument.findFirst({ where: { id: canonical, userId }, select: { document: true, resourceVersion: true } });
+  const row = await db.examDocument.findFirst({ where: { id: canonical, userId },
+    select: { document: true, resourceVersion: true, sourceSnapshots: includeSources } });
   if (!row) throw notFound();
   return row;
 }
@@ -62,6 +64,20 @@ export function createExamService(db) {
       return filterExams(rows.map(dto), { query, grade, subject, sort });
     },
     async get(userId, id) { return dto(await ownExam(db, userId, id)); },
+    async copy(userId, id, action, key) {
+      const canonical = canonicalMaterialId(id);
+      if (!canonical) throw notFound();
+      return withIdempotency(db, { userId, route: `POST /exams/:id/${action}`, key, payload: { id: canonical } }, async tx => {
+        const source = await ownExam(tx, userId, canonical, true);
+        await assertCapacity(tx, userId);
+        const document = action === "remedial" ? copyRemedial(source.document) : duplicateExam(source.document);
+        if (action === "remedial") {
+          for (const question of document.questions) question.id = randomUUID();
+        }
+        const row = await tx.examDocument.create({ data: { id: document.id, userId, document, sourceSnapshots: source.sourceSnapshots } });
+        return dto(row);
+      });
+    },
     async patch(userId, id, body, version) {
       const row = await ownExam(db, userId, id);
       if (row.resourceVersion !== version) throw stale();

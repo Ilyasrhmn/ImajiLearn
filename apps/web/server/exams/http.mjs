@@ -8,7 +8,13 @@ const result = (data, status = 200) => Response.json({ data }, { status, headers
 export function createExamHandlers(db, config) {
   const { requireTeacher } = createSessionHandlers(db, config);
   const exams = createExamService(db);
+  const copy = action => endpoint(async (request, id) => {
+    const teacher = await requireTeacher(request);
+    return result(await exams.copy(teacher.id, id, action, request.headers.get("idempotency-key")), 201);
+  }, config.origin);
   return {
+    duplicate: copy("duplicate"),
+    remedial: copy("remedial"),
     create: endpoint(async request => {
       const teacher = await requireTeacher(request);
       return result(await exams.create(teacher, await readJson(request, 128 * 1024), request.headers.get("idempotency-key")), 201);

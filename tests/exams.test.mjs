@@ -121,3 +121,56 @@ test("enforces the per-teacher draft limit and allows a retry after capacity is 
   assert.equal((await create(draft, retryKey)).status, 201);
   assert.equal(await storage.db.examDocument.count({ where: { userId: teacher.id } }), 20);
 });
+
+test("copies and remedial drafts preserve original content with fresh exam and question IDs", async () => {
+  const material = await storage.db.material.create({ data: { userId: foreign.id, title: "Sumber salinan", text: "Teks asli", revision: "c".repeat(64) } });
+  const created = await exams.create(req("POST", "exams", {
+    cookie: foreign.cookie, body: { ...draft, materialIds: [material.id] }, headers: { "idempotency-key": randomUUID() },
+  }));
+  assert.equal(created.status, 201);
+  const original = (await created.json()).data;
+  const path = `exams/${original.id}`;
+  const changedQuestions = structuredClone(original.questions);
+  changedQuestions[0].prompt = "Apa topik latihan?";
+  const updated = await exams.patch(req("PATCH", path, { cookie: foreign.cookie,
+    body: { title: "Latihan awal", questions: changedQuestions }, headers: { "if-match": '"1"' },
+  }), original.id);
+  assert.equal(updated.status, 200);
+  const source = (await updated.json()).data;
+  await storage.db.material.delete({ where: { id: material.id } });
+  const copy = (action, cookie, key = randomUUID()) => exams[action](req("POST", `${path}/${action}`, {
+    cookie, headers: { "idempotency-key": key },
+  }), original.id);
+  const denied = await copy("duplicate", teacher.cookie);
+  assert.equal(denied.status, 404);
+  assert.equal((await copy("remedial")).status, 401);
+  const key = randomUUID();
+  const duplicateResponse = await copy("duplicate", foreign.cookie, key);
+  assert.equal(duplicateResponse.status, 201);
+  assert.equal(duplicateResponse.headers.get("etag"), '"1"');
+  const duplicate = (await duplicateResponse.json()).data;
+  assert.equal(duplicate.title, "Latihan awal (salinan)");
+  assert.deepEqual((await (await copy("duplicate", foreign.cookie, key)).json()).data, duplicate);
+  const remedialResponse = await copy("remedial", foreign.cookie);
+  assert.equal(remedialResponse.status, 201);
+  const remedial = (await remedialResponse.json()).data;
+  assert.equal(remedial.config.type, "remedial");
+  assert.equal(remedial.title, undefined);
+  for (const copied of [duplicate, remedial]) {
+    assert.notEqual(copied.id, source.id);
+    assert.equal(copied.resourceVersion, 1);
+    assert.notEqual(copied.questions[0].id, source.questions[0].id);
+    assert.equal(copied.questions[0].prompt, source.questions[0].prompt);
+    const stored = await storage.db.examDocument.findUnique({ where: { id: copied.id } });
+    assert.equal(stored.sourceSnapshots[0].text, "Teks asli");
+  }
+  assert.notEqual(duplicate.questions[0].id, remedial.questions[0].id);
+  const originalResponse = await exams.get(req("GET", path, { cookie: foreign.cookie }), original.id);
+  assert.deepEqual((await originalResponse.json()).data, source);
+  const fullOwnerExam = await storage.db.examDocument.findFirst({ where: { userId: teacher.id } });
+  const overQuota = await exams.duplicate(req("POST", `exams/${fullOwnerExam.id}/duplicate`, {
+    cookie: teacher.cookie, headers: { "idempotency-key": randomUUID() },
+  }), fullOwnerExam.id);
+  assert.equal(overQuota.status, 409);
+  assert.equal((await overQuota.json()).error.code, "EXAM_LIMIT_REACHED");
+});
