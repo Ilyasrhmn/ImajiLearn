@@ -47,7 +47,8 @@ test("profile requires a session and updates only the teacher from that session"
   const updated = await profile.patch(request("PATCH", "me", a.cookie, { name: "  Bu Guru  ", school: "SD Negeri", grade: "6" }));
   assert.equal(updated.status, 200);
   assert.equal(updated.headers.get("cache-control"), "no-store");
-  assert.deepEqual((await updated.json()).data, { id: a.id, name: "Bu Guru", email: a.email, school: "SD Negeri", grade: "6" });
+  assert.deepEqual((await updated.json()).data, { id: a.id, name: "Bu Guru", email: a.email, school: "SD Negeri", grade: "6",
+    auth: { hasPassword: true, googleLinked: false, googleEnabled: false } });
   const foreign = await profile.get(request("GET", "me", b.cookie));
   assert.equal((await foreign.json()).data.name, b.name);
   const emailChange = await profile.patch(request("PATCH", "me", a.cookie, { email: b.email }));

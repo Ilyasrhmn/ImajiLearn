@@ -39,19 +39,27 @@ function parsePasswordChange(body) {
 
 export function createProfileHandlers(db, config) {
   const { requireTeacher } = createSessionHandlers(db, config);
+  async function account(teacher) {
+    const credentials = await db.teacher.findUnique({ where: { id: teacher.id }, select: {
+      passwordHash: true, googleIdentity: { select: { sub: true } },
+    } });
+    return { ...teacher, auth: { hasPassword: Boolean(credentials?.passwordHash),
+      googleLinked: Boolean(credentials?.googleIdentity), googleEnabled: Boolean(config.googleEnabled) } };
+  }
   return {
-    get: endpoint(async request => Response.json({ data: await requireTeacher(request) }), config.origin),
+    get: endpoint(async request => Response.json({ data: await account(await requireTeacher(request)) }), config.origin),
     patch: endpoint(async request => {
       const teacher = await requireTeacher(request);
       const data = parseProfile(await readJson(request), teacher.email);
       const updated = await db.teacher.update({ where: { id: teacher.id }, data, select: profileSelect });
-      return Response.json({ data: updated });
+      return Response.json({ data: await account(updated) });
     }, config.origin),
     password: endpoint(async request => {
       const teacher = await requireTeacher(request);
       const { current, next } = parsePasswordChange(await readJson(request));
       await consumeRateLimit(db, `password:${teacher.id}`, 5, 15 * 60 * 1000);
       const credentials = await db.teacher.findUnique({ where: { id: teacher.id }, select: { passwordHash: true } });
+      if (credentials && !credentials.passwordHash) throw new ApiError(422, "PASSWORD_UNAVAILABLE", "Akun ini masuk menggunakan Google.");
       if (!credentials || !await verifyPassword(current, credentials.passwordHash)) {
         throw new ContractError("Kata sandi saat ini salah.", { currentPassword: "Kata sandi saat ini salah." });
       }

@@ -11,7 +11,7 @@ model Teacher {
   id           String   @id @default(uuid()) @db.Uuid
   name         String   @db.VarChar(60)
   email        String   @unique @db.VarChar(254)
-  passwordHash String
+  passwordHash String?
   school       String   @default("") @db.VarChar(100)
   grade        String   @default("") @db.VarChar(1)
   createdAt    DateTime @default(now()) @db.Timestamptz(3)
@@ -23,6 +23,30 @@ model Teacher {
   scheduleTerms ScheduleTerm[]
   idempotency  Idempotency[]
   mediaPreferences MediaPreference[]
+  googleIdentity GoogleIdentity?
+  googleFlows GoogleOAuthFlow[]
+}
+
+model GoogleIdentity {
+  sub String @id @db.VarChar(255)
+  teacherId String @unique @db.Uuid
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  teacher Teacher @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+}
+
+model GoogleOAuthFlow {
+  tokenHash String @id @db.Char(64)
+  stateHash String @db.Char(64)
+  nonceHash String @db.Char(64)
+  verifier String @db.VarChar(128)
+  intent String @db.VarChar(5)
+  teacherId String? @db.Uuid
+  sessionTokenHash String? @db.Char(64)
+  passwordHashSnapshot String?
+  expiresAt DateTime @db.Timestamptz(3)
+  teacher Teacher? @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+
+  @@index([expiresAt])
 }
 
 model ExamDocument {
