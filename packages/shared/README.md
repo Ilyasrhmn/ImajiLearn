@@ -20,4 +20,19 @@ to the database. Local storage remains scoped to the teacher and origin.
 
 Session expiry sends web to `/masuk` and mobile to `/app/masuk`. Callers must
 preserve account-change checks and must not cache private API responses.
-The mobile auth screens will be added in the next stage.
+Mobile auth screens use the same API and session cookies.
+
+## Document studios
+
+`components/lkpd-studio.jsx` and `components/exam-studio.jsx` own the existing
+document workflows. Both require a client `Frame` component wrapping their
+content: web supplies its header/navigation frame and PWA supplies a section
+inside its mobile shell. `teacherId` must come from the verified session.
+LKPD accepts `materialsHref` for the source-library link. PWA passes the
+navigation-block setter through `onNavigationBlock`; exams also accept
+`compact` to separate the saved library from the creation form on mobile.
+
+The viewer, page renderer, template shapes, selectors, dialogs and their
+stylesheets also live here. Web imports remain compatibility re-exports.
+Document dimensions and print rules are unchanged. LKPD storage is still
+local per teacher/origin; this refactor does not connect the B2 storage API.

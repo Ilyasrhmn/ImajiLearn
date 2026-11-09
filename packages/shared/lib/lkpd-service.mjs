@@ -3,7 +3,12 @@ import { validateLkpdContent } from "./lkpd.mjs";
 export async function generateLkpd(request, { signal, endpoint = process.env.NEXT_PUBLIC_LKPD_ENDPOINT || "", transport = fetch } = {}) {
   signal?.throwIfAborted();
   if (!endpoint) throw new Error("Pembuatan LKPD belum tersedia.");
-  const response = await transport(endpoint, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(request), signal });
+  let response;
+  try { response = await transport(endpoint, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(request), signal }); }
+  catch {
+    signal?.throwIfAborted();
+    throw new Error("Layanan LKPD belum dapat dihubungi. Coba lagi.");
+  }
   signal?.throwIfAborted();
   if (!response.ok) throw new Error(response.status === 422 ? "Materi belum dapat dibuat menjadi aktivitas ini." : "LKPD belum berhasil dibuat. Coba lagi.");
   const content = await response.json();
