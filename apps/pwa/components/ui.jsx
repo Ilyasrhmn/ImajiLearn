@@ -17,9 +17,10 @@ export function Sheet({ title, children, onClose, busy = false, dirty = false, c
   const [closing, setClosing] = useState(false), [discard, setDiscard] = useState(false);
   const id = useId();
   useEffect(() => {
-    ref.current.showModal();
+    const dialog = ref.current, previousFocus = document.activeElement;
+    dialog.showModal();
     const previous = document.body.style.overflow; document.body.style.overflow = "hidden";
-    return () => { clearTimeout(timer.current); document.body.style.overflow = previous; };
+    return () => { clearTimeout(timer.current); dialog.close(); document.body.style.overflow = previous; queueMicrotask(() => { if (previousFocus?.isConnected) previousFocus.focus?.(); }); };
   }, []);
   useEffect(() => {
     function warn(event) { if (dirty && !closingRef.current) { event.preventDefault(); event.returnValue = ""; } }

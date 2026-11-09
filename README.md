@@ -78,6 +78,20 @@ worker baru ditemukan. Jalankan kedua server produksi di belakang origin
 HTTPS yang sama dan konfigurasi upstream sebelum build web.
 Tidak ada perubahan schema database maupun migrasi penyimpanan LKPD.
 
+### Batas verifikasi PWA
+
+Kesetaraan fitur mengacu pada web yang tersedia di branch `pwa`: akun,
+materi/folder/media, LKPD, ujian dan jadwal. Alur utama telah diperiksa lewat
+browser mobile, HTTP dengan database terisolasi, lint dan build kedua aplikasi.
+Kesalahan koneksi dan pembatalan request juga diuji pada transport bersama.
+Panel mobile mengembalikan fokus keyboard ke pemicunya setelah ditutup.
+
+Sebelum rilis, masih diperlukan uji instalasi dan pembaruan pada perangkat
+nyata melalui HTTPS, hasil cetak/PDF melalui browser pendukung, serta koneksi
+database dan provider LKPD lingkungan tujuan. Pengujian database lokal default
+memakai PGlite; tes konkurensi khusus PostgreSQL penuh memerlukan
+`TEST_DATABASE_URL`. Akun/database pratinjau lokal bersifat sementara.
+
 Uji integrasi fondasi memakai database sintetis terisolasi:
 
 ```sh

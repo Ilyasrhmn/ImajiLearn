@@ -4,6 +4,14 @@ import { studioRequest } from "@imajilearn/shared/lib/studio-api.mjs";
 import { requestAccount } from "@imajilearn/shared/lib/account-client.mjs";
 import { sessionLoginPath } from "@imajilearn/shared/lib/session.mjs";
 
+test("connection failures are actionable while cancellation remains an abort", async t => {
+  t.mock.method(globalThis, "fetch", async () => { throw new TypeError("Failed to fetch"); });
+  await assert.rejects(studioRequest("owner", "/materials"), /Periksa koneksi/);
+  const controller = new AbortController();
+  t.mock.method(globalThis, "fetch", async () => { controller.abort(); throw new TypeError("Network"); });
+  await assert.rejects(studioRequest("owner", "/materials", { signal: controller.signal }), error => error.name === "AbortError");
+});
+
 test("expired sessions keep the caller in the correct web or mobile login flow", async t => {
   assert.equal(sessionLoginPath("/apple"), "/masuk");
   const oldWindow = Object.getOwnPropertyDescriptor(globalThis, "window");

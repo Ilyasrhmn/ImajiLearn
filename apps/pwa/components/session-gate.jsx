@@ -11,11 +11,12 @@ export default function SessionGate({ children }) {
   useEffect(() => {
     const controller = new AbortController();
     fetch("/api/v1/auth/session", { cache: "no-store", signal: controller.signal }).then(async response => {
+      if (controller.signal.aborted) return;
       if (response.status === 401) { navigateAfterSessionChange("/app/masuk"); return; }
       const result = await response.json();
       if (!response.ok || !result.data?.user?.id) throw new Error(result.error?.message || "Sesi belum dapat dimuat.");
       if (!controller.signal.aborted) setUser(result.data.user);
-    }).catch(err => { if (!controller.signal.aborted) setError(err.message); });
+    }).catch(err => { if (!controller.signal.aborted) setError(err instanceof TypeError ? "Sesi belum dapat dimuat. Periksa koneksi dan coba lagi." : err.message); });
     const storage = event => { if (event.key === sessionChangeKey) window.location.reload(); };
     const pageshow = event => { if (event.persisted) window.location.reload(); };
     const profileUpdated = () => setAttempt(n => n + 1);

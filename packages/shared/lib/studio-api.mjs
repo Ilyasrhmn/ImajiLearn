@@ -10,7 +10,12 @@ export async function studioRequest(teacherId, path, { method = "GET", body, ver
   const response = await fetch(`/api/v1${path}`, {
     method, headers, signal, cache: "no-store",
     body: multipart ? body : body === undefined ? undefined : JSON.stringify(body),
+  }).catch(error => {
+    signal?.throwIfAborted();
+    if (error.name === "AbortError") throw error;
+    throw new Error("Layanan belum dapat dihubungi. Periksa koneksi dan coba lagi.");
   });
+  signal?.throwIfAborted();
   if (response.status === 401) navigateAfterSessionChange(sessionLoginPath());
   if (response.ok && binary) return response.blob();
   if (response.status === 204) return null;
