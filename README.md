@@ -102,6 +102,21 @@ Tes ini menjalankan dua server development pada port acak, memeriksa routing
 halaman/aset, registrasi, sesi, profil, penolakan Origin asing, dan logout.
 Server tes dihentikan setelah selesai; database aplikasi tidak digunakan.
 
+Uji kedua aplikasi dalam mode produksi, termasuk rewrite yang disimpan saat
+build, aset mobile, manifest, header service worker dan cookie sesi produksi:
+
+```sh
+npm run test:pwa:production
+```
+
+Perintah ini membangun kedua aplikasi sendiri dengan upstream port acak.
+Flag internal `IMAJILEARN_TEST_BUILD=pwa-production` memisahkan hasil tes ke
+`.next/pwa-production` pada masing-masing aplikasi agar tidak menimpa build
+normal atau mengganggu preview development. Jangan memakai flag ini pada
+deployment biasa. Database dan proses server tes dibersihkan setelah selesai.
+Origin HTTPS sintetis dipakai untuk memeriksa kebijakan sesi produksi melalui
+HTTP loopback; tes ini belum memverifikasi TLS, instalasi, atau update di HP.
+
 ```sh
 npm run lint
 npm run build
@@ -346,10 +361,11 @@ npm test
 npm run test:http
 ```
 
-Workflow `Backend verification` memakai PostgreSQL 17 UTF8 dan Node.js 24 pada
-push/pull request ke branch `backend`, serta dapat dipicu manual. Pipeline
+Workflow `Web and PWA verification` memakai PostgreSQL 17 UTF8 dan Node.js 24 pada
+push/pull request ke branch `backend` dan `pwa`, serta dapat dipicu manual. Pipeline
 memasang dependensi dari lockfile, memvalidasi schema, menguji migrate/replay,
-menjalankan seluruh tes, lint, build web/PWA, dan smoke HTTP produksi. Workflow
+menjalankan seluruh tes, lint, build web/PWA, dan smoke HTTP development serta
+integrasi dua server produksi dengan upstream PWA yang dikonfigurasi. Workflow
 ini hanya memeriksa kode; tidak melakukan deploy, push atau merge.
 
 Lingkup B1 backend adalah penyimpanan preferensi dan endpoint GET/PUT dengan

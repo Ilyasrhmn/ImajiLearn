@@ -3,7 +3,9 @@ import { createServer } from "node:net";
 import { randomUUID } from "node:crypto";
 import { setTimeout as delay } from "node:timers/promises";
 import { testDatabase } from "./support/database.mjs";
-import { startNode, stopNode } from "./support/process.mjs";
+import { runNode, startNode, stopNode } from "./support/process.mjs";
+
+const production = process.argv.includes("--production");
 
 async function freePort() {
   const server = createServer();
@@ -28,11 +30,19 @@ try {
   for (const migration of storage.migrations) await storage.migrate(migration);
   const webPort = await freePort(), pwaPort = await freePort();
   const origin = `http://127.0.0.1:${webPort}`;
-  const env = { ...process.env, NODE_ENV: "development", APP_ORIGIN: origin,
+  // HTTPS is the configured security boundary; the local transport only tests
+  // production routing/session behavior, not browser TLS or installation.
+  const appOrigin = production ? "https://pwa-smoke.example.test" : origin;
+  const env = { ...process.env, NODE_ENV: production ? "production" : "development", APP_ORIGIN: appOrigin,
+    IMAJILEARN_TEST_BUILD: production ? "pwa-production" : "",
     PWA_INTERNAL_ORIGIN: `http://127.0.0.1:${pwaPort}`, DATABASE_URL: storage.connectionUrl() };
-  pwa = startNode(["node_modules/next/dist/bin/next", "dev", "apps/pwa", "--hostname", "127.0.0.1", "--port", String(pwaPort)], { env });
+  if (production) {
+    for (const app of ["pwa", "web"]) await runNode(["node_modules/next/dist/bin/next", "build", `apps/${app}`], { env });
+  }
+  const command = production ? "start" : "dev";
+  pwa = startNode(["node_modules/next/dist/bin/next", command, "apps/pwa", "--hostname", "127.0.0.1", "--port", String(pwaPort)], { env });
   await ready(`${env.PWA_INTERNAL_ORIGIN}/app`, pwa);
-  web = startNode(["node_modules/next/dist/bin/next", "dev", "apps/web", "--hostname", "127.0.0.1", "--port", String(webPort)], { env });
+  web = startNode(["node_modules/next/dist/bin/next", command, "apps/web", "--hostname", "127.0.0.1", "--port", String(webPort)], { env });
   await ready(`${origin}/app`, web);
   const page = await fetch(`${origin}/app`);
   assert.equal(page.status, 200);
@@ -47,8 +57,18 @@ try {
   assert.match(authHtml, /\/app\/daftar/);
   const manifest = await (await fetch(`${origin}/app/manifest.webmanifest`)).json();
   assert.equal(manifest.scope, "/app/");
+  assert.equal(manifest.start_url, "/app/beranda");
+  assert.equal(manifest.display, "standalone");
+  for (const icon of manifest.icons) {
+    const response = await fetch(`${origin}${icon.src}`);
+    assert.equal(response.status, 200);
+    assert.match(response.headers.get("content-type"), /image\/png/);
+    assert.deepEqual([...new Uint8Array(await response.arrayBuffer()).slice(0, 8)], [137, 80, 78, 71, 13, 10, 26, 10]);
+  }
   for (const path of ["/app/sw.js", "/app/offline.html", ...manifest.icons.map(icon => icon.src)]) assert.equal((await fetch(`${origin}${path}`)).status, 200);
-  assert.match((await fetch(`${origin}/app/sw.js`)).headers.get("cache-control"), /no-store/);
+  const worker = await fetch(`${origin}/app/sw.js`);
+  assert.match(worker.headers.get("cache-control"), /no-store/);
+  assert.equal(worker.headers.get("service-worker-allowed"), "/app/");
   for (const path of ["/app/daftar", "/app/beranda", "/app/materi", "/app/akun", "/app/lkpd", "/app/ujian", "/app/jadwal"]) {
     const screen = await fetch(`${origin}${path}`);
     assert.equal(screen.status, 200, path);
@@ -63,7 +83,7 @@ try {
   assert.ok(asset, "PWA scripts must retain /app/_next rather than collide with web assets");
   assert.equal((await fetch(`${origin}${asset[1].replaceAll("&amp;", "&")}`)).status, 200);
   assert.match(await (await fetch(`${origin}/masuk`)).text(), /Masuk ke ImajiLearn/);
-  const request = (path, { method = "GET", cookie, body, requestOrigin = origin } = {}) => fetch(`${origin}/api/v1${path}`, {
+  const request = (path, { method = "GET", cookie, body, requestOrigin = appOrigin } = {}) => fetch(`${origin}/api/v1${path}`, {
     method, headers: { Origin: requestOrigin, ...(cookie ? { Cookie: cookie } : {}),
       ...(body ? { "Content-Type": "application/json" } : {}) }, body: body ? JSON.stringify(body) : undefined,
   });
@@ -71,19 +91,29 @@ try {
   const registered = await request("/auth/register", { method: "POST", body: {
     name: "PWA synthetic teacher", email: `pwa-${randomUUID()}@example.test`, password: "Synthetic password" } });
   assert.equal(registered.status, 201);
+  if (production) {
+    const sessionCookie = registered.headers.get("set-cookie");
+    assert.match(sessionCookie, /^__Host-/);
+    assert.match(sessionCookie, /; Secure/i);
+    assert.match(sessionCookie, /; HttpOnly/i);
+    assert.match(sessionCookie, /; Path=\/(?:;|$)/i);
+    assert.doesNotMatch(sessionCookie, /; Domain=/i);
+  }
   const cookie = registered.headers.get("set-cookie").split(";")[0];
   const user = (await registered.json()).data.user;
   const session = await request("/auth/session", { cookie });
   assert.equal(session.status, 200);
+  assert.match(session.headers.get("cache-control"), /no-store/);
   assert.equal((await session.json()).data.user.id, user.id);
   const profile = await request("/me", { cookie });
   assert.equal(profile.status, 200);
+  assert.match(profile.headers.get("cache-control"), /no-store/);
   assert.equal((await profile.json()).data.id, user.id);
   assert.equal((await request("/me", { method: "PATCH", cookie, requestOrigin: env.PWA_INTERNAL_ORIGIN,
     body: { name: "Wrong origin" } })).status, 403);
   assert.equal((await request("/auth/logout", { method: "POST", cookie })).status, 204);
   assert.equal((await request("/auth/session", { cookie })).status, 401);
-  console.log("PWA same-origin routing, assets and backend session integration passed.");
+  console.log(`PWA ${command} same-origin routing, assets and backend session integration passed.`);
 } finally {
   try { await stopNode(web); } finally {
     try { await stopNode(pwa); } finally { await storage.close(); }

@@ -16,6 +16,7 @@
     "test": "node --test --test-concurrency=1 tests/*.test.mjs",
     "test:http": "node tests/backend-http-smoke.mjs",
     "test:pwa:http": "node tests/pwa-http-smoke.mjs",
+    "test:pwa:production": "node tests/pwa-http-smoke.mjs --production",
     "postinstall": "prisma generate",
     "db:generate": "prisma generate",
     "db:validate": "prisma validate",
