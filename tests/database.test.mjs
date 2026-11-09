@@ -66,6 +66,8 @@ test("DATABASE_URL schema selects the same tables as the migration runner", asyn
     fromUrl = storage.connectFromUrlSchema();
     const restored = await fromUrl.teacher.findUnique({ where: { id: teacher.id } });
     assert.equal(restored?.email, "schema@example.test");
+    const [raw] = await fromUrl.$queryRaw`SELECT "email" FROM "Teacher" WHERE "id" = ${teacher.id}::uuid`;
+    assert.equal(raw?.email, restored.email);
   } finally {
     await fromUrl?.$disconnect();
     await storage.close();

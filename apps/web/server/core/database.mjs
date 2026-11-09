@@ -13,9 +13,15 @@ export function createDatabase(connectionString, { schema, maxConnections = 10 }
     error.code = "DATABASE_CONFIGURATION_ERROR";
     throw error;
   }
+  const selectedSchema = schema ?? url.searchParams.get("schema") ?? "public";
+  // Prisma qualifies ORM queries. Set the same schema at connection startup for raw SQL.
+  const identifier = '"' + selectedSchema.replaceAll('"', '""') + '"';
+  const searchPath = "-csearch_path=" + identifier.replace(/[\\\s]/gu, "\\$&");
+  const options = url.searchParams.get("options");
+  url.searchParams.set("options", options ? `${options} ${searchPath}` : searchPath);
   const adapter = new PrismaPg(
-    { connectionString, max: maxConnections, connectionTimeoutMillis: 5000 },
-    { schema: schema ?? url.searchParams.get("schema") ?? "public" },
+    { connectionString: url.toString(), max: maxConnections, connectionTimeoutMillis: 5000 },
+    { schema: selectedSchema },
   );
   return new PrismaClient({ adapter });
 }
