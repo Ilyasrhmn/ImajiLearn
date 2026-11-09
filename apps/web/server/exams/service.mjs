@@ -21,7 +21,7 @@ async function ownExam(db, userId, id, includeSources = false) {
 
 async function assertCapacity(tx, userId) {
   // Serialize quota checks across different idempotency keys for the same owner.
-  await tx.$queryRaw`SELECT "id" FROM "Teacher" WHERE "id" = ${userId}::uuid FOR UPDATE`;
+  await tx.$queryRaw`SELECT "id" FROM "Teacher" WHERE "id" = ${userId}::uuid FOR NO KEY UPDATE`;
   if (await tx.examDocument.count({ where: { userId } }) >= EXAM_LIMIT) {
     throw new ApiError(409, "EXAM_LIMIT_REACHED", "Pustaka naskah sudah penuh.");
   }
@@ -31,7 +31,7 @@ export function createExamService(db) {
   return {
     async create(teacher, body, key) {
       const config = parseExamConfig(body, teacher);
-      return withIdempotency(db, { userId: teacher.id, route: "POST /exams", key, payload: config }, async tx => {
+      const result = await withIdempotency(db, { userId: teacher.id, route: "POST /exams", key, payload: config }, async tx => {
         await assertCapacity(tx, teacher.id);
         const sources = new Map();
         for (const id of [...config.materialIds].sort()) {
@@ -46,6 +46,8 @@ export function createExamService(db) {
           sourceSnapshots: config.materialIds.map(id => sources.get(id)) } });
         return dto(row);
       });
+      if (result.deleted) throw notFound();
+      return result;
     },
     async list(userId, params) {
       const keys = ["q", "grade", "subject", "sort"];
@@ -67,7 +69,7 @@ export function createExamService(db) {
     async copy(userId, id, action, key) {
       const canonical = canonicalMaterialId(id);
       if (!canonical) throw notFound();
-      return withIdempotency(db, { userId, route: `POST /exams/:id/${action}`, key, payload: { id: canonical } }, async tx => {
+      const result = await withIdempotency(db, { userId, route: `POST /exams/:id/${action}`, key, payload: { id: canonical } }, async tx => {
         const source = await ownExam(tx, userId, canonical, true);
         await assertCapacity(tx, userId);
         const document = action === "remedial" ? copyRemedial(source.document) : duplicateExam(source.document);
@@ -77,6 +79,8 @@ export function createExamService(db) {
         const row = await tx.examDocument.create({ data: { id: document.id, userId, document, sourceSnapshots: source.sourceSnapshots } });
         return dto(row);
       });
+      if (result.deleted) throw notFound();
+      return result;
     },
     async patch(userId, id, body, version) {
       const row = await ownExam(db, userId, id);
@@ -90,10 +94,17 @@ export function createExamService(db) {
       return dto({ document, resourceVersion: version + 1 });
     },
     async remove(userId, id, version) {
-      const row = await ownExam(db, userId, id);
-      if (row.resourceVersion !== version) throw stale();
-      const deleted = await db.examDocument.deleteMany({ where: { id: row.document.id, userId, resourceVersion: version } });
-      if (!deleted.count) throw stale();
+      await db.$transaction(async tx => {
+        const row = await ownExam(tx, userId, id);
+        if (row.resourceVersion !== version) throw stale();
+        const deleted = await tx.examDocument.deleteMany({ where: { id: row.document.id, userId, resourceVersion: version } });
+        if (!deleted.count) throw stale();
+        await tx.idempotency.updateMany({
+          where: { userId, route: { in: ["POST /exams", "POST /exams/:id/duplicate", "POST /exams/:id/remedial"] },
+            response: { path: ["id"], equals: row.document.id } },
+          data: { response: { deleted: true } },
+        });
+      });
     },
   };
 }

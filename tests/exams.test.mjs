@@ -165,6 +165,11 @@ test("copies and remedial drafts preserve original content with fresh exam and q
     assert.equal(stored.sourceSnapshots[0].text, "Teks asli");
   }
   assert.notEqual(duplicate.questions[0].id, remedial.questions[0].id);
+  const removed = await exams.remove(req("DELETE", `exams/${duplicate.id}`, {
+    cookie: foreign.cookie, headers: { "if-match": '"1"' },
+  }), duplicate.id);
+  assert.equal(removed.status, 204);
+  assert.equal((await copy("duplicate", foreign.cookie, key)).status, 404);
   const originalResponse = await exams.get(req("GET", path, { cookie: foreign.cookie }), original.id);
   assert.deepEqual((await originalResponse.json()).data, source);
   const fullOwnerExam = await storage.db.examDocument.findFirst({ where: { userId: teacher.id } });
