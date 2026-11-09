@@ -37,8 +37,19 @@ try {
   const page = await fetch(`${origin}/app`);
   assert.equal(page.status, 200);
   const html = await page.text();
-  assert.match(html, /ImajiLearn PWA/);
-  assert.match(html, /mascot-book/);
+  assert.match(html, /ImajiLearn/);
+  const signIn = await fetch(`${origin}/app/masuk`);
+  assert.equal(signIn.status, 200);
+  const authHtml = await signIn.text();
+  assert.match(authHtml, /mascot-book/);
+  assert.match(authHtml, /name="email"/);
+  assert.match(authHtml, /name="password"/);
+  assert.match(authHtml, /\/app\/daftar/);
+  for (const path of ["/app/daftar", "/app/beranda", "/app/akun"]) {
+    const screen = await fetch(`${origin}${path}`);
+    assert.equal(screen.status, 200, path);
+    assert.doesNotMatch(await screen.text(), /PWA synthetic teacher/);
+  }
   for (const path of ["/brand/imajilearn-mark.svg", "/brand/imajilearn-wordmark.svg", "/lkpd/pancasila/star.svg"]) {
     const assetResponse = await fetch(`${origin}${path}`);
     assert.equal(assetResponse.status, 200);
