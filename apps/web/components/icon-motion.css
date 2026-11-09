@@ -1,0 +1,181 @@
+@media (prefers-reduced-motion: no-preference) {
+  @scope (.dashboard, .account-main, .exam-main, .lkpd-main, .schedule-main, .workspace-header, .modal, .auth-page) {
+    :where(svg.lucide, svg[data-icon]) {
+      --icon-hover-motion: scale(1.06);
+      transform-origin: center;
+      transition: transform 260ms cubic-bezier(0.2, 0.75, 0.25, 1);
+    }
+    :is(svg.lucide, svg[data-icon]) > *,
+    [data-icon-part] {
+      transform-box: view-box;
+      transform-origin: 12px 12px;
+      transition:
+        transform 260ms cubic-bezier(0.2, 0.75, 0.25, 1),
+        opacity 160ms ease;
+    }
+    :is(
+      .lucide-music,
+      .lucide-music-2,
+      .lucide-eighth-note,
+      [data-icon="music"]
+    ) {
+      --icon-hover-motion: rotate(-12deg);
+      transform-origin: 12px 20px;
+    }
+    :is(.lucide-pin, .lucide-pin-off) { --icon-hover-motion: none; }
+    :is(.lucide-rotate-ccw, [data-icon="reset"]) {
+      --icon-hover-motion: rotate(-50deg);
+    }
+    :is(.lucide-repeat, .lucide-repeat-2) {
+      --icon-hover-motion: rotate(18deg);
+    }
+    :is(.lucide-arrow-left, .lucide-chevron-left, [data-icon="back"]) {
+      --icon-hover-motion: translateX(-3px);
+    }
+    :is(.lucide-arrow-right, [data-icon="arrow"], [data-icon="chevron"]) {
+      --icon-hover-motion: translateX(3px);
+    }
+    :is(.lucide-x, [data-icon="close"], [data-icon="plus"]) {
+      --icon-hover-motion: rotate(90deg);
+    }
+    :is(.lucide-pencil-line, .lucide-pencil, .lucide-clipboard-pen-line) {
+      --icon-hover-motion: rotate(-9deg);
+      transform-origin: 4px 20px;
+    }
+    :is(.lucide-settings, .lucide-settings-2) {
+      --icon-hover-motion: rotate(60deg);
+    }
+    :is(.lucide-trash, .lucide-trash-2) {
+      overflow: visible;
+    }
+    :is(.lucide-trash, .lucide-trash-2) > path:nth-last-child(-n + 2) {
+      --icon-part-motion: translateY(-1px) rotate(-14deg);
+      transform-origin: 3px 6px;
+    }
+    .lucide-folder-cog > :not(:first-child) {
+      --icon-part-motion: rotate(60deg);
+      transform-origin: 18px 18px;
+    }
+    .lucide-scissors > :is(:nth-child(1), :nth-child(2), :nth-child(5)) {
+      --icon-part-motion: rotate(-13deg);
+    }
+    .lucide-scissors > :is(:nth-child(3), :nth-child(4)) {
+      --icon-part-motion: rotate(13deg);
+    }
+    .lucide-archive > rect {
+      --icon-part-motion: translateY(-2px);
+    }
+    .lucide-archive-restore > :is(path, polyline):not(:first-child) {
+      --icon-part-motion: translateY(-2px);
+    }
+    .lucide-folder-input > path:not(:first-child) {
+      --icon-part-motion: translateX(3px);
+    }
+    .lucide-printer > rect {
+      --icon-part-motion: translateY(2px);
+    }
+    .lucide-upload > :nth-child(-n + 2) {
+      --icon-part-motion: translateY(-2px);
+    }
+    .lucide-copy > rect {
+      --icon-part-motion: translate(2px, 2px);
+    }
+    .lucide-download > path:not(:nth-child(2)) {
+      --icon-part-motion: translateY(2px);
+    }
+    .lucide-calendar-days > path:nth-child(n + 5) {
+      --icon-part-motion: translateY(-1px);
+    }
+    .lucide-presentation > path:nth-child(n + 2) {
+      --icon-part-motion: scaleY(0.92);
+      transform-origin: 12px 3px;
+    }
+    .lucide-book-open > path:nth-child(2) {
+      --icon-part-motion: scaleX(1.08);
+    }
+    .lucide-files > path:last-child {
+      --icon-part-motion: translate(-1px, -1px);
+    }
+    :is(.lucide-eye, .lucide-eye-off, [data-icon="eye"], [data-icon="eye-off"])
+      > circle {
+      --icon-part-motion: translateX(1.5px);
+    }
+    .lucide-log-out > :not(:first-child) {
+      --icon-part-motion: translateX(2px);
+    }
+    [data-icon-part="entry"] {
+      --icon-part-motion: translateX(2px);
+    }
+    [data-icon-part="plus"] {
+      --icon-part-motion: rotate(90deg);
+      transform-box: fill-box;
+      transform-origin: center;
+    }
+    [data-icon-part="needle"] {
+      --icon-part-motion: rotate(180deg);
+    }
+    .subject-folder-icon > .folder-flap {
+      --icon-hover-motion: perspective(120px) rotateX(-32deg) skewX(-9deg);
+      transform-origin: 50% 83%;
+    }
+    :is(button, a, label, summary, [role="button"]):focus-visible:not(
+        :disabled
+      ):not([aria-disabled="true"])
+      :is(svg.lucide, svg[data-icon]) {
+      transform: var(--icon-hover-motion);
+    }
+    :is(button, a, label, summary, [role="button"]):focus-visible:not(
+        :disabled
+      ):not([aria-disabled="true"])
+      :is(svg.lucide, svg[data-icon])
+      > * {
+      transform: var(--icon-part-motion, none);
+    }
+    @media (hover: hover) and (pointer: fine) {
+      :is(button, a, label, summary, [role="button"]):hover:not(:disabled):not(
+          [aria-disabled="true"]
+        )
+        :is(svg.lucide, svg[data-icon]) {
+        transform: var(--icon-hover-motion);
+      }
+      :is(button, a, label, summary, [role="button"]):hover:not(:disabled):not(
+          [aria-disabled="true"]
+        )
+        :is(svg.lucide, svg[data-icon])
+        > * {
+        transform: var(--icon-part-motion, none);
+      }
+    }
+    label:has(input:focus-visible) :is(svg.lucide, svg[data-icon]) {
+      transform: var(--icon-hover-motion);
+    }
+    label:has(input:focus-visible) :is(svg.lucide, svg[data-icon]) > * {
+      transform: var(--icon-part-motion, none);
+    }
+  }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .mascot { overflow: visible; }
+  .mascot .character-arm { transform-box: fill-box; transform-origin: bottom center; transition: transform 240ms ease-out; }
+  .mascot .smile-on-hover { transition: opacity 150ms ease; }
+  .subject-folder-icon > svg:first-child { --icon-hover-motion: none; }
+  .studio-sections > :is(a,button), .filters button, .material-card, .subject-folder, .upload-button, .source-secondary { transition: background-color 180ms ease, border-color 180ms ease, color 180ms ease; }
+  .upload-button:enabled:active, .source-secondary:enabled:active { scale: .97; }
+  @media (hover: hover) and (pointer: fine) {
+    .mascot:hover .character-arm { transform: rotate(-16deg); }
+    .mascot:hover .smile-on-hover { opacity: 1; }
+    .material-card:hover { border-color: #b64f38; }
+  }
+}
+
+.subject-folder-icon { position: relative; display: inline-block; width: 48px; height: 48px; flex: none; color: #a36f20; }
+.subject-folder-icon > svg { position: absolute; inset: 0; fill: #fff0bf; }
+.subject-folder-icon > .folder-flap { clip-path: inset(38% 0 0 0); transform-origin: 50% 83%; }
+@media (prefers-reduced-motion: no-preference) {
+  .dashboard, .account-main, .exam-main, .lkpd-main, .schedule-main { animation: workspace-arrive 180ms ease-out; }
+  @keyframes workspace-arrive { from { opacity: .98; translate: 0 4px; } to { opacity: 1; translate: 0; } }
+  ::view-transition-old(.panel-swap) { animation: panel-leave 120ms ease-in both; }
+  ::view-transition-new(.panel-swap) { animation: panel-arrive 180ms ease-out both; }
+  @keyframes panel-leave { to { opacity: 0; } }
+  @keyframes panel-arrive { from { opacity: 0; } }
+}

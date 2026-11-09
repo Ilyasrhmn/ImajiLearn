@@ -72,13 +72,13 @@ export function closeModal(onClose) {
     dialog.style.overflow = "hidden";
     content.style.opacity = opacity;
   }
-  const { opacity, transform } = getComputedStyle(dialog);
+  const { transform } = getComputedStyle(dialog);
   dialog.style.setProperty("--backdrop-opacity", getComputedStyle(dialog, "::backdrop").opacity);
   dialog.getAnimations().forEach(animation => animation.cancel());
   dialog.dataset.closing = "true";
   dialog.inert = true;
   const animation = dialog.animate([
-    { opacity, transform }, { opacity: 0, transform: "translateY(10px) scale(.985)" },
+    { transform }, { transform: "translateY(10px) scale(.985)" },
   ], { duration: 160, easing: "cubic-bezier(.4,0,1,1)", fill: "forwards" });
   animation.finished.catch(() => {}).then(onClose);
 }
