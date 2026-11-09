@@ -12,7 +12,7 @@ export async function lockOwnedMaterial(tx, userId, id) {
 }
 
 export function sourceSnapshot(row) {
-  return { id: row.id, title: row.title, text: row.text, revision: row.revision, archived: row.archived, extractionStatus: "ready" };
+  return { id: row.id, title: row.title, text: row.text, revision: row.revision, archived: row.archived, extractionStatus: row.extractionStatus };
 }
 
 // The caller's transaction must remain open through its source-dependent write.

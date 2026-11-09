@@ -94,6 +94,58 @@ test("lists only owned material metadata with search, archive filtering and curs
   assert.deepEqual((await (await list("?view=archive")).json()).data.map(row => row.id), [item.id]);
 });
 
+test("uploads and downloads owned sources, extracts PDF/TXT and keeps unreadable originals private", async () => {
+  function pdf() {
+    const stream = "BT /F1 12 Tf 20 100 Td (Tumbuhan perlu air.) Tj ET";
+    const objects = [
+      "<< /Type /Catalog /Pages 2 0 R >>",
+      "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+      "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 200 200] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>",
+      "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>",
+      `<< /Length ${stream.length} >>\nstream\n${stream}\nendstream`,
+    ];
+    let body = "%PDF-1.4\n";
+    const offsets = objects.map((object, index) => {
+      const offset = body.length;
+      body += `${index + 1} 0 obj\n${object}\nendobj\n`;
+      return offset;
+    });
+    const xref = body.length;
+    body += "xref\n0 6\n0000000000 65535 f \n" + offsets.map(offset => `${String(offset).padStart(10, "0")} 00000 n \n`).join("");
+    return body + `trailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF\n`;
+  }
+  async function upload(contents, name, type, manual) {
+    const form = new FormData();
+    form.set("title", "Bahan kelas");
+    form.set("file", new File([contents], name, { type }));
+    if (manual !== undefined) form.set("text", manual);
+    return api.create(new Request(`${origin}/api/v1/materials`, {
+      method: "POST", headers: { origin, cookie: a.cookie, "idempotency-key": randomUUID() }, body: form,
+    }));
+  }
+  const original = pdf();
+  const uploaded = await upload(original, "bahan.pdf", "application/pdf");
+  assert.equal(uploaded.status, 201);
+  const item = (await uploaded.json()).data;
+  assert.equal(item.extractionStatus, "ready");
+  assert.match(item.text, /Tumbuhan perlu air\./);
+  const file = (user = a) => api.file(req("GET", `materials/${item.id}/file`, undefined, { cookie: user.cookie }), item.id);
+  assert.equal((await file(b)).status, 404);
+  const download = await file();
+  assert.equal(download.headers.get("cache-control"), "no-store");
+  assert.match(download.headers.get("content-disposition"), /^attachment/);
+  assert.equal(await download.text(), original);
+  const txt = (await (await upload("Teks dari file", "unik.txt", "text/plain")).json()).data;
+  assert.equal(txt.text, "Teks dari file");
+  const manual = (await (await upload("Teks dari file", "unik.txt", "text/plain", "Teks pilihan guru")).json()).data;
+  assert.equal(manual.text, "Teks pilihan guru");
+  const failed = (await (await upload("%PDF-1.4 invalid", "rusak.pdf", "application/pdf")).json()).data;
+  assert.equal(failed.extractionStatus, "failed");
+  assert.equal(failed.text, "");
+  assert.equal(failed.file.name, "rusak.pdf");
+  assert.equal((await upload("not pdf", "palsu.pdf", "application/pdf")).status, 415);
+});
+
 test("archive/restore use resource versions without changing source revision", async () => {
   let response = await patch(material.id, { archived: true }, 1);
   assert.equal(response.status, 200); assert.equal(response.headers.get("etag"), '"2"');
@@ -134,12 +186,12 @@ test("validation enforces UTF16 limits, rejects empty sources, invalid types and
   assert.equal((await create({ title: "No key", text: source }, a, "")).status, 400);
 });
 
-test("material body budget and unsupported upload format return clear errors", async () => {
+test("material body budget and malformed multipart return clear errors", async () => {
   const response = await create({ title: "Oversized", text: "x".repeat(270000) });
   assert.equal(response.status, 413);
   assert.equal((await api.create(req("POST", "materials", { title: "X", text: source }, {
     cookie: a.cookie, key: randomUUID(), headers: { "content-type": "multipart/form-data; boundary=test" },
-  }))).status, 415);
+  }))).status, 400);
 });
 
 test("failed material persistence rolls the idempotency reservation back for a clean retry", async () => {
