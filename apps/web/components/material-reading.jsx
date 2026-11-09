@@ -79,7 +79,7 @@ function ReadingQuestion({ item }) {
 export default function MaterialReading({ reading, teacherId, illustrationPath, onBack }) {
   return <article className="format-detail material-reading">
     <button type="button" className="source-secondary" onClick={onBack}><ArrowLeft size={18} aria-hidden="true" />Kembali</button>
-    <h2 tabIndex={-1} data-reading-heading>{reading.title}</h2>
+    <h2 tabIndex={-1} data-output-heading>{reading.title}</h2>
     <ReadingIllustration teacherId={teacherId} path={illustrationPath} title={reading.title} />
     {reading.sections.map((section, index) => (
       <section key={index}>

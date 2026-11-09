@@ -136,6 +136,7 @@ model Material {
   folder          Folder?  @relation(fields: [folderId, userId], references: [id, userId], onDelete: Restrict)
   mediaPreference MediaPreference?
   readings        MaterialReading[]
+  visuals         MaterialVisual[]
   file            MaterialFile?
   worksheetDocuments WorksheetDocument[]
 
@@ -153,6 +154,17 @@ model MaterialReading {
   illustration Bytes?
   illustrationLeaseId String? @db.Uuid
   illustrationLeaseUntil DateTime? @db.Timestamptz(3)
+  material   Material @relation(fields: [materialId], references: [id], onDelete: Cascade)
+
+  @@id([materialId, revision])
+}
+
+model MaterialVisual {
+  materialId String   @db.Uuid
+  revision   String   @db.Char(64)
+  content    Json?    @db.JsonB
+  leaseId    String?  @db.Uuid
+  leaseUntil DateTime? @db.Timestamptz(3)
   material   Material @relation(fields: [materialId], references: [id], onDelete: Cascade)
 
   @@id([materialId, revision])

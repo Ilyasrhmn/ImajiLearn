@@ -159,6 +159,13 @@
   background: #fae9de;
 }
 
+.media-output-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
 @media (prefers-reduced-motion: no-preference) {
   .material-detail-modal .format-check {
     transition: opacity 160ms ease, transform 180ms ease;
