@@ -50,6 +50,11 @@ export function createSessionHandlers(db, config) {
       }
       await checkRateLimit(db, failureKey, failureMax, windowMs);
       const session = await db.$transaction(async tx => {
+        // A password change and session issuance must acquire the same teacher lock.
+        const [locked] = await tx.$queryRaw`SELECT "passwordHash" FROM "Teacher" WHERE "id" = ${teacher.id}::uuid FOR UPDATE`;
+        if (locked?.passwordHash !== teacher.passwordHash) {
+          throw new ApiError(401, "INVALID_CREDENTIALS", "Email atau kata sandi salah.");
+        }
         const previous = sessionToken(request, secure);
         if (previous) await tx.session.deleteMany({ where: { tokenHash: digest(previous) } });
         const issued = await issueSession(tx, teacher.id, { secure, absoluteSeconds: config.sessionAbsoluteSeconds ?? 604800 });
