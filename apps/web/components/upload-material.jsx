@@ -6,7 +6,7 @@ import ThemedSelect from "./themed-select";
 import { Mascot } from "./mascot";
 import { saveMaterial } from "../lib/materials";
 
-export default function UploadMaterial({ onClose, onSaved, folders, initialFolder = "" }) {
+export default function UploadMaterial({ teacherId, onClose, onSaved, folders, initialFolder = "" }) {
   const [title, setTitle] = useState("");
   const [folderId, setFolderId] = useState(initialFolder);
   const [file, setFile] = useState(null);
@@ -48,7 +48,7 @@ export default function UploadMaterial({ onClose, onSaved, folders, initialFolde
     setError("");
     try {
       const material = { id: globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2)}`, title: title.trim(), folderId, file, text: text.trim(), createdAt: Date.now() };
-      await saveMaterial(material);
+      await saveMaterial(teacherId, material);
       onSaved(material);
     } catch { setError("Materi belum tersimpan. Periksa ruang penyimpanan browser dan coba lagi."); setSaving(false); }
   }

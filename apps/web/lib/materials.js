@@ -1,8 +1,10 @@
+import { teacherStorageKey } from "./teacher-storage.mjs";
+
 const DB_NAME = "imajilearn-materials";
 
-function openDatabase() {
+function openDatabase(teacherId) {
   return new Promise((resolve, reject) => {
-    const request = indexedDB.open(DB_NAME, 3);
+    const request = indexedDB.open(teacherStorageKey(teacherId, DB_NAME), 3);
     request.onupgradeneeded = () => {
       if (!request.result.objectStoreNames.contains("materials")) request.result.createObjectStore("materials", { keyPath: "id" });
       if (!request.result.objectStoreNames.contains("folders")) request.result.createObjectStore("folders", { keyPath: "id" });
@@ -14,8 +16,8 @@ function openDatabase() {
   });
 }
 
-async function transact(mode, operation) {
-  const db = await openDatabase();
+async function transact(teacherId, mode, operation) {
+  const db = await openDatabase(teacherId);
   try {
     return await new Promise((resolve, reject) => {
       const transaction = db.transaction("materials", mode);
@@ -27,9 +29,9 @@ async function transact(mode, operation) {
   } finally { db.close(); }
 }
 
-export const listMaterials = () => transact("readonly", store => store.getAll());
-export async function saveMaterial(material) {
-  const db = await openDatabase();
+export const listMaterials = teacherId => transact(teacherId, "readonly", store => store.getAll());
+export async function saveMaterial(teacherId, material) {
+  const db = await openDatabase(teacherId);
   try {
     return await new Promise((resolve, reject) => {
       const tx = db.transaction(["materials", "folders"], "readwrite");
@@ -44,8 +46,8 @@ export async function saveMaterial(material) {
   } finally { db.close(); }
 }
 
-export async function updateMaterial(id, changes) {
-  const db = await openDatabase();
+export async function updateMaterial(teacherId, id, changes) {
+  const db = await openDatabase(teacherId);
   try {
     return await new Promise((resolve, reject) => {
       const transaction = db.transaction(["materials", "folders"], "readwrite");
@@ -67,10 +69,10 @@ export async function updateMaterial(id, changes) {
   } finally { db.close(); }
 }
 
-export const deleteMaterial = id => transact("readwrite", store => store.delete(id));
+export const deleteMaterial = (teacherId, id) => transact(teacherId, "readwrite", store => store.delete(id));
 
-export async function listFolders() {
-  const db = await openDatabase();
+export async function listFolders(teacherId) {
+  const db = await openDatabase(teacherId);
   try {
     return await new Promise((resolve, reject) => {
       const tx = db.transaction("folders", "readonly");
@@ -81,8 +83,8 @@ export async function listFolders() {
   } finally { db.close(); }
 }
 
-export async function changeFolder({ id, name, remove = false }) {
-  const db = await openDatabase();
+export async function changeFolder(teacherId, { id, name, remove = false }) {
+  const db = await openDatabase(teacherId);
   try {
     return await new Promise((resolve, reject) => {
       const tx = db.transaction(["folders", "materials", "schedule"], "readwrite");
@@ -119,8 +121,8 @@ export async function changeFolder({ id, name, remove = false }) {
   } finally { db.close(); }
 }
 
-export async function listSchedule() {
-  const db = await openDatabase();
+export async function listSchedule(teacherId) {
+  const db = await openDatabase(teacherId);
   try {
     return await new Promise((resolve, reject) => {
       const tx = db.transaction("schedule", "readonly"), request = tx.objectStore("schedule").getAll();
@@ -130,8 +132,8 @@ export async function listSchedule() {
   } finally { db.close(); }
 }
 
-export async function changeSchedule({ year, semester, slot, newSubject = "", remove = false }) {
-  const db = await openDatabase();
+export async function changeSchedule(teacherId, { year, semester, slot, newSubject = "", remove = false }) {
+  const db = await openDatabase(teacherId);
   try {
     return await new Promise((resolve, reject) => {
       const tx = db.transaction(["schedule", "folders"], "readwrite");

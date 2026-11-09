@@ -1,4 +1,5 @@
 "use client";
+import { teacherStorageKey } from "../lib/teacher-storage.mjs";
 import { useCallback, useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
@@ -18,7 +19,7 @@ import { LKPD_KEY, LKPD_LIMIT, lkpdTemplates, makeLkpdRequest, createLkpd, parse
 import { generateLkpd } from "../lib/lkpd-service.mjs";
 import "./lkpd.css";
 
-export default function LkpdStudio() {
+export default function LkpdStudio({ teacherId }) {
   const [materials, setMaterials] = useState([]), [folders, setFolders] = useState([]), [documents, setDocuments] = useState([]);
   const [ready, setReady] = useState(false), [loadError, setLoadError] = useState(false), [profile, setProfile] = useState(() => readProfile(null));
   const [folder, setFolder] = useState("all"), [sourceId, setSourceId] = useState(""), [templateId, setTemplateId] = useState("");
@@ -30,22 +31,22 @@ export default function LkpdStudio() {
     let active = true;
     const receive = event => setNotice(event.detail);
     window.addEventListener("lkpd-notice", receive);
-    Promise.all([listMaterials(), listFolders()]).then(([items, subjects]) => {
+    Promise.all([listMaterials(teacherId), listFolders(teacherId)]).then(([items, subjects]) => {
       if (!active) return;
       const sources = items.filter(item => !item.archived);
       setMaterials(sources); setFolders(subjects);
       const query = new URLSearchParams(location.search);
       const selected = sources.find(item => item.id === query.get("material"));
       setSourceId(selected?.id || (sources.length === 1 ? sources[0].id : ""));
-      setDocuments(parseLkpds(localStorage.getItem(LKPD_KEY))); setProfile(readProfile(localStorage.getItem(PROFILE_KEY)));
+      setDocuments(parseLkpds(localStorage.getItem(teacherStorageKey(teacherId, LKPD_KEY)))); setProfile(readProfile(localStorage.getItem(teacherStorageKey(teacherId, PROFILE_KEY))));
       setReady(true);
     }).catch(() => { if (active) { setLoadError(true); setReady(true); } });
     return () => { active = false; pending.current?.abort(); window.removeEventListener("lkpd-notice", receive); };
-  }, []);
+  }, [teacherId]);
   const matches = material => folder === "all" || (folder === "unfiled" ? !material.folderId : material.folderId === folder);
   function cancel() { pending.current?.abort(); pending.current = null; setCandidate(null); setBusy(false); }
   function persist(next) {
-    try { localStorage.setItem(LKPD_KEY, JSON.stringify(next)); setDocuments(next); setSaved(true); return true; }
+    try { localStorage.setItem(teacherStorageKey(teacherId, LKPD_KEY), JSON.stringify(next)); setDocuments(next); setSaved(true); return true; }
     catch { setSaved(false); setNotice({ message: "LKPD belum tersimpan. Periksa penyimpanan browser.", type: "error" }); return false; }
   }
   function open(id) { cancel(); setOpenedId(id); window.scrollTo({ top: 0 }); }
@@ -74,7 +75,7 @@ export default function LkpdStudio() {
   }
   const opened = documents.find(item => item.id === openedId);
   return <>
-    <a className="skip-link" href="#main">Lewati ke isi</a><header className="workspace-header"><div className="header-inner"><Link className="brand" href="/dashboard" aria-label="ImajiLearn, dashboard"><Image src="/brand/imajilearn-mark.svg" width={52} height={52} alt="" /><Image src="/brand/imajilearn-wordmark.svg" width={153} height={33} alt="" className="brand-wordmark" /></Link><div className="account-actions"><AccountAvatar /><LogoutButton /></div></div></header>
+    <a className="skip-link" href="#main">Lewati ke isi</a><header className="workspace-header"><div className="header-inner"><Link className="brand" href="/dashboard" aria-label="ImajiLearn, dashboard"><Image src="/brand/imajilearn-mark.svg" width={52} height={52} alt="" /><Image src="/brand/imajilearn-wordmark.svg" width={153} height={33} alt="" className="brand-wordmark" /></Link><div className="account-actions"><AccountAvatar teacherId={teacherId} /><LogoutButton /></div></div></header>
     <main id="main" className="workspace-shell lkpd-main"><nav className="studio-sections" aria-label="Navigasi studio"><Link href="/dashboard"><BookOpen size={20} />Materi</Link><Link href="/lkpd" aria-current="page"><Scissors size={20} />LKPD</Link><a href="/ujian"><ClipboardPenLine size={20} />Soal &amp; ujian</a><a href="/jadwal"><CalendarDays size={20} />Jadwal</a></nav>
       {!ready ? <div className="materials-skeleton" role="status" aria-label="Memuat LKPD"><span /><span /></div> : loadError ? <p role="alert">Materi tidak dapat dimuat. Periksa penyimpanan browser.</p> : opened ? <LkpdViewer key={opened.id} document={opened} saved={saved} onBack={() => open(null)} onChange={next => persist(documents.map(item => item.id === next.id ? { ...next, updatedAt: new Date().toISOString() } : item))} /> : <>
         <div className="lkpd-heading"><h1>LKPD</h1><Mascot kind="pencil" mood="think" /></div>

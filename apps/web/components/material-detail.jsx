@@ -17,7 +17,7 @@ const songs = [
   { id: "potong_bebek", title: "Potong Bebek Angsa" },
 ];
 
-export default function MaterialDetail({ material, onClose, onSaved }) {
+export default function MaterialDetail({ teacherId, material, onClose, onSaved }) {
   const [selected, setSelected] = useState(() => Array.isArray(material.selectedMedia) ? material.selectedMedia.filter(id => formats.some(format => format.id === id)) : []);
   const [song, setSong] = useState(() => songs.some(item => item.id === material.songTemplateId) ? material.songTemplateId : "balonku");
   const [busy, setBusy] = useState(false);
@@ -29,7 +29,7 @@ export default function MaterialDetail({ material, onClose, onSaved }) {
     if (busy) return;
     setBusy(true); setError("");
     try {
-      const updated = await updateMaterial(material.id, { selectedMedia: selected, songTemplateId: song });
+      const updated = await updateMaterial(teacherId, material.id, { selectedMedia: selected, songTemplateId: song });
       onSaved(updated);
     } catch { setError("Pilihan belum tersimpan. Coba lagi."); setBusy(false); }
   }

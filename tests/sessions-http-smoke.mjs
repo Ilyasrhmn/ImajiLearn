@@ -17,6 +17,18 @@ function send(method, path, body, cookie, headers = {}) {
     ...(body === undefined ? {} : { body: JSON.stringify(body) }),
   });
 }
+const privatePages = ["/dashboard", "/akun", "/jadwal", "/ujian", "/lkpd"];
+async function expectPrivateRedirect(path, cookie) {
+  const response = await fetch(`${base}${path}`, {
+    redirect: "manual", headers: cookie ? { cookie } : {},
+  });
+  assert.equal(response.status, 307, path);
+  assert.equal(response.headers.get("location"), "/masuk", path);
+}
+for (const path of privatePages) await expectPrivateRedirect(path);
+for (const path of ["/masuk", "/daftar"]) {
+  assert.equal((await fetch(`${base}${path}`, { redirect: "manual" })).status, 200);
+}
 assert.equal((await send("GET", "session")).status, 401);
 const body = { name: "Synthetic Sessions", email: `sessions-${randomUUID()}@example.test`, password: "  Synthetic 密碼🙂  " };
 const registered = await send("POST", "register", body);
@@ -31,6 +43,12 @@ assert.equal((await send("GET", "session", undefined, original)).status, 401);
 const current = await send("GET", "session", undefined, cookie);
 assert.equal(current.status, 200); assert.equal(current.headers.get("cache-control"), "no-store");
 assert.equal((await current.json()).data.user.email, body.email);
+for (const path of privatePages) {
+  const response = await fetch(`${base}${path}`, { redirect: "manual", headers: { cookie } });
+  assert.equal(response.status, 200, path);
+  assert.match(response.headers.get("cache-control"), /\bno-store\b/, path);
+}
+await expectPrivateRedirect("/dashboard", original);
 assert.equal((await send("POST", "login", { email: body.email, password: "wrong" }, cookie)).status, 401);
 assert.equal((await send("GET", "session", undefined, cookie)).status, 200);
 assert.equal((await send("POST", "logout", undefined, cookie, { origin: "https://foreign.example" })).status, 403);
@@ -39,4 +57,5 @@ for (let i = 0; i < 2; i++) {
   assert.equal(response.status, 204); assert.equal(await response.text(), "");
 }
 assert.equal((await send("GET", "session", undefined, cookie)).status, 401);
-console.log("Sessions HTTP smoke passed: JSON401, login rotation, private session, Origin protection, idempotent logout.");
+for (const path of privatePages) await expectPrivateRedirect(path, cookie);
+console.log("Sessions HTTP smoke passed: JSON401, login rotation, protected pages, Origin protection, idempotent logout.");
