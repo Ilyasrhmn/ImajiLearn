@@ -45,7 +45,7 @@ try {
   assert.match(authHtml, /name="email"/);
   assert.match(authHtml, /name="password"/);
   assert.match(authHtml, /\/app\/daftar/);
-  for (const path of ["/app/daftar", "/app/beranda", "/app/akun"]) {
+  for (const path of ["/app/daftar", "/app/beranda", "/app/materi", "/app/akun"]) {
     const screen = await fetch(`${origin}${path}`);
     assert.equal(screen.status, 200, path);
     assert.doesNotMatch(await screen.text(), /PWA synthetic teacher/);

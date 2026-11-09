@@ -14,7 +14,7 @@ npm run dev
 
 Gunakan `npm run dev:web` atau `npm run dev:pwa` untuk menjalankan satu aplikasi. Port harus tersedia.
 
-## Integrasi PWA (tahap fondasi)
+## Integrasi PWA
 
 Jalankan kedua aplikasi dengan `npm run dev`, kemudian buka `/app` melalui
 server web pada port 3000. Server PWA port 3002 memakai base path `/app` dan
@@ -34,9 +34,21 @@ membuat loop. Tanpa konfigurasi ini, build produksi web tetap berjalan tanpa
 routing PWA. `APP_ORIGIN` tetap origin HTTPS publik. Proxy publik harus
 meneruskan `/app` dan `/api/v1` melalui origin web yang sama.
 
-Tahap ini belum menyediakan layar autentikasi mobile, manifest instalasi,
-service worker, atau offline editing. API Google masih memakai callback dan
-redirect web yang ada; adaptasi navigasi mobile dikerjakan pada tahap auth.
+PWA menyediakan layar masuk/daftar, Beranda, pengaturan profil/kata sandi,
+serta pustaka materi melalui API web yang sama. Halaman privat memuat data
+setelah sesi diverifikasi; semua akses data tetap dilindungi API server.
+Pergantian akun/logout antar-tab memuat ulang sesi. Karakter dan ikon asli
+berasal dari `@imajilearn/shared`, tanpa salinan artwork baru.
+
+Pustaka mencakup unggah PDF/TXT/teks, pencarian, filter mapel, folder,
+sematan, arsip/pulihkan, pindah, hapus, unduh sumber, dan preferensi media/lagu.
+Form yang berubah meminta konfirmasi sebelum ditutup; kesalahan penyimpanan
+tetap menampilkan form untuk dicoba ulang. Beranda memuat materi aktif terbaru.
+
+Pada tahap ini pintasan LKPD, soal/ujian, dan jadwal masih membuka halaman web
+yang sudah berfungsi di origin yang sama. Layar mobile khususnya dikerjakan
+berikutnya. Google tetap memakai callback dan redirect web yang ada.
+Manifest instalasi, service worker dan offline editing belum tersedia.
 Tidak ada perubahan schema database maupun migrasi penyimpanan LKPD.
 
 Uji integrasi fondasi memakai database sintetis terisolasi:
