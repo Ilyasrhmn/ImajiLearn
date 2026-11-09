@@ -3,7 +3,7 @@
 Monorepo npm workspaces dengan dua aplikasi Next.js berbasis JavaScript/JSX:
 
 - `apps/web`: web guru di http://localhost:3000.
-- `apps/pwa`: fondasi tampilan aplikasi mobile di http://localhost:3002.
+- `apps/pwa`: fondasi aplikasi mobile, diakses melalui http://localhost:3000/app.
 
 ## Menjalankan
 
@@ -13,6 +13,41 @@ npm run dev
 ```
 
 Gunakan `npm run dev:web` atau `npm run dev:pwa` untuk menjalankan satu aplikasi. Port harus tersedia.
+
+## Integrasi PWA (tahap fondasi)
+
+Jalankan kedua aplikasi dengan `npm run dev`, kemudian buka `/app` melalui
+server web pada port 3000. Server PWA port 3002 memakai base path `/app` dan
+berperan sebagai upstream internal. Akses langsung port 3002 hanya untuk
+diagnostik frontend; API tetap disediakan server web.
+
+Browser memakai origin web yang sama untuk halaman PWA dan `/api/v1`.
+Dengan demikian cookie sesi host-only dan penyimpanan browser tidak dipisah
+ke origin port 3002. Jangan mengubah `APP_ORIGIN` menjadi origin upstream atau
+melonggarkan pemeriksaan Origin backend. Hanya `/app` beserta turunannya,
+termasuk aset Next.js, yang diteruskan; `/api/v1` dan halaman web tetap lokal.
+
+Pada produksi, jalankan kedua server dan isi `PWA_INTERNAL_ORIGIN` dengan
+origin internal server PWA **sebelum build web**. Next.js menyimpan rewrites
+dalam hasil build. Gunakan upstream terpisah dari origin publik agar tidak
+membuat loop. Tanpa konfigurasi ini, build produksi web tetap berjalan tanpa
+routing PWA. `APP_ORIGIN` tetap origin HTTPS publik. Proxy publik harus
+meneruskan `/app` dan `/api/v1` melalui origin web yang sama.
+
+Tahap ini belum menyediakan layar autentikasi mobile, manifest instalasi,
+service worker, atau offline editing. API Google masih memakai callback dan
+redirect web yang ada; adaptasi navigasi mobile dikerjakan pada tahap auth.
+Tidak ada perubahan schema database maupun migrasi penyimpanan LKPD.
+
+Uji integrasi fondasi memakai database sintetis terisolasi:
+
+```sh
+npm run test:pwa:http
+```
+
+Tes ini menjalankan dua server development pada port acak, memeriksa routing
+halaman/aset, registrasi, sesi, profil, penolakan Origin asing, dan logout.
+Server tes dihentikan setelah selesai; database aplikasi tidak digunakan.
 
 ```sh
 npm run lint

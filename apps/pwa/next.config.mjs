@@ -1,3 +1,3 @@
-const nextConfig = {};
+const nextConfig = { basePath: "/app" };
 
 export default nextConfig;
