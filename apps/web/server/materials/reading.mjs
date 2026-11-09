@@ -69,7 +69,7 @@ export function createMaterialReading(db, generateJson) {
         }
         const key = { materialId: source.id, revision: source.revision };
         const where = { materialId_revision: key };
-        const existing = await tx.materialReading.findUnique({ where });
+        const existing = await tx.materialReading.findUnique({ where, select: { content: true, leaseUntil: true } });
         if (existing?.content) return { content: existing.content };
         if (existing?.leaseUntil > new Date()) {
           throw new ApiError(409, "READING_IN_PROGRESS", "Bacaan sedang dibuat. Coba buka lagi sebentar.");

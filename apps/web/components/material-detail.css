@@ -123,6 +123,17 @@
   line-height: 1.65;
 }
 
+.reading-illustration {
+  margin-top: 20px;
+}
+
+.reading-illustration img {
+  display: block;
+  width: min(100%, 480px);
+  height: auto;
+  border-radius: 16px;
+}
+
 .reading-question {
   display: grid;
   gap: 8px;

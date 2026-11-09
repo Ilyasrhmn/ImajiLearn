@@ -74,7 +74,8 @@ export default function MaterialDetail({ teacherId, material, onClose, onSaved }
     }
   }
   return <Modal title={material.title} onClose={onClose} wide className="material-detail-modal">
-    {readingOpen ? <MaterialReading reading={reading} onBack={() => swapModalContent(() => setReadingOpen(false), "[data-reading-action]")} /> :
+    {readingOpen ? <MaterialReading reading={reading} teacherId={teacherId} illustrationPath={readingPath + "/illustration"}
+      onBack={() => swapModalContent(() => setReadingOpen(false), "[data-reading-action]")} /> :
     <div className="format-detail" ref={detail}>
       <h2>{material.title}</h2>
       {material.file ? (

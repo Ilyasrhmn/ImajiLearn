@@ -150,6 +150,9 @@ model MaterialReading {
   content    Json?    @db.JsonB
   leaseId    String?  @db.Uuid
   leaseUntil DateTime? @db.Timestamptz(3)
+  illustration Bytes?
+  illustrationLeaseId String? @db.Uuid
+  illustrationLeaseUntil DateTime? @db.Timestamptz(3)
   material   Material @relation(fields: [materialId], references: [id], onDelete: Cascade)
 
   @@id([materialId, revision])
