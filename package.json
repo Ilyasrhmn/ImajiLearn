@@ -2,6 +2,7 @@
   "name": "imajilearn-logicodix",
   "version": "0.1.0",
   "private": true,
+  "engines": { "node": ">=22.13.0" },
   "workspaces": [
     "apps/*",
     "packages/*"
@@ -11,11 +12,21 @@
     "dev:web": "npm run dev --workspace=@imajilearn/web",
     "dev:pwa": "npm run dev --workspace=@imajilearn/pwa",
     "build": "npm run build --workspaces --if-present",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "test": "node --test --test-concurrency=1 tests/*.test.mjs",
+    "test:http": "node tests/backend-http-smoke.mjs",
+    "postinstall": "prisma generate",
+    "db:generate": "prisma generate",
+    "db:validate": "prisma validate",
+    "db:migrate": "prisma migrate deploy"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "0.5.15",
+    "@electric-sql/pglite-socket": "0.2.18",
     "concurrently": "^9.2.1",
+    "dotenv": "17.2.3",
     "eslint": "^9.39.5",
-    "eslint-config-next": "16.4.5"
+    "eslint-config-next": "16.4.5",
+    "prisma": "7.10.1"
   }
 }

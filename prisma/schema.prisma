@@ -1,0 +1,206 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../apps/web/server/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Teacher {
+  id           String   @id @default(uuid()) @db.Uuid
+  name         String   @db.VarChar(60)
+  email        String   @unique @db.VarChar(254)
+  passwordHash String
+  school       String   @default("") @db.VarChar(100)
+  grade        String   @default("") @db.VarChar(1)
+  createdAt    DateTime @default(now()) @db.Timestamptz(3)
+  sessions     Session[]
+  exams        ExamDocument[]
+  worksheetLibrary WorksheetLibrary?
+  materials    Material[]
+  folders      Folder[]
+  scheduleTerms ScheduleTerm[]
+  idempotency  Idempotency[]
+  mediaPreferences MediaPreference[]
+}
+
+model ExamDocument {
+  id              String   @id @db.Uuid
+  userId          String   @db.Uuid
+  teacher         Teacher  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  document        Json     @db.JsonB
+  sourceSnapshots Json     @db.JsonB
+  resourceVersion Int     @default(1)
+
+  @@index([userId, id])
+}
+
+model WorksheetLibrary {
+  ownerId   String @id @db.Uuid
+  lockVersion BigInt @default(0)
+  teacher   Teacher @relation(fields: [ownerId], references: [id], onDelete: Restrict)
+  documents WorksheetDocument[]
+}
+
+model WorksheetDocument {
+  id               String @id @db.Uuid
+  ownerId          String @db.Uuid
+  library          WorksheetLibrary @relation(fields: [ownerId], references: [ownerId], onDelete: Restrict)
+  sourceMaterialId String? @db.Uuid
+  sourceOwnerId    String? @db.Uuid
+  material         Material? @relation(fields: [sourceMaterialId, sourceOwnerId], references: [id, userId], onDelete: SetNull, onUpdate: Cascade)
+  sourceId         String @db.Uuid
+  sourceTitle      String @db.VarChar(120)
+  sourceRevision   String
+  schemaVersion    Int @default(1)
+  resourceVersion  Int @default(1)
+  templateId       String @db.VarChar(8)
+  templateVersion  Int @default(1)
+  assetVersion     Int @default(1)
+  grade            String @db.VarChar(1)
+  language         String @db.VarChar(2)
+  theme            String @db.VarChar(5)
+  content          Json @db.JsonB
+  displayOrder     Json @db.JsonB
+  cacheKey         String @db.VarChar(64)
+  createdAt        DateTime @db.Timestamptz(3)
+  updatedAt        DateTime @db.Timestamptz(3)
+
+  @@unique([ownerId, cacheKey])
+  @@index([ownerId, updatedAt(sort: Desc), id(sort: Desc)])
+  @@index([ownerId, sourceMaterialId])
+  @@index([sourceMaterialId, sourceOwnerId])
+}
+
+model Session {
+  tokenHash String   @id @db.Char(64)
+  userId    String   @db.Uuid
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  lastSeen  DateTime @default(now()) @db.Timestamptz(3)
+  expiresAt DateTime @db.Timestamptz(3)
+  teacher   Teacher  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model RateLimit {
+  key         String   @id @db.Char(64)
+  count       Int
+  windowStart DateTime @db.Timestamptz(3)
+
+  @@index([windowStart])
+}
+
+model Material {
+  id              String   @id @default(uuid()) @db.Uuid
+  userId          String   @db.Uuid
+  title           String   @db.VarChar(120)
+  text            String
+  extractionStatus String @default("ready") @db.VarChar(8)
+  extractionError String? @db.VarChar(40)
+  revision        String   @db.Char(64)
+  archived        Boolean  @default(false)
+  pinned          Boolean  @default(false)
+  folderId        String?  @db.Uuid
+  resourceVersion Int      @default(1)
+  lockVersion     BigInt   @default(0)
+  createdAt       DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt       DateTime @default(now()) @db.Timestamptz(3)
+  teacher         Teacher  @relation(fields: [userId], references: [id], onDelete: Restrict)
+  folder          Folder?  @relation(fields: [folderId, userId], references: [id, userId], onDelete: Restrict)
+  mediaPreference MediaPreference?
+  file            MaterialFile?
+  worksheetDocuments WorksheetDocument[]
+
+  @@unique([id, userId])
+  @@index([userId, updatedAt, id])
+  @@index([folderId, userId])
+}
+
+model MaterialFile {
+  materialId String @id @db.Uuid
+  userId     String @db.Uuid
+  name       String @db.VarChar(255)
+  mime       String @db.VarChar(32)
+  size       Int
+  bytes      Bytes
+  material   Material @relation(fields: [materialId, userId], references: [id, userId], onDelete: Cascade)
+
+  @@unique([materialId, userId])
+}
+
+model Folder {
+  id              String   @id @default(uuid()) @db.Uuid
+  userId          String   @db.Uuid
+  name            String   @db.VarChar(80)
+  nameKey         String   @db.VarChar(240)
+  resourceVersion Int      @default(1)
+  createdAt       DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt       DateTime @default(now()) @db.Timestamptz(3)
+  teacher         Teacher  @relation(fields: [userId], references: [id], onDelete: Restrict)
+  materials       Material[]
+  scheduleSlots   ScheduleSlot[]
+
+  @@unique([id, userId])
+  @@unique([userId, nameKey])
+}
+
+model ScheduleTerm {
+  id              String   @id @default(uuid()) @db.Uuid
+  userId          String   @db.Uuid
+  year            Int
+  semester        String   @db.Char(1)
+  resourceVersion Int      @default(1)
+  teacher         Teacher  @relation(fields: [userId], references: [id], onDelete: Restrict)
+  entries         ScheduleSlot[]
+
+  @@unique([userId, year, semester])
+  @@unique([id, userId])
+}
+
+model ScheduleSlot {
+  id              String   @id @default(uuid()) @db.Uuid
+  userId          String   @db.Uuid
+  termId          String   @db.Uuid
+  folderId        String   @db.Uuid
+  className       String   @db.VarChar(80)
+  day             Int
+  startMinute     Int
+  endMinute       Int
+  resourceVersion Int      @default(1)
+  term            ScheduleTerm @relation(fields: [termId, userId], references: [id, userId], onDelete: Restrict)
+  folder          Folder   @relation(fields: [folderId, userId], references: [id, userId], onDelete: Restrict)
+
+  @@index([termId, userId, day, startMinute])
+  @@index([folderId, userId])
+}
+
+model Idempotency {
+  userId      String   @db.Uuid
+  route       String   @db.VarChar(100)
+  key         String   @db.VarChar(100)
+  requestHash String   @db.Char(64)
+  response    Json?    @db.JsonB
+  expiresAt   DateTime @db.Timestamptz(3)
+  lockVersion BigInt   @default(0)
+  teacher     Teacher  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, route, key])
+  @@index([expiresAt])
+}
+
+model MediaPreference {
+  materialId      String   @id @db.Uuid
+  userId          String   @db.Uuid
+  selectedMedia   String[]
+  songTemplateId  String   @default("balonku") @db.VarChar(32)
+  resourceVersion Int      @default(1)
+  updatedAt       DateTime @updatedAt @db.Timestamptz(3)
+  material        Material @relation(fields: [materialId, userId], references: [id, userId], onDelete: Cascade)
+  teacher         Teacher  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([materialId, userId])
+  @@index([userId])
+}

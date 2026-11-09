@@ -11,3 +11,4 @@ build/
 /docs/
 /DESIGN.md
 AGENTS.md
+apps/web/server/generated/

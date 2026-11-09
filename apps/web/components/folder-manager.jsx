@@ -4,7 +4,7 @@ import { Pencil, Trash2 } from "lucide-react";
 import Modal from "./modal";
 import { changeFolder } from "../lib/materials";
 
-export default function FolderManager({ folders, onChange, onClose, onNotice }) {
+export default function FolderManager({ teacherId, folders, onChange, onClose, onNotice }) {
   const [name, setName] = useState("");
   const [editing, setEditing] = useState(null);
   const [confirm, setConfirm] = useState(null);
@@ -15,7 +15,7 @@ export default function FolderManager({ folders, onChange, onClose, onNotice }) 
     if (busy) return;
     setBusy(true); setError("");
     try {
-      const folder = await changeFolder({ id: editing, name });
+      const folder = await changeFolder(teacherId, { id: editing, name, resourceVersion: folders.find(item => item.id === editing)?.resourceVersion });
       onChange(editing ? folders.map(item => item.id === editing ? folder : item) : [...folders, folder]);
       onNotice({ message: editing ? "Nama mapel diubah" : "Mapel ditambahkan", type: "success" });
       setName(""); setEditing(null);
@@ -26,7 +26,7 @@ export default function FolderManager({ folders, onChange, onClose, onNotice }) 
     if (busy) return;
     setBusy(true); setError("");
     try {
-      await changeFolder({ id: confirm.id, remove: true });
+      await changeFolder(teacherId, { id: confirm.id, remove: true, resourceVersion: confirm.resourceVersion });
       onChange(folders.filter(item => item.id !== confirm.id));
       if (editing === confirm.id) { setEditing(null); setName(""); }
       setConfirm(null);

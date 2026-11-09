@@ -18,7 +18,7 @@ export default function ExamLibrary({ exams, onOpen, onDelete, onDuplicate, onRe
       <ThemedSelect aria-label="Urutkan naskah" value={sort} onChange={e => setSort(e.target.value)}><option value="newest">Terbaru</option><option value="oldest">Terlama</option><option value="name">Nama A–Z</option></ThemedSelect>
     </div>
     <div>{shown.map(exam => <article key={exam.id} className="exam-saved-item">
-      <button className="exam-saved-open" onClick={() => onOpen(exam.id)}><FileText size={25} aria-hidden="true" /><span><strong>{examTitle(exam)}</strong><span>Kelas {exam.config.grade} · {exam.questions.length} soal</span></span><ArrowRight size={20} aria-hidden="true" /></button>
+      <button className="exam-saved-open" onClick={() => onOpen(exam.id)}><FileText size={25} aria-hidden="true" /><span><strong>{examTitle(exam)}</strong><span>Kelas {exam.config.grade} · {(exam.questions?.length ?? Object.values(exam.config.counts).reduce((sum, count) => sum + count, 0))} soal</span></span><ArrowRight size={20} aria-hidden="true" /></button>
       <div className="exam-library-actions">
         <button className="icon-button" aria-label={`Ubah nama ${examTitle(exam)}`} title="Ubah nama" onClick={() => { setRenaming(exam.id); setTitle(examTitle(exam)); }}><PencilLine size={20} aria-hidden="true" /></button>
         <button className="icon-button" aria-label={`Duplikasi ${examTitle(exam)}`} title="Duplikasi" onClick={() => onDuplicate(exam)}><Copy size={20} aria-hidden="true" /></button>
