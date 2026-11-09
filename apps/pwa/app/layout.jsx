@@ -4,7 +4,9 @@ import { brandAssets } from "@imajilearn/shared/assets";
 
 export const metadata = {
   title: { default: "ImajiLearn", template: "%s · ImajiLearn" },
-  icons: { icon: brandAssets.mark },
+  icons: { icon: brandAssets.mark, apple: "/app/icons/icon-192.png" },
+  manifest: "/app/manifest.webmanifest",
+  appleWebApp: { capable: true, title: "ImajiLearn", statusBarStyle: "default" },
 };
 
 export const viewport = { width: "device-width", initialScale: 1, viewportFit: "cover", themeColor: "#fdfaf3" };

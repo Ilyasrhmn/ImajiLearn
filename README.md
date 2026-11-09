@@ -62,9 +62,20 @@ generator contoh yang disertakan. Isi otomatis soal belum tersedia seperti
 di web; naskah tetap dapat ditulis manual, diduplikasi dan disalin untuk remedial.
 Cetak/PDF menggunakan dialog cetak browser dan pengaturan dokumen web yang sama.
 
-Jadwal sementara masih membuka halaman web di origin yang sama. Google tetap
-memakai callback dan redirect web yang ada.
-Manifest instalasi, service worker dan offline editing belum tersedia.
+Jadwal mobile tersedia di `/app/jadwal`, termasuk tahun ajaran/semester,
+hari Senin–Sabtu, kelas, mapel, tambah/edit/hapus dan akses folder materi.
+Beranda membaca agenda tersisa minggu berjalan dari API yang sama.
+Google tetap memakai callback dan redirect web yang ada.
+
+Manifest `/app/manifest.webmanifest` memakai ikon PNG dari logo kode asli dan
+mode standalone. Instalasi bergantung pada dukungan browser; produksi wajib
+HTTPS. Service worker hanya didaftarkan pada build produksi, scope `/app/`.
+Cache hanya berisi halaman offline publik, bukan HTML akun, dokumen, API,
+file privat maupun antrean write. Offline editing/sinkronisasi tidak tersedia.
+Update worker menunggu tindakan pengguna, dan tombol update ditahan selama
+editor melaporkan perubahan belum tersimpan. Tidak ada reload otomatis saat
+worker baru ditemukan. Jalankan kedua server produksi di belakang origin
+HTTPS yang sama dan konfigurasi upstream sebelum build web.
 Tidak ada perubahan schema database maupun migrasi penyimpanan LKPD.
 
 Uji integrasi fondasi memakai database sintetis terisolasi:

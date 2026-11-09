@@ -45,7 +45,11 @@ try {
   assert.match(authHtml, /name="email"/);
   assert.match(authHtml, /name="password"/);
   assert.match(authHtml, /\/app\/daftar/);
-  for (const path of ["/app/daftar", "/app/beranda", "/app/materi", "/app/akun", "/app/lkpd", "/app/ujian"]) {
+  const manifest = await (await fetch(`${origin}/app/manifest.webmanifest`)).json();
+  assert.equal(manifest.scope, "/app/");
+  for (const path of ["/app/sw.js", "/app/offline.html", ...manifest.icons.map(icon => icon.src)]) assert.equal((await fetch(`${origin}${path}`)).status, 200);
+  assert.match((await fetch(`${origin}/app/sw.js`)).headers.get("cache-control"), /no-store/);
+  for (const path of ["/app/daftar", "/app/beranda", "/app/materi", "/app/akun", "/app/lkpd", "/app/ujian", "/app/jadwal"]) {
     const screen = await fetch(`${origin}${path}`);
     assert.equal(screen.status, 200, path);
     assert.doesNotMatch(await screen.text(), /PWA synthetic teacher/);
