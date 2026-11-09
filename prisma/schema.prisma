@@ -135,12 +135,24 @@ model Material {
   teacher         Teacher  @relation(fields: [userId], references: [id], onDelete: Restrict)
   folder          Folder?  @relation(fields: [folderId, userId], references: [id, userId], onDelete: Restrict)
   mediaPreference MediaPreference?
+  readings        MaterialReading[]
   file            MaterialFile?
   worksheetDocuments WorksheetDocument[]
 
   @@unique([id, userId])
   @@index([userId, updatedAt, id])
   @@index([folderId, userId])
+}
+
+model MaterialReading {
+  materialId String   @db.Uuid
+  revision   String   @db.Char(64)
+  content    Json?    @db.JsonB
+  leaseId    String?  @db.Uuid
+  leaseUntil DateTime? @db.Timestamptz(3)
+  material   Material @relation(fields: [materialId], references: [id], onDelete: Cascade)
+
+  @@id([materialId, revision])
 }
 
 model MaterialFile {

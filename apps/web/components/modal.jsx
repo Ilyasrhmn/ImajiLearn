@@ -34,6 +34,7 @@ export async function swapModalContent(update, focusSelector) {
     if (!current()) return;
     flushSync(update);
     dialog.scrollTop = 0;
+    content.scrollTop = 0;
     content.inert = false;
     const style = getComputedStyle(dialog);
     const natural = content.scrollHeight + parseFloat(style.paddingTop) + parseFloat(style.paddingBottom) + parseFloat(style.borderTopWidth) + parseFloat(style.borderBottomWidth);
@@ -83,7 +84,7 @@ export function closeModal(onClose) {
   animation.finished.catch(() => {}).then(onClose);
 }
 
-export default function Modal({ title, children, onClose, wide = false }) {
+export default function Modal({ title, children, onClose, wide = false, className = "" }) {
   const ref = useRef(null);
   useEffect(() => {
     const dialog = ref.current;
@@ -106,7 +107,7 @@ export default function Modal({ title, children, onClose, wide = false }) {
     <dialog
       ref={ref}
       aria-label={title}
-      className={`modal ${wide ? "modal-wide" : ""}`}
+      className={`modal${wide ? " modal-wide" : ""}${className ? ` ${className}` : ""}`}
       onCancel={(e) => {
         e.preventDefault();
         closeModal(onClose);
