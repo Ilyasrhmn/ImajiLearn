@@ -3,7 +3,7 @@ import { useState } from "react";
 import { BookOpen, Check, FileText, GitBranch, Music2, Presentation, Scissors } from "lucide-react";
 import Modal from "./modal";
 import Disclosure from "./disclosure";
-import { updateMaterial } from "../lib/materials";
+import { downloadMaterial, updateMaterial } from "../lib/materials";
 
 export const formats = [
   { id: "reading", label: "Bacaan bergambar", description: "Baca dan tanya jawab bersama.", Icon: BookOpen },
@@ -29,15 +29,19 @@ export default function MaterialDetail({ teacherId, material, onClose, onSaved }
     if (busy) return;
     setBusy(true); setError("");
     try {
-      const updated = await updateMaterial(teacherId, material.id, { selectedMedia: selected, songTemplateId: song });
+      const updated = await updateMaterial(teacherId, material, { selectedMedia: selected, songTemplateId: song });
       onSaved(updated);
-    } catch { setError("Pilihan belum tersimpan. Coba lagi."); setBusy(false); }
+    } catch (error) { setError(error.message); setBusy(false); }
   }
-  function downloadFile() {
-    const url = URL.createObjectURL(material.file);
-    const link = document.createElement("a");
-    link.href = url; link.download = material.file.name; link.click();
-    setTimeout(() => URL.revokeObjectURL(url), 60000);
+  async function downloadFile() {
+    try {
+      const url = URL.createObjectURL(await downloadMaterial(teacherId, material.id));
+      const link = document.createElement("a");
+      link.href = url; link.download = material.file.name; link.click();
+      setTimeout(() => URL.revokeObjectURL(url), 60000);
+    } catch (error) {
+      setError(error.message);
+    }
   }
   return <Modal title={material.title} onClose={onClose} wide>
     <div className="format-detail">
@@ -48,11 +52,12 @@ export default function MaterialDetail({ teacherId, material, onClose, onSaved }
           <div className="format-choices">{formats.map(({ id, label, description, Icon }) => <label key={id} className={`format-choice${selected.includes(id) ? " selected" : ""}`}><input type="checkbox" checked={selected.includes(id)} onChange={() => toggle(id)} /><Icon size={26} aria-hidden="true" /><strong>{label}</strong><span>{description}</span>{selected.includes(id) && <Check className="format-check" size={20} aria-hidden="true" />}</label>)}</div>
         </fieldset>
         <div className="song-settings" data-open={selected.includes("song")} inert={!selected.includes("song")} aria-hidden={!selected.includes("song")}><div><fieldset><legend>Pakai lagu yang mana?</legend><div className="song-options">{songs.map(item => <label className={`song-option${song === item.id ? " selected" : ""}`} key={item.id}><input type="radio" name="song" checked={song === item.id} onChange={() => setSong(item.id)} /><span>{item.title}</span></label>)}</div></fieldset></div></div>
-        {error && <p className="source-error" role="alert">{error}</p>}
         <div className="media-selection-actions"><button type="button" className="format-select-all" onClick={() => setSelected(selected.length === formats.length ? [] : formats.map(format => format.id))}>{selected.length === formats.length ? "Batalkan semua" : "Pilih semua"}</button><button type="button" className="upload-button" onClick={save} disabled={busy}>{busy ? "Menyimpan..." : "Simpan pilihan"}<Check size={18} aria-hidden="true" /></button></div>
       </>}
       {!material.archived && <div className="material-lkpd-action"><a className="source-secondary" href={`/lkpd?material=${encodeURIComponent(material.id)}`}><Scissors size={20} aria-hidden="true" />Buat LKPD</a></div>}
       {material.file && <button type="button" className="source-secondary format-source-file" onClick={downloadFile}><FileText size={19} aria-hidden="true" />{material.file.name}</button>}
+      {material.extractionStatus === "failed" && <p className="source-error" role="status">Teks file belum terbaca. Unggah ulang dengan teks materi untuk menggunakannya.</p>}
+      {error && <p className="source-error" role="alert">{error}</p>}
       {material.text && <Disclosure title="Lihat teks sumber"><p className="format-source-text">{material.text}</p></Disclosure>}
     </div>
   </Modal>;

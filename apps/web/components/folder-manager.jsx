@@ -15,7 +15,7 @@ export default function FolderManager({ teacherId, folders, onChange, onClose, o
     if (busy) return;
     setBusy(true); setError("");
     try {
-      const folder = await changeFolder(teacherId, { id: editing, name });
+      const folder = await changeFolder(teacherId, { id: editing, name, resourceVersion: folders.find(item => item.id === editing)?.resourceVersion });
       onChange(editing ? folders.map(item => item.id === editing ? folder : item) : [...folders, folder]);
       onNotice({ message: editing ? "Nama mapel diubah" : "Mapel ditambahkan", type: "success" });
       setName(""); setEditing(null);
@@ -26,7 +26,7 @@ export default function FolderManager({ teacherId, folders, onChange, onClose, o
     if (busy) return;
     setBusy(true); setError("");
     try {
-      await changeFolder(teacherId, { id: confirm.id, remove: true });
+      await changeFolder(teacherId, { id: confirm.id, remove: true, resourceVersion: confirm.resourceVersion });
       onChange(folders.filter(item => item.id !== confirm.id));
       if (editing === confirm.id) { setEditing(null); setName(""); }
       setConfirm(null);

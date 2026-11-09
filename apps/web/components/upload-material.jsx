@@ -5,6 +5,7 @@ import Modal, { closeModal } from "./modal";
 import ThemedSelect from "./themed-select";
 import { Mascot } from "./mascot";
 import { saveMaterial } from "../lib/materials";
+import { createId } from "../lib/id.mjs";
 
 export default function UploadMaterial({ teacherId, onClose, onSaved, folders, initialFolder = "" }) {
   const [title, setTitle] = useState("");
@@ -16,6 +17,7 @@ export default function UploadMaterial({ teacherId, onClose, onSaved, folders, i
   const [reading, setReading] = useState(false);
   const input = useRef(null);
   const request = useRef(0);
+  const retry = useRef(null);
 
   async function choose(next) {
     if (!next) return;
@@ -47,10 +49,12 @@ export default function UploadMaterial({ teacherId, onClose, onSaved, folders, i
     setSaving(true);
     setError("");
     try {
-      const material = { id: globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2)}`, title: title.trim(), folderId, file, text: text.trim(), createdAt: Date.now() };
-      await saveMaterial(teacherId, material);
-      onSaved(material);
-    } catch { setError("Materi belum tersimpan. Periksa ruang penyimpanan browser dan coba lagi."); setSaving(false); }
+      const material = { title: title.trim(), folderId, file, text };
+      const prior = retry.current;
+      const key = prior && Object.keys(material).every(field => material[field] === prior.material[field]) ? prior.key : createId();
+      retry.current = { material, key };
+      onSaved(await saveMaterial(teacherId, material, key));
+    } catch (error) { setError(error.message); setSaving(false); }
   }
   return <Modal title="Unggah materi" onClose={onClose} wide>
     <form className="source-form" onSubmit={submit}>

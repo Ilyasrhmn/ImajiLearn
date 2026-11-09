@@ -13,7 +13,7 @@ import Notice from "./notice";
 import { TemplateShape } from "./lkpd-shapes";
 import LkpdViewer from "./lkpd-viewer";
 import LkpdPreflight from "./lkpd-preflight";
-import { listFolders, listMaterials } from "../lib/materials";
+import { getMaterial, listFolders, listMaterials } from "../lib/materials";
 import { PROFILE_KEY, readProfile } from "../lib/teacher-profile.mjs";
 import { LKPD_KEY, LKPD_LIMIT, lkpdTemplates, makeLkpdRequest, createLkpd, parseLkpds } from "../lib/lkpd.mjs";
 import { generateLkpd } from "../lib/lkpd-service.mjs";
@@ -53,7 +53,7 @@ export default function LkpdStudio({ teacherId }) {
   async function generate() {
     if (busy) return;
     let request;
-    try { const source = materials.find(item => item.id === sourceId); request = makeLkpdRequest(source ? { ...source, fileName: source.file?.name || "" } : source, templateId, profile.grade); }
+    try { const source = await getMaterial(teacherId, sourceId); request = makeLkpdRequest(source ? { ...source, fileName: source.file?.name || "" } : source, templateId, profile.grade); }
     catch (error) { setNotice({ message: error.message, type: "error" }); return; }
     const cached = documents.find(item => item.cacheKey === request.cacheKey);
     if (cached) { open(cached.id); return; }
