@@ -16,11 +16,23 @@ model Teacher {
   grade        String   @default("") @db.VarChar(1)
   createdAt    DateTime @default(now()) @db.Timestamptz(3)
   sessions     Session[]
+  exams        ExamDocument[]
   worksheetLibrary WorksheetLibrary?
   materials    Material[]
   folders      Folder[]
   idempotency  Idempotency[]
   mediaPreferences MediaPreference[]
+}
+
+model ExamDocument {
+  id              String   @id @db.Uuid
+  userId          String   @db.Uuid
+  teacher         Teacher  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  document        Json     @db.JsonB
+  sourceSnapshots Json     @db.JsonB
+  resourceVersion Int     @default(1)
+
+  @@index([userId, id])
 }
 
 model WorksheetLibrary {
