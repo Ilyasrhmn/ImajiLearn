@@ -24,7 +24,6 @@ export default function MaterialsScreen() {
       if (!active) return;
       setItems(materials); setFolders(subjects); setLoaded(true);
       if (!openedQuery.current) {
-        openedQuery.current = true;
         const params = new URLSearchParams(window.location.search);
         const folder = params.get("folder"); if (subjects.some(item => item.id === folder)) setFolderId(folder);
         if (params.get("tambah") === "1") setSheet({ type: "upload" });
@@ -34,6 +33,7 @@ export default function MaterialsScreen() {
           const detail = await getMaterial(teacherId, base.id);
           if (active) setSheet({ type: "detail", item: { ...base, ...detail } });
         }
+        if (active) openedQuery.current = true;
       }
     }).catch(err => { if (active) setError(err.message); });
     return () => { active = false; mounted.current = false; };
