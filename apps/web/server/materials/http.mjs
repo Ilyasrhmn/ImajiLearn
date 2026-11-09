@@ -6,6 +6,10 @@ import { createMaterialService } from "./service.mjs";
 export function createMaterialHandlers(db, config) {
   const { requireTeacher } = createSessionHandlers(db, config), materials = createMaterialService(db);
   return {
+    list: endpoint(async request => {
+      const teacher = await requireTeacher(request);
+      return Response.json(await materials.list(teacher.id, new URL(request.url).searchParams));
+    }, config.origin),
     create: endpoint(async request => {
       const teacher = await requireTeacher(request);
       const data = await materials.create(teacher.id, await readJson(request, 256 * 1024), request.headers.get("idempotency-key"));

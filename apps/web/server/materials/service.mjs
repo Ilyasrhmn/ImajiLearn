@@ -5,6 +5,29 @@ import { withIdempotency } from "../core/idempotency.mjs";
 import { canonicalMaterialId, lockOwnedMaterial, sourceSnapshot } from "./readers.mjs";
 
 const notFound = () => new ApiError(404, "MATERIAL_NOT_FOUND", "Materi tidak ditemukan.");
+
+function listQuery(params) {
+  const invalid = () => new ApiError(400, "INVALID_QUERY", "Parameter daftar materi tidak valid.");
+  for (const key of params.keys()) {
+    if (!["view", "q", "cursor", "limit"].includes(key) || params.getAll(key).length !== 1) throw invalid();
+  }
+  const view = params.get("view") ?? "active";
+  const q = (params.get("q") ?? "").trim();
+  const limit = params.get("limit") ?? "50";
+  if (!["active", "archive"].includes(view) || q.length > 120 || q.includes("\0") ||
+      !/^[1-9]\d{0,2}$/.test(limit) || Number(limit) > 100) throw invalid();
+  const cursor = params.get("cursor");
+  let after;
+  if (cursor !== null) {
+    if (!/^[A-Za-z0-9_-]{1,128}$/.test(cursor)) throw invalid();
+    const [time, id, ...extra] = Buffer.from(cursor, "base64url").toString("utf8").split("|");
+    const createdAt = new Date(time);
+    if (extra.length || !canonicalMaterialId(id) || !Number.isFinite(createdAt.getTime()) ||
+        createdAt.toISOString() !== time) throw invalid();
+    after = { OR: [{ createdAt: { lt: createdAt } }, { createdAt, id: { lt: id } }] };
+  }
+  return { archived: view === "archive", q, limit: Number(limit), after };
+}
 function dto(row) {
   return { id: row.id, title: row.title, folderId: null, file: null, text: row.text,
     extractionStatus: "ready", revision: row.revision, pinned: false, archived: row.archived,
@@ -21,6 +44,21 @@ export function createMaterialService(db) {
   }
   return {
     withOwnedMaterial,
+    async list(userId, params) {
+      const { archived, q, limit, after } = listQuery(params);
+      const rows = await db.material.findMany({
+        where: { userId, archived, ...(q ? { title: { contains: q.replace(/[\\%_]/g, "\\$&"), mode: "insensitive" } } : {}), ...after },
+        orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+        take: limit + 1,
+        select: { id: true, title: true, revision: true, archived: true, resourceVersion: true, createdAt: true, updatedAt: true },
+      });
+      const items = rows.slice(0, limit);
+      const last = items.at(-1);
+      const nextCursor = rows.length > limit
+        ? Buffer.from(`${last.createdAt.toISOString()}|${last.id}`).toString("base64url")
+        : null;
+      return { data: items.map(dto), page: { nextCursor } };
+    },
     async get(userId, id) {
       id = canonicalMaterialId(id);
       const row = id ? await db.material.findFirst({ where: { id, userId } }) : null;

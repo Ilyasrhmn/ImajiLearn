@@ -76,6 +76,24 @@ test("material source readers enforce ownership and return complete ready-source
   assert.equal(afterRead.updatedAt, material.updatedAt); assert.equal(afterRead.resourceVersion, 1);
 });
 
+test("lists only owned material metadata with search, archive filtering and cursor pagination", async () => {
+  const list = (query = "", user = a) => api.list(req("GET", `materials${query}`, undefined, { cookie: user?.cookie }));
+  assert.equal((await list("?limit=invalid", {})).status, 401);
+  assert.equal((await list("?cursor=broken")).status, 400);
+  const created = await create({ title: "TUMBUHAN 100%_asli", text: "Private source text" });
+  const item = (await created.json()).data;
+  const filtered = await (await list("?q=tumbuhan%20100%25_")).json();
+  assert.deepEqual(filtered.data.map(row => row.id), [item.id]);
+  assert.equal(Object.hasOwn(filtered.data[0], "text"), false);
+  const first = await (await list("?limit=1")).json();
+  assert.ok(first.page.nextCursor);
+  const second = await (await list(`?limit=1&cursor=${first.page.nextCursor}`)).json();
+  assert.notEqual(first.data[0].id, second.data[0].id);
+  assert.deepEqual((await (await list("?q=tumbuhan", b)).json()).data, []);
+  assert.equal((await patch(item.id, { archived: true }, item.resourceVersion)).status, 200);
+  assert.deepEqual((await (await list("?view=archive")).json()).data.map(row => row.id), [item.id]);
+});
+
 test("archive/restore use resource versions without changing source revision", async () => {
   let response = await patch(material.id, { archived: true }, 1);
   assert.equal(response.status, 200); assert.equal(response.headers.get("etag"), '"2"');
