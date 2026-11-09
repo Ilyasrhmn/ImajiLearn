@@ -10,3 +10,6 @@ body {
 main {
   padding: 32px;
 }
+
+.foundation-mascot { display: block; width: 100px; height: 135px; }
+.smile-on-hover { opacity: 0; }

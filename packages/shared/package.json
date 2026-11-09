@@ -1,0 +1,15 @@
+{
+  "name": "@imajilearn/shared",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./lib/*": "./lib/*",
+    "./components/*": "./components/*",
+    "./assets": "./assets.mjs"
+  },
+  "peerDependencies": {
+    "react": "19.3.1",
+    "lucide-react": "^1.70.0"
+  }
+}

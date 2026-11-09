@@ -1,0 +1,25 @@
+import { navigateAfterSessionChange, sessionLoginPath } from "./session.mjs";
+import { createId } from "./id.mjs";
+
+export async function studioRequest(teacherId, path, { method = "GET", body, version, key, signal, binary = false } = {}) {
+  const headers = { "X-Teacher-Id": teacherId };
+  if (version !== undefined) headers["If-Match"] = `"${version}"`;
+  if (method === "POST") headers["Idempotency-Key"] = key ?? createId();
+  const multipart = body instanceof FormData;
+  if (body !== undefined && !multipart) headers["Content-Type"] = "application/json";
+  const response = await fetch(`/api/v1${path}`, {
+    method, headers, signal, cache: "no-store",
+    body: multipart ? body : body === undefined ? undefined : JSON.stringify(body),
+  });
+  if (response.status === 401) navigateAfterSessionChange(sessionLoginPath());
+  if (response.ok && binary) return response.blob();
+  if (response.status === 204) return null;
+  const result = await response.json().catch(() => null);
+  if (result?.error?.code === "ACCOUNT_CHANGED") window.location.reload();
+  if (!response.ok || !result || !Object.hasOwn(result, "data")) {
+    const error = new Error(result?.error?.message || "Permintaan belum berhasil. Coba lagi.");
+    error.status = response.status;
+    throw error;
+  }
+  return result;
+}

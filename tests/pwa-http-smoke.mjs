@@ -38,6 +38,12 @@ try {
   assert.equal(page.status, 200);
   const html = await page.text();
   assert.match(html, /ImajiLearn PWA/);
+  assert.match(html, /mascot-book/);
+  for (const path of ["/brand/imajilearn-mark.svg", "/brand/imajilearn-wordmark.svg", "/lkpd/pancasila/star.svg"]) {
+    const assetResponse = await fetch(`${origin}${path}`);
+    assert.equal(assetResponse.status, 200);
+    assert.match(await assetResponse.text(), /<svg/);
+  }
   const asset = html.match(/src="(\/app\/_next\/static\/[^"\s]+\.js[^"\s]*)"/);
   assert.ok(asset, "PWA scripts must retain /app/_next rather than collide with web assets");
   assert.equal((await fetch(`${origin}${asset[1].replaceAll("&amp;", "&")}`)).status, 200);
