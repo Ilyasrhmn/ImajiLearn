@@ -106,9 +106,14 @@ test("preference migration preserves existing materials, revisions and teacher d
     assert.ok(index > 0);
     for (const migration of upgrade.migrations.slice(0, index)) await upgrade.migrate(migration);
     const teacher = await upgrade.db.teacher.create({ data: { name: "Upgrade", email: "preference-upgrade@example.test", passwordHash: "synthetic-test-hash" } });
-    const before = await createMaterialService(upgrade.db).create(teacher.id, { title: "Existing source", text: "Original text." }, randomUUID());
+    const id = randomUUID(), title = "Existing source", text = "Original text.", revision = "a".repeat(64);
+    await upgrade.db.$executeRaw`INSERT INTO "Material" ("id", "userId", "title", "text", "revision")
+      VALUES (${id}::uuid, ${teacher.id}::uuid, ${title}, ${text}, ${revision})`;
     for (const migration of upgrade.migrations.slice(index)) await upgrade.migrate(migration);
-    assert.deepEqual(await createMaterialService(upgrade.db).get(teacher.id, before.id), before);
+    const material = await createMaterialService(upgrade.db).get(teacher.id, id);
+    assert.deepEqual({ id: material.id, title: material.title, text: material.text, revision: material.revision }, { id, title, text, revision });
+    assert.equal(material.pinned, false);
+    assert.equal(material.folderId, null);
     assert.deepEqual(await upgrade.db.teacher.findUnique({ where: { id: teacher.id } }), teacher);
     assert.equal(await upgrade.db.mediaPreference.count(), 0);
   } finally { await upgrade.close(); }

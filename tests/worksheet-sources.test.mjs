@@ -160,9 +160,14 @@ test("source FK upgrade preserves legacy snapshots while detaching missing and f
     const teachers = await Promise.all(["a", "b"].map(label => upgrade.db.teacher.create({ data: {
       name: `Synthetic Upgrade ${label}`, email: `worksheet-source-upgrade-${label}@example.test`, passwordHash: "synthetic-test-hash",
     } })));
-    const materialService = createMaterialService(upgrade.db);
-    const own = await materialService.create(teachers[0].id, { title: "Own", text: "Synthetic source" }, randomUUID());
-    const foreign = await materialService.create(teachers[1].id, { title: "Foreign", text: "Other synthetic source" }, randomUUID());
+    async function legacySource(userId, title, text) {
+      const id = randomUUID(), revision = "a".repeat(64);
+      await upgrade.db.$executeRaw`INSERT INTO "Material" ("id", "userId", "title", "text", "revision")
+        VALUES (${id}::uuid, ${userId}::uuid, ${title}, ${text}, ${revision})`;
+      return { id, title, revision };
+    }
+    const own = await legacySource(teachers[0].id, "Own", "Synthetic source");
+    const foreign = await legacySource(teachers[1].id, "Foreign", "Other synthetic source");
     await upgrade.db.worksheetLibrary.create({ data: { ownerId: teachers[0].id } });
     const documents = [];
     for (const source of [own, { id: randomUUID(), title: "Deleted source", revision: randomUUID() }, foreign]) {

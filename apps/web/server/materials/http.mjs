@@ -24,5 +24,10 @@ export function createMaterialHandlers(db, config) {
       const data = await materials.patch(teacher.id, id, await readJson(request), expectedVersion(request));
       return Response.json({ data }, { headers: etag(data.resourceVersion) });
     }, config.origin),
+    remove: endpoint(async (request, id) => {
+      const teacher = await requireTeacher(request);
+      await materials.remove(teacher.id, id, expectedVersion(request));
+      return new Response(null, { status: 204 });
+    }, config.origin),
   };
 }
