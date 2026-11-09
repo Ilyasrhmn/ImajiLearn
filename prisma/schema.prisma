@@ -20,6 +20,7 @@ model Teacher {
   worksheetLibrary WorksheetLibrary?
   materials    Material[]
   folders      Folder[]
+  scheduleTerms ScheduleTerm[]
   idempotency  Idempotency[]
   mediaPreferences MediaPreference[]
 }
@@ -140,9 +141,40 @@ model Folder {
   updatedAt       DateTime @default(now()) @db.Timestamptz(3)
   teacher         Teacher  @relation(fields: [userId], references: [id], onDelete: Restrict)
   materials       Material[]
+  scheduleSlots   ScheduleSlot[]
 
   @@unique([id, userId])
   @@unique([userId, nameKey])
+}
+
+model ScheduleTerm {
+  id              String   @id @default(uuid()) @db.Uuid
+  userId          String   @db.Uuid
+  year            Int
+  semester        String   @db.Char(1)
+  resourceVersion Int      @default(1)
+  teacher         Teacher  @relation(fields: [userId], references: [id], onDelete: Restrict)
+  entries         ScheduleSlot[]
+
+  @@unique([userId, year, semester])
+  @@unique([id, userId])
+}
+
+model ScheduleSlot {
+  id              String   @id @default(uuid()) @db.Uuid
+  userId          String   @db.Uuid
+  termId          String   @db.Uuid
+  folderId        String   @db.Uuid
+  className       String   @db.VarChar(80)
+  day             Int
+  startMinute     Int
+  endMinute       Int
+  resourceVersion Int      @default(1)
+  term            ScheduleTerm @relation(fields: [termId, userId], references: [id, userId], onDelete: Restrict)
+  folder          Folder   @relation(fields: [folderId, userId], references: [id, userId], onDelete: Restrict)
+
+  @@index([termId, userId, day, startMinute])
+  @@index([folderId, userId])
 }
 
 model Idempotency {
