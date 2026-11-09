@@ -89,10 +89,10 @@ export default function ExamDocumentViewer({ exam, saved, onChange, onBack, onRe
     window.print();
   }
   return <div className="exam-workspace">
-    <div className="exam-editor-heading"><button className="text-button" onClick={onBack}><ArrowLeft size={20} aria-hidden="true" />Semua naskah</button><span role="status" className={saved ? "exam-save-status" : "field-error"}>{saved ? "Tersimpan di perangkat ini" : "Belum tersimpan"}</span></div>
+    <div className="exam-editor-heading"><button className="text-button" onClick={onBack}><ArrowLeft size={20} aria-hidden="true" />Semua naskah</button><span role="status" className={saved ? "exam-save-status" : "field-error"}>{saved ? "Tersimpan" : "Belum tersimpan"}</span></div>
     <div className="exam-viewer-title"><h1>{exam.title?.trim() || EXAM_TYPES[exam.config.type]}</h1><div>
       <button className="button button-secondary" onClick={() => studioAlert({ title: "Pembuatan soal belum tersedia", message: "Anda tetap bisa menulis dan mengedit naskah ini.", warning: true, kind: "pen" })}><FileText size={19} aria-hidden="true" />Isi otomatis</button>
-      {exam.config.type !== "remedial" && <button className="icon-button" aria-label="Salin untuk remedial" title="Salin untuk remedial" onClick={onRemedial}><Copy size={21} aria-hidden="true" /></button>}
+      {exam.config.type !== "remedial" && <button className="icon-button" aria-label="Salin untuk remedial" title="Salin untuk remedial" disabled={!saved} onClick={onRemedial}><Copy size={21} aria-hidden="true" /></button>}
     </div></div>
     <div className="exam-print-actions" role="group" aria-label="Cetak dokumen">{tabs.map(item => <button key={item.id} className="button button-secondary" onClick={() => print(item.id)}><Printer size={18} aria-hidden="true" />Cetak {item.id === "questions" ? "soal" : item.id === "blueprint" ? "kisi-kisi" : "kunci"}</button>)}</div>
     <div className="exam-tabs" role="tablist" aria-label="Dokumen ujian">{tabs.map((item, index) => <button key={item.id} id={`exam-tab-${item.id}`} role="tab" aria-selected={tab === item.id} aria-controls="exam-document" tabIndex={tab === item.id ? 0 : -1} onClick={() => changeTab(item.id)} onKeyDown={event => {
