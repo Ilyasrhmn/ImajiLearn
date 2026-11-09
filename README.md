@@ -45,9 +45,25 @@ sematan, arsip/pulihkan, pindah, hapus, unduh sumber, dan preferensi media/lagu.
 Form yang berubah meminta konfirmasi sebelum ditutup; kesalahan penyimpanan
 tetap menampilkan form untuk dicoba ulang. Beranda memuat materi aktif terbaru.
 
-Pada tahap ini pintasan LKPD, soal/ujian, dan jadwal masih membuka halaman web
-yang sudah berfungsi di origin yang sama. Layar mobile khususnya dikerjakan
-berikutnya. Google tetap memakai callback dan redirect web yang ada.
+LKPD dan soal/ujian tersedia melalui `/app/lkpd` dan `/app/ujian`. Editor,
+renderer A4, pola aktivitas, pratinjau, validasi dan akses dokumennya dipakai
+bersama dengan web dari `@imajilearn/shared`. LKPD tetap tersimpan di browser
+dengan key per guru yang sama; ujian memakai API dan autosave server.
+Pustaka ujian mobile ditampilkan lebih dahulu ketika sudah ada naskah.
+Navigasi utama menahan perpindahan ketika edit LKPD atau penyimpanan ujian
+belum selesai. Ganti nama naskah menunggu respons server sebelum menutup form.
+
+Pembuatan LKPD membutuhkan `NEXT_PUBLIC_LKPD_ENDPOINT` pada frontend yang
+digunakan (web maupun PWA), dikonfigurasi sebelum build. Endpoint harus
+memenuhi kontrak yang sama dan, bila berbeda origin, mengizinkan Origin
+aplikasi. Nilai ini adalah URL publik, bukan tempat menyimpan API key.
+Tanpa endpoint, aplikasi menampilkan status belum tersedia; tidak ada
+generator contoh yang disertakan. Isi otomatis soal belum tersedia seperti
+di web; naskah tetap dapat ditulis manual, diduplikasi dan disalin untuk remedial.
+Cetak/PDF menggunakan dialog cetak browser dan pengaturan dokumen web yang sama.
+
+Jadwal sementara masih membuka halaman web di origin yang sama. Google tetap
+memakai callback dan redirect web yang ada.
 Manifest instalasi, service worker dan offline editing belum tersedia.
 Tidak ada perubahan schema database maupun migrasi penyimpanan LKPD.
 
