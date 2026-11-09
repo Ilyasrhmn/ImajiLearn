@@ -7,7 +7,7 @@ import { startNode, runNode, stopNode } from "./support/process.mjs";
 try { await access(new URL("../apps/web/.next/BUILD_ID", import.meta.url)); }
 catch { throw new Error("Run npm run build before npm run test:http."); }
 
-const storage = await testDatabase();
+const storage = await testDatabase({ socketConnections: 12 });
 let server;
 try {
   const encoding = await storage.sql("SHOW server_encoding");
@@ -22,7 +22,7 @@ try {
     TEST_BASE_URL: `http://127.0.0.1:${port}`, REGISTER_IP_LIMIT: "100",
   };
   server = startNode(["node_modules/next/dist/bin/next", "start", "apps/web", "--hostname", "127.0.0.1", "--port", String(port)], { env });
-  for (const suite of ["registration-http-smoke", "sessions-http-smoke", "materials-http-smoke", "worksheets-http-smoke"]) {
+  for (const suite of ["registration-http-smoke", "sessions-http-smoke", "materials-http-smoke", "workspace-http-smoke", "worksheets-http-smoke"]) {
     await runNode([`tests/${suite}.mjs`], { env });
   }
   console.log("Backend HTTP integration passed using isolated synthetic data.");

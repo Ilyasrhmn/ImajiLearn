@@ -3,7 +3,7 @@ import { randomUUID } from "node:crypto";
 import pg from "pg";
 import { createDatabase } from "../../apps/web/server/core/database.mjs";
 
-export async function testDatabase() {
+export async function testDatabase({ socketConnections = 2 } = {}) {
   let engine, socket, admin;
   const schema = `test_${randomUUID().replaceAll("-", "")}`;
   let connectionString = process.env.TEST_DATABASE_URL;
@@ -18,7 +18,7 @@ export async function testDatabase() {
     engine = await PGlite.create();
     await engine.exec(`CREATE SCHEMA "${schema}"; SET search_path TO "${schema}"`);
     // Allow the old socket to finish closing while a new client reconnects.
-    socket = new PGLiteSocketServer({ db: engine, port: 0, host: "127.0.0.1", maxConnections: 2 });
+    socket = new PGLiteSocketServer({ db: engine, port: 0, host: "127.0.0.1", maxConnections: socketConnections });
     await socket.start();
     connectionString = `postgresql://postgres:postgres@${socket.getServerConn()}/postgres`;
   }
