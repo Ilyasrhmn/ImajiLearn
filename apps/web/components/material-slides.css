@@ -1,0 +1,124 @@
+.material-slides .material-slide {
+  display: grid;
+  grid-template-columns: 1fr minmax(0, .9fr);
+  align-items: center;
+  gap: clamp(16px, 4vw, 30px);
+  min-height: 260px;
+  padding: clamp(20px, 5vw, 42px);
+  border-radius: 18px;
+  background: #eef1e6;
+}
+
+.material-slide-text {
+  min-width: 0;
+}
+
+.material-slide.material-slide-zoomed {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.material-slide-image,
+.material-slide-image-placeholder {
+  width: 100%;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--paper);
+}
+
+.material-slide-image {
+  position: relative;
+  padding: 0;
+  cursor: zoom-in;
+}
+
+.material-slide-zoomed .material-slide-image {
+  grid-row: 1;
+  width: min(100%, 520px);
+  justify-self: center;
+  cursor: zoom-out;
+}
+
+.material-slide-image img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.material-slide-image-control {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  display: grid;
+  width: 36px;
+  height: 36px;
+  place-items: center;
+  border-radius: 9px;
+  background: var(--paper);
+  color: var(--ink);
+}
+
+.material-slide-image-placeholder {
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  min-height: 180px;
+  padding: 14px;
+  text-align: center;
+}
+
+.material-slide h3 {
+  margin: 0 0 18px;
+  font-size: clamp(24px, 4vw, 38px);
+  line-height: 1.2;
+}
+
+.material-slide ul {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding-inline-start: 1.2em;
+  font-size: clamp(17px, 2.5vw, 22px);
+  line-height: 1.5;
+}
+
+.material-slide-controls,
+.material-slide-pagination {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.material-slide-controls {
+  flex-wrap: wrap;
+  justify-content: space-between;
+  margin-top: 16px;
+}
+
+.material-slide-pagination output {
+  min-width: 46px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.material-slide-pagination button {
+  padding: 0;
+}
+
+.material-slide-pagination button:disabled {
+  opacity: .45;
+  cursor: default;
+}
+
+@media (max-width: 620px) {
+  .material-slides .material-slide {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .material-slide { animation: material-slide-enter 180ms ease-out; }
+  @keyframes material-slide-enter {
+    from { opacity: 0; transform: translateY(4px); }
+  }
+}

@@ -1,11 +1,12 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import { BookOpen, Check, Download, Music2, Scissors } from "lucide-react";
+import { Check, Download, Music2, Scissors } from "lucide-react";
 import Modal, { swapModalContent } from "./modal";
 import Disclosure from "./disclosure";
 import Icon from "./icon";
 import MaterialReading from "./material-reading";
 import MaterialVisual from "./material-visual";
+import MaterialSlides from "./material-slides";
 import { downloadMaterial, updateMaterial } from "../lib/materials";
 import { studioRequest } from "../lib/studio-api.mjs";
 import "./material-detail.css";
@@ -17,8 +18,9 @@ export const formats = [
   { id: "song", label: "Lagu belajar", description: "Nyanyikan materi bersama kelas." },
 ];
 const outputActions = [
-  { id: "reading", segment: "reading", label: "bacaan" },
-  { id: "mindmap", segment: "visual", label: "visual" },
+  { id: "reading", segment: "reading", label: "bacaan", icon: "book" },
+  { id: "mindmap", segment: "visual", label: "visual", icon: "map" },
+  { id: "slides", segment: "slides", label: "slide", icon: "slides" },
 ];
 const songs = [
   { id: "balonku", title: "Balonku Ada Lima" },
@@ -89,6 +91,8 @@ export default function MaterialDetail({ teacherId, material, onClose, onSaved }
     {openId === "reading" ? <MaterialReading reading={outputs.reading} teacherId={teacherId}
       illustrationPath={sourcePath + "/reading/illustration"} onBack={back} /> :
     openId === "mindmap" ? <MaterialVisual visual={outputs.mindmap} onBack={back} /> :
+    openId === "slides" ? <MaterialSlides deck={outputs.slides} teacherId={teacherId}
+      illustrationsPath={sourcePath + "/slides/illustrations"} revision={material.revision} onBack={back} /> :
     <div className="format-detail" ref={detail}>
       <h2>{material.title}</h2>
       {material.file ? (
@@ -119,7 +123,7 @@ export default function MaterialDetail({ teacherId, material, onClose, onSaved }
             {outputActions.filter(({ id }) => selected.includes(id) || outputs[id]).map(action => (
               <button key={action.id} type="button" className="upload-button" data-output-action={action.id}
                 onClick={() => openOutput(action)} disabled={busy || !sourceReady || outputs[action.id] === undefined}>
-                {action.id === "reading" ? <BookOpen size={20} aria-hidden="true" /> : <Icon name="map" size={20} />}
+                <Icon name={action.icon} size={20} />
                 {outputs[action.id] ? "Buka " + action.label : busyId === action.id ? "Membuat " + action.label + "…" : "Buat " + action.label}
               </button>
             ))}

@@ -137,6 +137,7 @@ model Material {
   mediaPreference MediaPreference?
   readings        MaterialReading[]
   visuals         MaterialVisual[]
+  slideDecks      MaterialSlideDeck[]
   file            MaterialFile?
   worksheetDocuments WorksheetDocument[]
 
@@ -168,6 +169,30 @@ model MaterialVisual {
   material   Material @relation(fields: [materialId], references: [id], onDelete: Cascade)
 
   @@id([materialId, revision])
+}
+
+model MaterialSlideDeck {
+  materialId String    @db.Uuid
+  revision   String    @db.Char(64)
+  content    Json?     @db.JsonB
+  leaseId    String?   @db.Uuid
+  leaseUntil DateTime? @db.Timestamptz(3)
+  material   Material  @relation(fields: [materialId], references: [id], onDelete: Cascade)
+  illustrations MaterialSlideIllustration[]
+
+  @@id([materialId, revision])
+}
+
+model MaterialSlideIllustration {
+  materialId String    @db.Uuid
+  revision   String    @db.Char(64)
+  slideIndex Int
+  bytes      Bytes?
+  leaseId    String?   @db.Uuid
+  leaseUntil DateTime? @db.Timestamptz(3)
+  deck       MaterialSlideDeck @relation(fields: [materialId, revision], references: [materialId, revision], onDelete: Cascade)
+
+  @@id([materialId, revision, slideIndex])
 }
 
 model MaterialFile {
