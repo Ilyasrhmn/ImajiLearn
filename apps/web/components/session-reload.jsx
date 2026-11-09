@@ -3,12 +3,16 @@ import { useEffect } from "react";
 
 const sessionChangeKey = "imajilearn-session-change";
 
-export function navigateAfterSessionChange(path) {
+export function announceSessionChange() {
   try {
     localStorage.setItem(sessionChangeKey, `${Date.now()}:${Math.random()}`);
   } catch {
     // Full navigation still revalidates this tab when browser storage is unavailable.
   }
+}
+
+export function navigateAfterSessionChange(path) {
+  announceSessionChange();
   window.location.replace(path);
 }
 

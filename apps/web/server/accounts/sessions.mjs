@@ -32,7 +32,14 @@ export function createSessionHandlers(db, config) {
     return { user: row.teacher, expiresAt: row.expiresAt.toISOString() };
   }
   return {
-    requireTeacher: async request => (await readSession(request)).user,
+    requireTeacher: async request => {
+      const { user } = await readSession(request);
+      const expected = request.headers.get("x-teacher-id");
+      if (expected !== null && expected !== user.id) {
+        throw new ApiError(409, "ACCOUNT_CHANGED", "Akun aktif sudah berubah. Muat ulang halaman.");
+      }
+      return user;
+    },
     session: endpoint(async request => Response.json({ data: await readSession(request) }), config.origin),
     login: endpoint(async request => {
       const body = await readJson(request);

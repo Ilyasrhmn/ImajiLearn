@@ -78,6 +78,24 @@ test("password change validates credentials, rotates the current session and rev
   assert.equal((await auth.login(request("POST", "auth/login", null, { email: a.email, password: newPassword }))).status, 200);
 });
 
+test("a stale profile page cannot read or update the newly active account", async () => {
+  const read = request("GET", "me", b.cookie);
+  const patch = request("PATCH", "me", b.cookie, { name: "Stale edit" });
+  const password = request("POST", "me/password", b.cookie, {
+    currentPassword: initialPassword, newPassword, confirmPassword: newPassword,
+  });
+  for (const [method, operation] of [["get", read], ["patch", patch], ["password", password]]) {
+    operation.headers.set("x-teacher-id", a.id);
+    const response = await profile[method](operation);
+    assert.equal(response.status, 409);
+    assert.equal((await response.json()).error.code, "ACCOUNT_CHANGED");
+  }
+  const guest = request("GET", "me");
+  guest.headers.set("x-teacher-id", b.id);
+  assert.equal((await profile.get(guest)).status, 401);
+  assert.equal((await (await profile.get(request("GET", "me", b.cookie))).json()).data.name, b.name);
+});
+
 test("a login verified before a password change cannot issue a session with stale credentials", async () => {
   const db = storage.db;
   const delayedLogin = createSessionHandlers({
