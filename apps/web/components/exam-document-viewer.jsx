@@ -4,7 +4,7 @@ import { useState, startTransition, ViewTransition } from "react";
 import { flushSync } from "react-dom";
 import { ArrowLeft, FileText, TableProperties, KeyRound, Printer, Copy } from "lucide-react";
 import { studioAlert } from "./studio-alert";
-import { EXAM_TYPES, QUESTION_FORMS, COGNITIVE_LEVELS, DIFFICULTIES, finalGrade } from "../lib/exams.mjs";
+import { EXAM_TYPES, QUESTION_FORMS, COGNITIVE_LEVELS, DIFFICULTIES, finalGrade, isBlankExamQuestion } from "../lib/exams.mjs";
 
 const tabs = [{ id: "questions", label: "Naskah soal", Icon: FileText }, { id: "blueprint", label: "Kisi-kisi", Icon: TableProperties }, { id: "answers", label: "Kunci & skor", Icon: KeyRound }];
 
@@ -69,7 +69,7 @@ function Answers({ exam, updateQuestion }) {
   </section>)}</div><section className="exam-grade-guide"><h3>Konversi nilai</h3><p>Nilai = skor perolehan ÷ {maximum} × 100</p><table><thead><tr><th scope="col">Skor perolehan</th><th scope="col">Nilai</th></tr></thead><tbody>{[0, .25, .5, .75, 1].map(fraction => { const score = Math.round(maximum * fraction * 100) / 100; return <tr key={fraction}><td>{score}</td><td>{finalGrade(score, maximum)}</td></tr>; })}</tbody></table></section></>;
 }
 
-export default function ExamDocumentViewer({ exam, saved, onChange, onBack, onRemedial }) {
+export default function ExamDocumentViewer({ exam, saved, generation, onGenerate, onStop, onChange, onBack, onRemedial }) {
   const [tab, setTab] = useState("questions");
   const updateQuestion = (id, patch) => onChange({ ...exam, questions: exam.questions.map(q => q.id === id ? { ...q, ...patch } : q) });
   const updateHeader = (key, value) => onChange({ ...exam, header: { ...exam.header, [key]: value } });
@@ -89,12 +89,13 @@ export default function ExamDocumentViewer({ exam, saved, onChange, onBack, onRe
     window.print();
   }
   return <div className="exam-workspace">
-    <div className="exam-editor-heading"><button className="text-button" onClick={onBack}><ArrowLeft size={20} aria-hidden="true" />Semua naskah</button><span role="status" className={saved ? "exam-save-status" : "field-error"}>{saved ? "Tersimpan" : "Belum tersimpan"}</span></div>
+    <div className="exam-editor-heading"><button className="text-button" disabled={Boolean(generation)} onClick={onBack}><ArrowLeft size={20} aria-hidden="true" />Semua naskah</button><span role="status" className={saved ? "exam-save-status" : "field-error"}>{generation ? `Soal terisi ${generation.filled}/${generation.total}` : saved ? "Tersimpan" : "Belum tersimpan"}</span></div>
     <div className="exam-viewer-title"><h1>{exam.title?.trim() || EXAM_TYPES[exam.config.type]}</h1><div>
-      <button className="button button-secondary" onClick={() => studioAlert({ title: "Pembuatan soal belum tersedia", message: "Anda tetap bisa menulis dan mengedit naskah ini.", warning: true, kind: "pen" })}><FileText size={19} aria-hidden="true" />Isi otomatis</button>
-      {exam.config.type !== "remedial" && <button className="icon-button" aria-label="Salin untuk remedial" title="Salin untuk remedial" disabled={!saved} onClick={onRemedial}><Copy size={21} aria-hidden="true" /></button>}
+      {generation ? <button type="button" className="button button-secondary" onClick={onStop}>Hentikan</button> :
+        exam.questions.some(isBlankExamQuestion) && <button type="button" className="button button-secondary" disabled={!saved} onClick={onGenerate}><FileText size={19} aria-hidden="true" />Isi otomatis</button>}
+      {exam.config.type !== "remedial" && <button className="icon-button" aria-label="Salin untuk remedial" title="Salin untuk remedial" disabled={!saved || Boolean(generation)} onClick={onRemedial}><Copy size={21} aria-hidden="true" /></button>}
     </div></div>
-    <div className="exam-print-actions" role="group" aria-label="Cetak dokumen">{tabs.map(item => <button key={item.id} className="button button-secondary" onClick={() => print(item.id)}><Printer size={18} aria-hidden="true" />Cetak {item.id === "questions" ? "soal" : item.id === "blueprint" ? "kisi-kisi" : "kunci"}</button>)}</div>
+    <div className="exam-print-actions" role="group" aria-label="Cetak dokumen">{tabs.map(item => <button key={item.id} className="button button-secondary" disabled={Boolean(generation)} onClick={() => print(item.id)}><Printer size={18} aria-hidden="true" />Cetak {item.id === "questions" ? "soal" : item.id === "blueprint" ? "kisi-kisi" : "kunci"}</button>)}</div>
     <div className="exam-tabs" role="tablist" aria-label="Dokumen ujian">{tabs.map((item, index) => <button key={item.id} id={`exam-tab-${item.id}`} role="tab" aria-selected={tab === item.id} aria-controls="exam-document" tabIndex={tab === item.id ? 0 : -1} onClick={() => changeTab(item.id)} onKeyDown={event => {
       if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
       event.preventDefault();
@@ -102,8 +103,10 @@ export default function ExamDocumentViewer({ exam, saved, onChange, onBack, onRe
       changeTab(next.id); document.getElementById(`exam-tab-${next.id}`).focus();
     }}><item.Icon size={19} aria-hidden="true" />{item.label}</button>)}</div>
     <ViewTransition update="panel-swap" default="none"><section id="exam-document" className={`exam-paper exam-paper-${tab}`} data-print-document={tab} role="tabpanel" aria-labelledby={`exam-tab-${tab}`} tabIndex={0}>
-      <SchoolHeader exam={exam} updateHeader={updateHeader} />
-      {tab === "questions" ? <Questions exam={exam} updateQuestion={updateQuestion} /> : tab === "blueprint" ? <Blueprint exam={exam} updateQuestion={updateQuestion} /> : <Answers exam={exam} updateQuestion={updateQuestion} />}
+      <fieldset className="exam-editor-fields" disabled={Boolean(generation)}>
+        <SchoolHeader exam={exam} updateHeader={updateHeader} />
+        {tab === "questions" ? <Questions exam={exam} updateQuestion={updateQuestion} /> : tab === "blueprint" ? <Blueprint exam={exam} updateQuestion={updateQuestion} /> : <Answers exam={exam} updateQuestion={updateQuestion} />}
+      </fieldset>
     </section></ViewTransition>
   </div>;
 }

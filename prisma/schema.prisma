@@ -56,6 +56,8 @@ model ExamDocument {
   document        Json     @db.JsonB
   sourceSnapshots Json     @db.JsonB
   resourceVersion Int     @default(1)
+  generationLeaseId String? @db.Uuid
+  generationLeaseUntil DateTime? @db.Timestamptz(3)
 
   @@index([userId, id])
 }

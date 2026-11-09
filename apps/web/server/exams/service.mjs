@@ -10,7 +10,7 @@ const notFound = () => new ApiError(404, "EXAM_NOT_FOUND", "Naskah tidak ditemuk
 const stale = () => new ApiError(412, "RESOURCE_CHANGED", "Data sudah berubah. Muat ulang sebelum menyimpan.");
 const dto = row => ({ ...row.document, resourceVersion: row.resourceVersion });
 
-async function ownExam(db, userId, id, includeSources = false) {
+export async function ownExam(db, userId, id, includeSources = false) {
   const canonical = canonicalMaterialId(id);
   if (!canonical) throw notFound();
   const row = await db.examDocument.findFirst({ where: { id: canonical, userId },
