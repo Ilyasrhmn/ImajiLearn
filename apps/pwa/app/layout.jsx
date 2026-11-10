@@ -1,8 +1,15 @@
 import "./globals.css";
+import "@fontsource-variable/nunito-sans";
+import { brandAssets } from "@imajilearn/shared/assets";
 
 export const metadata = {
-  title: "ImajiLearn PWA",
+  title: { default: "ImajiLearn", template: "%s · ImajiLearn" },
+  icons: { icon: brandAssets.mark, apple: "/app/icons/icon-192.png" },
+  manifest: "/app/manifest.webmanifest",
+  appleWebApp: { capable: true, title: "ImajiLearn", statusBarStyle: "default" },
 };
+
+export const viewport = { width: "device-width", initialScale: 1, viewportFit: "cover", themeColor: "#fdfaf3" };
 
 export default function RootLayout({ children }) {
   return (
