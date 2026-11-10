@@ -65,3 +65,44 @@
 @keyframes visual-route {
   to { stroke-dashoffset: -20; }
 }
+
+.visual-orbit {
+  cursor: grab;
+  touch-action: pan-y;
+  user-select: none;
+}
+
+.visual-orbit:active {
+  cursor: grabbing;
+}
+
+.visual-orbit [data-part] {
+  cursor: pointer;
+}
+
+.visual-spread + small {
+  display: block;
+  margin-bottom: 10px;
+}
+
+.visual-sentences {
+  display: grid;
+  gap: 8px;
+}
+
+.visual-sentences button {
+  justify-content: flex-start;
+  text-align: start;
+}
+
+.visual-flow-steps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 30px;
+  padding-inline-start: 24px;
+}
+
+.visual-flow-steps li::marker {
+  color: var(--rust);
+  font-weight: 800;
+}

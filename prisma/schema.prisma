@@ -164,6 +164,9 @@ model MaterialReading {
 }
 
 model MaterialVisual {
+  illustration Bytes?
+  illustrationLeaseId String? @db.Uuid
+  illustrationLeaseUntil DateTime? @db.Timestamptz(3)
   materialId String   @db.Uuid
   revision   String   @db.Char(64)
   content    Json?    @db.JsonB
