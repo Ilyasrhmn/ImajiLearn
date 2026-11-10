@@ -1,5 +1,7 @@
 import { studioRequest } from "./studio-api.mjs";
 
+export const NO_SUBJECT_LABEL = "Tanpa mata pelajaran";
+
 const materialPath = id => `/materials/${encodeURIComponent(id)}`;
 const folderPath = id => `/folders/${encodeURIComponent(id)}`;
 const adapt = row => ({ ...row, createdAt: Date.parse(row.createdAt) });

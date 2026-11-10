@@ -3,6 +3,7 @@ import ThemedSelect from "./themed-select";
 import { useEffect, useState } from "react";
 import { ArrowRight, Check, FileText } from "lucide-react";
 import ExamLibrary from "./exam-library";
+import { NO_SUBJECT_LABEL } from "../lib/materials.mjs";
 import { Mascot } from "./mascot";
 import { EXAM_TYPES, QUESTION_FORMS, initialExamConfig, validateExamConfig, DIFFICULTIES } from "../lib/exams.mjs";
 
@@ -31,7 +32,7 @@ export default function ExamConfiguration({ compact = false, busy = false, mater
     {(!compact || creating) && <form className="exam-config" onSubmit={submit}>
       <section className="exam-sources" aria-labelledby="exam-sources-title">
         <div className="exam-section-heading"><h2 id="exam-sources-title">Materi</h2>{sources.length > 1 && <button type="button" className="text-button" disabled={!shown.length} onClick={toggleShown}>{allShownSelected ? "Batalkan semua" : "Pilih semua"}</button>}</div>
-        <div className="exam-subject-filter"><ThemedSelect aria-label="Filter mapel materi ujian" value={folder} onChange={event => setFolder(event.target.value)}><option value="all">Semua mapel</option><option value="unfiled">Belum dikelompokkan</option>{folders.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</ThemedSelect></div>
+        <div className="exam-subject-filter"><ThemedSelect aria-label="Filter mapel materi ujian" value={folder} onChange={event => setFolder(event.target.value)}><option value="all">Semua mapel</option><option value="unfiled">{NO_SUBJECT_LABEL}</option>{folders.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</ThemedSelect></div>
         {sources.length > 5 && <label className="exam-search"><span className="sr-only">Cari materi</span><input type="search" placeholder="Cari materi" value={search} onChange={event => setSearch(event.target.value)} /></label>}
         {sources.length ? <div className="exam-source-list">{shown.length ? shown.map(material => <label className="exam-source" key={material.id}>
           <input type="checkbox" checked={config.materialIds.includes(material.id)} onChange={() => toggle(material.id)} />
