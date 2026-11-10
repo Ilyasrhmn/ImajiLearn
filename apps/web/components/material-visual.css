@@ -106,3 +106,14 @@
   color: var(--rust);
   font-weight: 800;
 }
+
+.material-projector.is-active .material-visual > :is(.visual-earth, .visual-diorama) {
+  flex: 1 0 auto;
+  height: clamp(140px, 38dvh, 460px);
+  max-height: none;
+  margin-top: 0;
+}
+
+.material-projector.is-active .material-visual .visual-detail {
+  margin-top: 10px;
+}

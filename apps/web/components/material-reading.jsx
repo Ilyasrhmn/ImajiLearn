@@ -2,7 +2,9 @@
 
 import { startTransition, useEffect, useId, useLayoutEffect, useRef, useState, ViewTransition } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import Icon from "./icon";
+import { ProjectorButton } from "./material-projector";
 import Modal, { closeModal } from "./modal";
 import { Mascot } from "./mascot";
 import "./material-reading.css";
@@ -109,7 +111,7 @@ function ReadingQuestion({ item, onClose }) {
   </Modal>;
 }
 
-function ReadingFooter({ index, total, canGoBack, canGoNext, previous, next, finish }) {
+function ReadingFooter({ index, total, canGoBack, canGoNext, previous, next, finish, sourceHref }) {
   return <div className="reading-footer">
       <div className="lesson-progress" role="progressbar" aria-label="Bagian bacaan" aria-valuemin={0} aria-valuemax={total} aria-valuenow={index + 1}>
         <span style={{ width: `${(index + 1) / total * 100}%` }} />
@@ -118,7 +120,8 @@ function ReadingFooter({ index, total, canGoBack, canGoNext, previous, next, fin
         <button className="text-button" type="button" disabled={!canGoBack} onClick={previous}><Icon name="back" />Sebelumnya</button>
         <span aria-live="polite">{index + 1} / {total}</span>
         {canGoNext ? <button className="button" type="button" onClick={next}>Berikutnya<Icon name="arrow" /></button>
-          : <button className="button" type="button" onClick={finish}>Kembali ke materi<Icon name="arrow" /></button>}
+          : sourceHref ? <Link className="button" href={sourceHref}>Kembali ke sumber<Icon name="arrow" /></Link>
+          : <button className="button" type="button" onClick={finish}>Keluar proyektor<Icon name="arrow" /></button>}
       </div>
     </div>;
 }
@@ -183,7 +186,7 @@ function Projector({ section, index, total, change, exit, illustration, question
 
   return <>
     <header className="lesson-toolbar projector-toolbar">
-      <button className="button" type="button" onClick={exit}><Icon name="full" size={18} />Keluar proyektor</button>
+      <ProjectorButton active onClick={exit} />
     </header>
     <h2 className="projector-title">{section.heading}</h2>
     <div className={`projector-stage${illustration ? " with-illustration" : ""}`}>
@@ -202,7 +205,7 @@ function Projector({ section, index, total, change, exit, illustration, question
   </>;
 }
 
-export default function MaterialReading({ reading, teacherId, illustrationPath, onBack }) {
+export default function MaterialReading({ reading, teacherId, illustrationPath, sourceHref }) {
   const [index, setIndex] = useState(0);
   const [question, setQuestion] = useState(null);
   const [classroom, setClassroom] = useState(false);
@@ -247,8 +250,7 @@ export default function MaterialReading({ reading, teacherId, illustrationPath, 
     {classroom ? <Projector section={section} index={index} total={total} change={setIndex} exit={toggleProjector}
       questions={questions} onQuestion={setQuestion} illustration={<ReadingIllustration key={chapterIllustration} teacherId={teacherId} path={chapterIllustration} title={section.heading} />} /> : <>
     <div className="lesson-toolbar">
-      <button className="text-button" type="button" onClick={onBack}><Icon name="back" size={18} />Kembali</button>
-      <button className="button" type="button" onClick={toggleProjector}><Icon name="full" size={18} />Mode proyektor</button>
+      <ProjectorButton onClick={toggleProjector} />
     </div>
     <ViewTransition update="immersive-page" default="none">
       <div className="reading-content">
@@ -265,7 +267,7 @@ export default function MaterialReading({ reading, teacherId, illustrationPath, 
       </div>
     </ViewTransition>
     <ReadingFooter index={index} total={total} canGoBack={index > 0} canGoNext={index < total - 1}
-      previous={() => change(index - 1)} next={() => change(index + 1)} finish={onBack} />
+      previous={() => change(index - 1)} next={() => change(index + 1)} sourceHref={sourceHref} />
     </>}
     {question && <ReadingQuestion item={question} onClose={() => setQuestion(null)} />}
   </article>;

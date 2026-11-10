@@ -1,5 +1,6 @@
-import { AnnotationMode, getDocument, Util } from "pdfjs-dist/legacy/build/pdf.mjs";
+import { AnnotationMode, getDocument, OPS, Util } from "pdfjs-dist/legacy/build/pdf.mjs";
 import { ApiError } from "../core/errors.mjs";
+import { sourceBlocks, sourceFormulas, sourceRows } from "./pdf-source-layout.mjs";
 
 function openPdf(bytes, options = {}) {
   return getDocument({
@@ -58,15 +59,24 @@ function pageText(items, viewport) {
   });
 }
 
-function figuresOnPage(imageCoordinates, items, width, height) {
-  const figures = [];
+function imageBounds(imageCoordinates, width, height, minWidth, minHeight) {
+  const bounds = [];
   for (let i = 0; i + 5 < (imageCoordinates?.length ?? 0); i += 6) {
     const [ax, ay, bx, by, cx, cy] = imageCoordinates.slice(i, i + 6);
     const left = Math.max(0, Math.min(ax, bx, cx, bx + cx - ax) * width);
     const right = Math.min(width, Math.max(ax, bx, cx, bx + cx - ax) * width);
     const top = Math.max(0, Math.min(ay, by, cy, by + cy - ay) * height);
     const bottom = Math.min(height, Math.max(ay, by, cy, by + cy - ay) * height);
-    if (right - left < width * .16 || bottom - top < height * .08 || bottom - top > height * .75) continue;
+    if (right - left >= minWidth && bottom - top >= minHeight) bounds.push({ left, right, top, bottom });
+
+  }
+  return bounds;
+}
+
+function figuresOnPage(imageCoordinates, items, width, height) {
+  const figures = [];
+  for (const { left, right, top, bottom } of imageBounds(imageCoordinates, width, height, width * .16, height * .08)) {
+    if (bottom - top > height * .75) continue;
 
     const below = items.filter(line => line.y >= bottom && line.y - bottom <= height * .09 &&
       line.x < right && line.x + line.width > left).sort((a, b) => a.y - b.y || a.x - b.x);
@@ -142,6 +152,80 @@ export async function findPdfFigures(bytes, topic) {
     return figures;
   } catch {
     return figures;
+  } finally {
+    clearTimeout(timer);
+    await loading.destroy().catch(() => {});
+  }
+}
+
+const imageOperations = new Set([
+  OPS.paintImageXObject, OPS.paintInlineImageXObject, OPS.paintInlineImageXObjectGroup, OPS.paintImageXObjectRepeat,
+]);
+
+export async function readPdfSourcePage(bytes, number) {
+  const loading = openPdf(bytes, { maxImageSize: 16_000_000, fontExtraProperties: true });
+  const timer = setTimeout(() => { void loading.destroy().catch(() => {}); }, 8000);
+  try {
+    const pdf = await loading.promise;
+    if (number > pdf.numPages || number > 100) throw new ApiError(404, "SOURCE_PAGE_NOT_FOUND", "Halaman sumber tidak ditemukan.");
+    const page = await pdf.getPage(number);
+    const base = page.getViewport({ scale: 1 });
+    const viewport = page.getViewport({ scale: 1300 / Math.max(base.width, base.height) });
+    const [{ items }, operations] = await Promise.all([page.getTextContent(), page.getOperatorList()]);
+    const fonts = new Map();
+    const rows = sourceRows(items.filter(item => item.str?.trim()).map(item => {
+      if (!fonts.has(item.fontName)) {
+        const name = page.commonObjs.has(item.fontName) ? page.commonObjs.get(item.fontName)?.name ?? "" : "";
+        fonts.set(item.fontName, { bold: /bold|heavy|black|demi/i.test(name), italic: /italic|oblique/i.test(name) });
+      }
+      const [, , , , x, y] = Util.transform(viewport.transform, item.transform);
+      return { x, y, text: item.str.trim(), width: item.width * viewport.scale, height: item.height * viewport.scale, ...fonts.get(item.fontName) };
+    }));
+    const formulas = sourceFormulas(rows);
+    const illustrations = [];
+    const croppedRows = new Set();
+    const hasImages = operations.fnArray.some(op => imageOperations.has(op));
+    if (hasImages || formulas.length) {
+      const factory = pdf.canvasFactory;
+      const { canvas, context } = factory.create(Math.ceil(viewport.width), Math.ceil(viewport.height));
+      try {
+        const task = page.render({ canvas, canvasContext: context, viewport, recordImages: hasImages, annotationMode: AnnotationMode.DISABLE });
+        await task.promise;
+        const bounds = hasImages ? imageBounds(task.imageCoordinates, canvas.width, canvas.height, 48, 48) : [];
+        const regions = [
+          ...formulas.map(group => ({
+            group,
+            left: Math.max(0, Math.floor(Math.min(...group.map(row => row.x)) - 5)),
+            right: Math.min(canvas.width, Math.ceil(Math.max(...group.map(row => row.right)) + 5)),
+            top: Math.max(0, Math.floor(Math.min(...group.map(row => row.top)) - 2)),
+            bottom: Math.min(canvas.height, Math.ceil(group.at(-1).y + group.at(-1).height * .35)),
+          })),
+          ...bounds,
+        ];
+        let imageBytes = 0;
+        for (const box of regions) {
+          const width = Math.floor(box.right - box.left), height = Math.floor(box.bottom - box.top);
+          if (width < 1 || height < 1) continue;
+          const crop = factory.create(width, height);
+          try {
+            crop.context.drawImage(canvas, box.left, box.top, width, height, 0, 0, width, height);
+            const mime = box.group ? "image/png" : "image/jpeg";
+            const image = box.group ? crop.canvas.toBuffer("image/png") : crop.canvas.toBuffer("image/jpeg", 84);
+            if (imageBytes + image.length > 2 * 1024 * 1024) continue;
+            imageBytes += image.length;
+            illustrations.push({ y: box.top, kind: box.group ? "formula" : "image", src: `data:${mime};base64,${image.toString("base64")}`, width, height,
+              lines: box.group?.filter(row => !/^_{4,}$/u.test(row.text)).map(row => row.text) });
+            for (const row of box.group ?? []) croppedRows.add(row);
+          } finally { factory.destroy(crop); }
+        }
+      } finally { factory.destroy({ canvas, context }); }
+    }
+
+    const blocks = sourceBlocks(rows.filter(row => !croppedRows.has(row)), illustrations, viewport.height);
+    return { blocks, page: number, next: number < Math.min(pdf.numPages, 100) ? number + 1 : null };
+  } catch (error) {
+    if (error instanceof ApiError) throw error;
+    throw new ApiError(422, "SOURCE_PAGE_UNREADABLE", "Halaman PDF tidak dapat ditampilkan.");
   } finally {
     clearTimeout(timer);
     await loading.destroy().catch(() => {});
