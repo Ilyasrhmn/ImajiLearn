@@ -17,7 +17,7 @@ test("slide images use scene descriptions and keep successful images across retr
     }, randomUUID());
     const deck = {
       title: "Siklus air",
-      slides: [{ title: "Penguapan", points: ["Air menguap dari laut."] }, { title: "Hujan", points: ["Air jatuh dari awan."] }],
+      slides: [{ title: "Penguapan", points: ["Air menguap dari laut."] }, { title: "Hujan", points: ["Air jatuh dari awan."] }, { title: "Ringkasan", points: ["Siklus air berulang."] }],
     };
     await createMaterialSlides(storage.db, async () => ({ content: deck })).generate(owner.id, source.id);
     const bytes = [Uint8Array.of(255, 216, 255, 0, 255, 217), Uint8Array.of(255, 216, 255, 1, 255, 217)];
@@ -34,14 +34,18 @@ test("slide images use scene descriptions and keep successful images across retr
       assert.match(prompt, /raindrops falling from a cloud/);
       if (!failed) { failed = true; throw Error("synthetic failure"); }
       return bytes[1];
-    }, async (_feature, { messages }) => ({
-      content: { figureId: null, generate: true, composition: "One central subject.", details: "Show water moving in the correct direction.", subject: JSON.parse(messages[1].content).title === "Penguapan" ?
-        "Water vapor rising from the sea." : "Visible raindrops falling from a cloud." },
-    }));
+    }, async (_feature, { messages }) => {
+      const { title } = JSON.parse(messages[1].content);
+      if (title === "Ringkasan") return { content: { figureId: null, generate: false } };
+      return { content: { figureId: null, generate: true, composition: "One central subject.",
+        details: "Show water moving in the correct direction.",
+        subject: title === "Penguapan" ? "Water vapor rising from the sea." : "Visible raindrops falling from a cloud.",
+      } };
+    });
     const args = [owner.id, source.id, source.revision];
     assert.deepEqual(await images.list(...args), []);
     await assert.rejects(images.get(other.id, source.id, source.revision, 0), { status: 404 });
-    await assert.rejects(images.generate(...args, 2), { status: 404 });
+    await assert.rejects(images.generate(...args, 3), { status: 404 });
     const first = images.generate(...args, 0);
     try {
       await Promise.race([ready.promise, first]);
@@ -57,6 +61,11 @@ test("slide images use scene descriptions and keep successful images across retr
     await images.generate(...args, 0);
     assert.equal(prompts.length, 3);
     await images.generate(...args, 0, true);
+    assert.equal(prompts.length, 4);
+    await images.generate(...args, 2);
+    await images.generate(...args, 2);
+    assert.deepEqual(await images.get(...args, 2, "status"), { ready: false, skipped: true });
+    assert.deepEqual(await images.list(...args), [0, 1]);
     assert.equal(prompts.length, 4);
   } finally { await storage.close(); }
 });
