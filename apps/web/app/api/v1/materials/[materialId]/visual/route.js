@@ -12,7 +12,8 @@ const visualRoute = action => (request, context) => endpoint(async () => {
   const db = database();
   const teacher = await createSessionHandlers(db, config).requireTeacher(request);
   const { materialId } = await context.params;
-  const data = await createMaterialVisual(db, generateJson)[action](teacher.id, materialId);
+  const regenerate = action === "generate" && new URL(request.url).searchParams.get("regenerate") === "1";
+  const data = await createMaterialVisual(db, generateJson)[action](teacher.id, materialId, { regenerate });
   return Response.json({ data });
 }, process.env.APP_ORIGIN)(request);
 

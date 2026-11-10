@@ -3,13 +3,14 @@ import { randomUUID } from "node:crypto";
 import { test } from "node:test";
 import { createMaterialVisual } from "../apps/web/server/materials/visual.mjs";
 import { createMaterialService } from "../apps/web/server/materials/service.mjs";
+import { AIError } from "../apps/web/server/ai/errors.mjs";
 import { testDatabase } from "./support/database.mjs";
 
 test("visual generation keeps Earth and flow outputs private, validated, and reusable", async () => {
   const storage = await testDatabase();
   try {
     for (const migration of storage.migrations) await storage.migrate(migration);
-    const [owner, other] = await Promise.all(["owner", "other"].map(name =>
+    const [owner, other, invalidOwner] = await Promise.all(["owner", "other", "invalid"].map(name =>
       storage.db.teacher.create({ data: { name, email: name + "@example.test" } })));
     const materials = createMaterialService(storage.db);
     const earth = await materials.create(owner.id, {
@@ -24,8 +25,9 @@ test("visual generation keeps Earth and flow outputs private, validated, and reu
       },
     };
     const flowContent = {
-      kind: "flow", title: "Pertumbuhan",
-      steps: [{ label: "Benih", detail: "Benih berkecambah." }, { label: "Tunas", detail: "Tunas tumbuh." }],
+      kind: "flow", title: "Pertumbuhan", layout: "sequence",
+      steps: [{ label: "Benih", detail: "Benih berkecambah.", evidence: "Benih berkecambah" },
+        { label: "Tunas", detail: "Tunas tumbuh.", evidence: "lalu tunas tumbuh." }],
     };
     const plantText = "Daun menangkap cahaya matahari. Akar menyerap air yang bergerak ke daun.";
     const plant = await materials.create(owner.id, { title: "Fotosintesis", text: plantText }, randomUUID());
@@ -37,7 +39,55 @@ test("visual generation keeps Earth and flow outputs private, validated, and reu
     };
     const invalidPlant = { ...plantContent, steps: [{ ...plantContent.steps[0], focus: "unknown" }, plantContent.steps[1]] };
     await assert.rejects(createMaterialVisual(storage.db, async () => ({ content: invalidPlant })).generate(owner.id, plant.id), { code: "INVALID_VISUAL" });
+    const unrelatedEvidence = { ...plantContent, steps: [{ ...plantContent.steps[0], evidence: plantContent.steps[1].evidence }, plantContent.steps[1]] };
+    await assert.rejects(createMaterialVisual(storage.db, async () => ({ content: unrelatedEvidence })).generate(owner.id, plant.id), { code: "INVALID_VISUAL" });
+    const invalidPlantSource = await materials.create(invalidOwner.id, { title: "Fotosintesis", text: plantText }, randomUUID());
+    const duplicateFocus = { ...plantContent, steps: [plantContent.steps[0], { ...plantContent.steps[0], label: "Sinar" }] };
+    await assert.rejects(createMaterialVisual(storage.db, async () => ({ content: duplicateFocus })).generate(invalidOwner.id, invalidPlantSource.id), { code: "INVALID_VISUAL" });
     assert.deepEqual(await createMaterialVisual(storage.db, async () => ({ content: plantContent })).generate(owner.id, plant.id), plantContent);
+    const invalidFlowSource = await materials.create(invalidOwner.id, { title: "Pertumbuhan", text: "Benih berkecambah, lalu tunas tumbuh." }, randomUUID());
+    const ungroundedFlow = { ...flowContent, steps: [flowContent.steps[0], { ...flowContent.steps[1], evidence: "Daun berubah warna." }] };
+    await assert.rejects(createMaterialVisual(storage.db, async () => ({ content: ungroundedFlow })).generate(invalidOwner.id, invalidFlowSource.id), { code: "INVALID_VISUAL" });
+    const assembly = {
+      kind: "assembly", title: "Tuas sederhana", parts: [
+        { id: "base", label: "Tumpuan", detail: "Tumpuan menyangga papan.", evidence: "Tumpuan menyangga papan.", shape: "wedge", at: [0, 0, 0], size: [32, 40, 30], tone: "clay", spread: [0, 0, 0] },
+        { id: "board", label: "Papan", detail: "Papan berada di atas tumpuan.", evidence: "Papan berada di atas tumpuan.", shape: "slab", at: [0, 0, 30], size: [170, 40, 8], tone: "ochre", spread: [0, 0, 34] },
+      ],
+    };
+    const lever = await materials.create(other.id, { title: assembly.title, text: assembly.parts.map(part => part.evidence).join(" ") }, randomUUID());
+    const makeAssembly = content => createMaterialVisual(storage.db, async () => ({ content }));
+    for (const invalid of [
+      { ...assembly, parts: [assembly.parts[0], { ...assembly.parts[1], size: [170, 0, 8] }] },
+      { ...assembly, parts: [assembly.parts[0], { ...assembly.parts[1], at: [0, 0, 0] }] },
+      { ...assembly, parts: [assembly.parts[0], { ...assembly.parts[1], evidence: "Tambahkan bagian baru." }] },
+    ]) await assert.rejects(makeAssembly(invalid).generate(other.id, lever.id), { code: "INVALID_VISUAL" });
+    assert.deepEqual(await makeAssembly(assembly).generate(other.id, lever.id), assembly);
+    await assert.rejects(makeAssembly({ ...assembly, parts: [] }).generate(other.id, lever.id, { regenerate: true }), { code: "INVALID_VISUAL" });
+    assert.deepEqual(await makeAssembly().get(other.id, lever.id), assembly);
+    const rebuilding = Promise.withResolvers(), replacement = Promise.withResolvers();
+    const retry = createMaterialVisual(storage.db, async () => {
+      rebuilding.resolve();
+      return replacement.promise;
+    });
+    const regenerated = retry.generate(other.id, lever.id, { regenerate: true });
+    const updatedAssembly = { ...assembly, title: "Bagian tuas sederhana" };
+    try {
+      await Promise.race([rebuilding.promise, regenerated]);
+      assert.deepEqual(await retry.get(other.id, lever.id), assembly);
+      await assert.rejects(retry.generate(other.id, lever.id, { regenerate: true }), { code: "VISUAL_IN_PROGRESS" });
+      await assert.rejects(retry.generate(owner.id, lever.id, { regenerate: true }), { status: 404 });
+    } finally {
+      replacement.resolve({ content: updatedAssembly });
+    }
+    assert.deepEqual(await regenerated, updatedAssembly);
+    assert.deepEqual(await retry.get(other.id, lever.id), updatedAssembly);
+    const unavailable = createMaterialVisual(storage.db, async () => { throw new AIError("INVALID_PROVIDER_RESPONSE"); });
+    const photosynthesisSource = "Daun menangkap cahaya matahari untuk fotosintesis. Air diserap akar dan dibawa melalui batang ke daun. Karbon dioksida masuk melalui stomata ke dalam daun.";
+    const recovery = await materials.create(other.id, { title: "Fotosintesis", text: photosynthesisSource }, randomUUID());
+    const recovered = await unavailable.generate(other.id, recovery.id);
+    assert.deepEqual(recovered.steps.map(step => step.focus), ["light", "water", "carbon"]);
+    assert.ok(recovered.steps.every(step => photosynthesisSource.includes(step.evidence)));
+    await assert.rejects(unavailable.generate(other.id, lever.id, { regenerate: true }), { code: "INVALID_PROVIDER_RESPONSE" });
     for (const [content, sourceText] of [
       [{ kind: "cube_net", title: "Jaring-jaring kubus", evidence: "Enam persegi membentuk jaring-jaring kubus.", detail: "Enam persegi bertemu saat dilipat." }, "Enam persegi membentuk jaring-jaring kubus."],
       [{ kind: "main_idea", title: "Kalimat utama", sentences: ["Kucing merawat anaknya.", "Ia menyusui anaknya."], answerIndex: 0, detail: "Kalimat kedua memberi contoh perawatan." }, "Kucing merawat anaknya. Ia menyusui anaknya."],
