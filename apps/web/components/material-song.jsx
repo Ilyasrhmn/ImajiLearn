@@ -57,14 +57,13 @@ export default function MaterialSong({ song: initialSong, teacherId, songPath, r
     <h2 tabIndex={-1} data-output-heading>{song?.title ?? "Lagu belajar"}</h2>
     {ready ? <>
       <section className="song-player" aria-label="Pemutar lagu belajar">
-        <div className="song-player-heading"><Music2 size={28} aria-hidden="true" /><div><h3>Karaoke kelas</h3><p>Dengarkan, lalu ajak anak ikut bernyanyi dan bertepuk mengikuti irama.</p></div></div>
         {cues.length > 0 && <div className="song-current-line" aria-label="Lirik saat ini"><p>{active >= 0 ? lines[active] : position === 0 ? "Ayo, bersiap bernyanyi!" : "Dengarkan musiknya…"}</p></div>}
         <audio ref={audio} controls preload="metadata" aria-label={song.title}
           src={`/api/v1${songPath}/audio?revision=${encodeURIComponent(revision)}`}
           onTimeUpdate={event => setPosition(event.currentTarget.currentTime)}
           onSeeked={event => setPosition(event.currentTarget.currentTime)}
           onError={() => setError("Audio belum bisa diputar. Periksa koneksi lalu buka ulang lagu.")} />
-        <p className="song-sync-note">{cues.length ? "Baris yang dinyanyikan akan disorot mengikuti audio." : song.alignmentPending ? "Audio siap. Menyiapkan sorotan lirik…" : "Lirik dapat dibaca bersama. Sorotan waktu belum tersedia untuk lagu ini."}</p>
+        {song.alignmentPending && !cues.length && <p className="song-sync-note" role="status">Menyiapkan sorotan lirik…</p>}
       </section>
       <div className="song-lyrics" aria-label="Lirik lagu">
         {song.sections.map((section, sectionIndex) => <section className={`song-lyric-section song-${section.type}`} key={sectionIndex}>
@@ -75,8 +74,8 @@ export default function MaterialSong({ song: initialSong, teacherId, songPath, r
           })}</ol>
         </section>)}
       </div>
-      <section className="song-learning"><h3>Yang dipelajari</h3><ul>{song.learningPoints.map(point => <li key={point}>{point}</li>)}</ul><p>Tinjau isi lirik sebelum digunakan bersama kelas.</p></section>
-    </> : pending(song) ? <div className="song-progress" role="status"><Music2 size={32} aria-hidden="true" /><h3>{progress[song.status]}</h3><p>Proses ini bisa memerlukan beberapa menit. Kamu boleh menutup halaman dan membuka lagu kembali.</p></div>
+      <section className="song-learning"><h3>Yang dipelajari</h3><ul>{song.learningPoints.map(point => <li key={point}>{point}</li>)}</ul></section>
+    </> : pending(song) ? <div className="song-progress" role="status"><Music2 size={32} aria-hidden="true" /><h3>{progress[song.status]}</h3><p>Lagu bisa dibuka kembali setelah selesai.</p></div>
       : <div className="song-progress"><h3>Lagu belum siap</h3><p role="status">{song?.error ?? "Kembali ke materi untuk membuat lagu."}</p>
         {song?.status === "failed" && <button className="upload-button" type="button" disabled={busy} onClick={retry}><RefreshCw size={18} aria-hidden="true" />{busy ? "Menyiapkan lagu…" : "Coba buat lagi"}</button>}
       </div>}

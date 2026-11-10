@@ -73,8 +73,8 @@ function GoogleLinkForm({ teacherId, email }) {
 function SignInSettings({ teacherId, profile, notify }) {
   const auth = profile.auth;
   return <div className="account-sign-in">
-    {auth?.hasPassword === false ? <p className="account-sign-in-help">Anda masuk menggunakan Google. Untuk masuk kembali, pilih “Lanjutkan dengan Google”. Akun ini belum memiliki kata sandi ImajiLearn.</p> : <PasswordForm teacherId={teacherId} notify={notify} />}
-    {auth?.googleLinked ? <section className="account-google" aria-labelledby="google-linked-title"><h2 id="google-linked-title">Google terhubung</h2><p>Anda dapat menggunakan Google untuk masuk ke akun ImajiLearn ini.</p></section> : auth?.googleEnabled && auth?.hasPassword ? <GoogleLinkForm teacherId={teacherId} email={profile.email} /> : null}
+    {auth?.hasPassword === false ? <p className="account-sign-in-help">Akun ini belum memiliki kata sandi.</p> : <PasswordForm teacherId={teacherId} notify={notify} />}
+    {auth?.googleLinked ? <section className="account-google" aria-labelledby="google-linked-title"><h2 id="google-linked-title">Google terhubung</h2></section> : auth?.googleEnabled && auth?.hasPassword ? <GoogleLinkForm teacherId={teacherId} email={profile.email} /> : null}
   </div>;
 }
 export default function AccountSettings({ teacherId, googleNotice = null }) {

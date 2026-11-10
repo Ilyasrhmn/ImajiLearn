@@ -1,136 +1,142 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import { Check, Download, Music2, Scissors } from "lucide-react";
-import Modal, { swapModalContent } from "./modal";
-import Disclosure from "./disclosure";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { ArrowLeft, ChevronRight, Download, Plus, Scissors } from "lucide-react";
 import Icon from "./icon";
 import MaterialReading from "./material-reading";
 import MaterialVisual from "./material-visual";
 import MaterialSlides from "./material-slides";
 import MaterialSong from "./material-song";
+import { formats } from "./material-formats.mjs";
 import { downloadMaterial, updateMaterial } from "../lib/materials";
 import { studioRequest } from "../lib/studio-api.mjs";
 import "./material-detail.css";
 
-export const formats = [
-  { id: "reading", label: "Bacaan bergambar", description: "Baca dan tanya jawab bersama.", icon: "book" },
-  { id: "mindmap", label: "Visual interaktif", description: "Jelajahi bagian dan alur.", icon: "map" },
-  { id: "slides", label: "Slide", description: "Jelaskan satu per satu.", icon: "slides" },
-  { id: "song", label: "Lagu belajar", description: "Nyanyikan materi bersama kelas." },
-];
-const outputActions = [
-  { id: "reading", segment: "reading", label: "bacaan", icon: "book" },
-  { id: "mindmap", segment: "visual", label: "visual", icon: "map" },
-  { id: "slides", segment: "slides", label: "slide", icon: "slides" },
-  { id: "song", segment: "song", label: "lagu", icon: "song" },
-];
+const viewers = { reading: MaterialReading, mindmap: MaterialVisual, slides: MaterialSlides, song: MaterialSong };
 
-export default function MaterialDetail({ teacherId, material, onClose, onSaved }) {
-  const [selected, setSelected] = useState(() => Array.isArray(material.selectedMedia) ? material.selectedMedia.filter(id => formats.some(format => format.id === id)) : []);
-  const [busyId, setBusyId] = useState(null);
-  const busy = busyId !== null;
-  const [error, setError] = useState("");
-  const [outputs, setOutputs] = useState({});
-  const [openId, setOpenId] = useState(null);
-  const detail = useRef(null);
+export default function MaterialDetail({ teacherId, material, format }) {
+  const router = useRouter();
+  const page = useRef(null);
   const working = useRef(false);
+  const [outputs, setOutputs] = useState({});
+  const [attempt, setAttempt] = useState(0);
+  const [busyId, setBusyId] = useState(null);
+  const [actionError, setActionError] = useState(null);
+  const id = encodeURIComponent(material.id);
+  const detailHref = `/materi/${id}`;
+  const dashboardHref = material.folderId ? `/dashboard?folder=${encodeURIComponent(material.folderId)}` : "/dashboard";
+  const sourcePath = `/materials/${id}`;
   const sourceReady = !material.archived && material.extractionStatus === "ready";
-  const sourcePath = "/materials/" + encodeURIComponent(material.id);
 
   useEffect(() => {
     if (!sourceReady) return;
     const controller = new AbortController();
-    for (const { id, segment } of outputActions) {
-      const store = data => {
-        if (!controller.signal.aborted) setOutputs(current => ({ ...current, [id]: data }));
+    for (const item of format ? [format] : formats) {
+      const store = value => {
+        if (!controller.signal.aborted) setOutputs(current => ({ ...current, [item.id]: value }));
       };
-      studioRequest(teacherId, sourcePath + "/" + segment, { signal: controller.signal })
-        .then(({ data }) => store(data)).catch(() => store(null));
+      studioRequest(teacherId, `${sourcePath}/${item.segment}`, { signal: controller.signal })
+        .then(({ data }) => store({ data }))
+        .catch(() => store({ error: true }));
     }
     return () => controller.abort();
-  }, [sourceReady, sourcePath, teacherId]);
+  }, [attempt, format, sourcePath, sourceReady, teacherId]);
 
-  function toggle(id) {
-    setSelected(current => current.includes(id) ? current.filter(item => item !== id) : [...current, id]);
+  function retryOutputs() {
+    setOutputs(current => Object.fromEntries(Object.entries(current).filter(([, output]) => !output.error)));
+    setAttempt(current => current + 1);
   }
-  async function openOutput({ id, segment }) {
-    const saved = outputs[id];
-    if (working.current || !sourceReady || (!saved && !selected.includes(id))) return;
+
+  async function generate(item) {
+    if (working.current || !sourceReady || outputs[item.id]?.data !== null) return;
     working.current = true;
-    setBusyId(id); setError("");
+    setBusyId(item.id);
+    setActionError(null);
     try {
-      const previous = material.selectedMedia ?? [];
-      if (previous.length !== selected.length || selected.some(id => !previous.includes(id))) {
-        onSaved(await updateMaterial(teacherId, material, { selectedMedia: selected, songTemplateId: material.songTemplateId ?? "balonku" }));
+      const { data: [preference] } = await studioRequest(teacherId, `/media-preferences?materialIds=${id}`);
+      if (!preference.selectedMedia.includes(item.id)) {
+        await updateMaterial(teacherId, { ...material, preferenceVersion: preference.resourceVersion }, {
+          selectedMedia: [...preference.selectedMedia, item.id],
+          songTemplateId: preference.songTemplateId ?? "balonku",
+        });
       }
-      const result = saved ?? (await studioRequest(teacherId, sourcePath + "/" + segment, { method: "POST" })).data;
-      if (detail.current?.isConnected) {
-        setOutputs(current => ({ ...current, [id]: result }));
-        await swapModalContent(() => setOpenId(id), "[data-output-heading]");
-      }
-    } catch (error) { setError(error.message); }
-    finally { working.current = false; setBusyId(null); }
+      await studioRequest(teacherId, `${sourcePath}/${item.segment}`, { method: "POST" });
+      if (page.current?.isConnected) router.push(`${detailHref}/${item.segment}`);
+    } catch (error) {
+      setActionError({ id: item.id, message: error.message });
+    } finally {
+      working.current = false;
+      setBusyId(null);
+    }
   }
-  const back = () => swapModalContent(() => setOpenId(null), `[data-output-action="${openId}"]`);
+
   async function downloadFile() {
+    setActionError(null);
     try {
       const url = URL.createObjectURL(await downloadMaterial(teacherId, material.id));
       const link = document.createElement("a");
-      link.href = url; link.download = material.file.name; link.click();
+      link.href = url;
+      link.download = material.file.name;
+      link.click();
       setTimeout(() => URL.revokeObjectURL(url), 60000);
     } catch (error) {
-      setError(error.message);
+      setActionError({ message: error.message });
     }
   }
-  return <Modal title={material.title} onClose={onClose} wide className="material-detail-modal">
-    {openId === "reading" ? <MaterialReading reading={outputs.reading} teacherId={teacherId}
-      illustrationPath={sourcePath + "/reading/illustration"} onBack={back} /> :
-    openId === "mindmap" ? <MaterialVisual visual={outputs.mindmap} onBack={back} /> :
-    openId === "slides" ? <MaterialSlides deck={outputs.slides} teacherId={teacherId}
-      illustrationsPath={sourcePath + "/slides/illustrations"} revision={material.revision} onBack={back} /> :
-    openId === "song" ? <MaterialSong song={outputs.song} teacherId={teacherId}
-      songPath={sourcePath + "/song"} revision={material.revision} onBack={back} /> :
-    <div className="format-detail" ref={detail}>
-      <h2>{material.title}</h2>
-      {material.file ? (
-        <button className="format-filename material-source-download" type="button" onClick={downloadFile} aria-label={`Unduh ${material.file.name}`}>
-          <span>{material.file.name}</span><Download size={16} aria-hidden="true" />
-        </button>
-      ) : <p className="format-filename">Materi teks</p>}
-      {material.archived ? <p className="format-archive">Pulihkan materi untuk memilih media.</p> : <>
-        <fieldset className="format-fieldset" disabled={busy}><legend>Mau dibuat menjadi apa?</legend>
-          <div className="format-choices">
-            {formats.map(({ id, label, description, icon }) => (
-              <label key={id} className={`format-choice${selected.includes(id) ? " selected" : ""}`}>
-                <input type="checkbox" name="media" value={id} checked={selected.includes(id)} onChange={() => toggle(id)} />
-                {icon ? <Icon name={icon} size={28} /> : <Music2 size={28} aria-hidden="true" />}
-                <strong>{label}</strong>
-                <span>{description}</span>
-                <Check size={20} className="format-check" aria-hidden="true" />
-              </label>
-            ))}
-          </div>
-        </fieldset>
-        {selected.includes("song") && <p className="song-description">Buat lagu ceria dari isi materi, dengan musik energik dan refrain untuk dinyanyikan bersama anak.</p>}
-        <div className="media-selection-actions">
-          <button type="button" className="format-select-all" disabled={busy} onClick={() => setSelected(selected.length === formats.length ? [] : formats.map(format => format.id))}>
-            {selected.length === formats.length ? "Batalkan semua" : "Pilih semua"}
-          </button>
-          <div className="media-output-actions">
-            {outputActions.filter(({ id }) => selected.includes(id) || outputs[id]).map(action => (
-              <button key={action.id} type="button" className="upload-button" data-output-action={action.id}
-                onClick={() => openOutput(action)} disabled={busy || !sourceReady || outputs[action.id] === undefined}>
-                <Icon name={action.icon} size={20} />
-                {outputs[action.id] ? "Buka " + action.label : busyId === action.id ? "Membuat " + action.label + "…" : "Buat " + action.label}
-              </button>
-            ))}
-          </div>
-        </div>
+
+  if (format) {
+    const output = outputs[format.id];
+    const Viewer = viewers[format.id];
+    const back = () => router.push(detailHref);
+    return <main className="workspace-shell material-page material-output-page">
+      {sourceReady && output?.data ? <Viewer reading={output.data} visual={output.data} deck={output.data} song={output.data}
+        teacherId={teacherId} revision={material.revision} illustrationPath={sourcePath + "/reading/illustration"}
+        illustrationsPath={sourcePath + "/slides/illustrations"} songPath={sourcePath + "/song"} onBack={back} /> : <>
+        <Link className="material-return" href={detailHref}><ArrowLeft size={18} aria-hidden="true" />{material.title}</Link>
+        <h1>{format.label}</h1>
+        {!sourceReady ? <p>Media tidak tersedia untuk materi ini.</p> : !output ? <p role="status">Memuat {format.action}…</p>
+          : output.error ? <><p role="alert">Media tidak dapat dimuat.</p><button type="button" className="source-secondary" onClick={retryOutputs}>Coba lagi</button></>
+          : <p>Media belum dibuat. <Link href={detailHref}>Kembali ke materi</Link></p>}
       </>}
-      {!material.archived && <div className="material-lkpd-action"><a className="source-secondary" href={`/lkpd?material=${encodeURIComponent(material.id)}`}><Scissors size={20} aria-hidden="true" />Buat LKPD</a></div>}
-      {material.extractionStatus === "failed" && <p className="source-error" role="status">Teks file belum terbaca. Unggah ulang dengan teks materi untuk menggunakannya.</p>}
-      {error && <p className="source-error" role="alert">{error}</p>}
-      {material.text && <Disclosure title="Lihat teks sumber"><p className="format-source-text">{material.text}</p></Disclosure>}
+    </main>;
+  }
+
+  return <main className="workspace-shell material-page" ref={page}>
+    <Link className="material-return" href={dashboardHref}><ArrowLeft size={18} aria-hidden="true" />Materi</Link>
+    <header className="material-page-heading">
+      <h1>{material.title}</h1>
+      {material.file && <button className="material-source-download" type="button" onClick={downloadFile} aria-label={`Unduh ${material.file.name}`}>
+        <Download size={17} aria-hidden="true" /><span>Unduh sumber</span>
+      </button>}
+    </header>
+    {actionError && !actionError.id && <p className="source-error" role="alert">{actionError.message}</p>}
+    {sourceReady ? <ul className="material-media-list" aria-label="Media pembelajaran">
+      {formats.map(item => {
+        const output = outputs[item.id];
+        return <li key={item.id}>
+          {output?.data ? <Link className="material-media-row" href={`${detailHref}/${item.segment}`}>
+            <Icon name={item.icon} size={21} />
+            <strong>{item.label}</strong>
+            <span className="material-media-action">
+              {item.id === "song" && !["ready", "failed", "uncertain"].includes(output.data.status) ? "Lihat proses" : "Buka"}
+              <ChevronRight size={16} aria-hidden="true" />
+            </span>
+          </Link> : <button type="button" className="material-media-row" disabled={!output || busyId !== null}
+            onClick={output?.error ? retryOutputs : () => generate(item)}>
+            <Icon name={item.icon} size={21} />
+            <strong>{item.label}</strong>
+            <span className="material-media-action" aria-live={busyId === item.id ? "polite" : undefined}>
+              {!output ? "Memuat…" : busyId === item.id ? "Membuat…" : output.error ? "Muat ulang" : <><Plus size={16} aria-hidden="true" />Buat</>}
+            </span>
+          </button>}
+          {actionError?.id === item.id && <p className="source-error" role="alert">{actionError.message}</p>}
+        </li>;
+      })}
+    </ul> : <p role="status">{material.archived ? "Pulihkan materi untuk membuat atau membuka media." :
+      material.extractionStatus === "failed" ? "Teks file belum terbaca. Unggah ulang dengan teks materi." : "Teks sumber belum siap."}</p>}
+    {sourceReady && <div className="material-page-tools">
+      <Link className="source-secondary" href={`/lkpd?material=${id}`}><Scissors size={18} aria-hidden="true" />Buat LKPD</Link>
     </div>}
-  </Modal>;
+  </main>;
 }
