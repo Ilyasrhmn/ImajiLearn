@@ -2,7 +2,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { Archive, ArchiveRestore, BookOpen, CalendarDays, ClipboardPenLine, FileText, Files, Folder, FolderClosed, FolderCog, FolderInput, ArrowLeft, Pin, PinOff, Scissors, Search, Trash2, Upload } from "lucide-react";
+import { Archive, ArchiveRestore, BookOpen, CalendarDays, ChevronRight, ClipboardPenLine, FileText, Files, Folder, FolderClosed, FolderCog, FolderInput, Pin, PinOff, Scissors, Search, Trash2, Upload } from "lucide-react";
 import { Mascot } from "./mascot";
 import AccountAvatar from "./account-avatar";
 import LogoutButton from "./logout-button";
@@ -98,9 +98,22 @@ export default function Dashboard({ teacherId }) {
         <div className="welcome-character" aria-hidden="true"><Mascot kind="book" /><Mascot kind="pencil" mood="think" /></div>
       </section>
       <section className="materials" aria-labelledby="materials-title">
-        {folderId && <button className="folder-back" type="button" onClick={() => openFolder("")}><ArrowLeft size={19} />Semua materi</button>}<h2 id="materials-title">{archive ? "Arsip materi" : activeFolder?.name || "Materi"}</h2>
+        {folderId ? <nav className="material-location" aria-label="Lokasi materi">
+          <h2 id="materials-title">
+            <a href="/dashboard" onClick={event => {
+              if (event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+              event.preventDefault();
+              openFolder("");
+            }}>Materi</a>
+            <ChevronRight aria-hidden="true" />
+            <span aria-current="page">{activeFolder?.name ?? "Folder tidak ditemukan"}</span>
+          </h2>
+        </nav> : <h2 id="materials-title">{archive ? "Arsip materi" : "Materi"}</h2>}
         <div className="material-actions"><div className="filters" role="group" aria-label="Tampilan materi"><button type="button" aria-pressed={!archive} onClick={() => setArchive(false)}><Files size={18} />Aktif</button><button type="button" aria-pressed={archive} onClick={() => setArchive(true)}><Archive size={18} />Arsip</button></div><button className="manage" type="button" onClick={() => setManaging(true)}><FolderCog size={20} />Kelola mapel</button></div>
-        <label className="search-label">Cari materi<span className="search-box"><Search size={20} aria-hidden="true" /><input type="search" placeholder="Nama materi" value={query} onChange={e => setQuery(e.target.value)} /></span></label>
+        <label className="search-box">
+          <Search size={20} aria-hidden="true" />
+          <input type="search" aria-label="Cari nama materi" placeholder="Cari nama materi" value={query} onChange={e => setQuery(e.target.value)} />
+        </label>
         {!archive && !folderId && !query.trim() && folders.length > 0 && <div className="subject-folder-grid">{folders.map(folder => <button className="subject-folder" type="button" key={folder.id} onClick={() => openFolder(folder.id)}><span className="subject-folder-icon" aria-hidden="true"><Folder size={48} strokeWidth={1.5} /><FolderClosed className="folder-flap" size={48} strokeWidth={1.5} /></span><span>{folder.name}</span></button>)}</div>}
         {!archive && !folderId && !query.trim() && folders.length > 0 && visible.length > 0 && <h3 className="unfiled-heading">{NO_SUBJECT_LABEL}</h3>}
         {loading ? <div className="materials-skeleton" role="status" aria-label="Memuat materi"><span /><span /></div> : storageError ? <p role="alert">Materi tidak dapat dimuat. Muat ulang untuk mencoba lagi.</p> : !archive && !folderId && !query.trim() && folders.length > 0 && !visible.length ? null : visible.length ? <div className="material-list">{visible.map(item => <article className="material-card" key={item.id}><button className="material-card-open" type="button" disabled={busy} onClick={() => router.push(`/materi/${encodeURIComponent(item.id)}`)}><span className="material-file-icon"><FileText size={30} /></span><span className="material-card-label"><strong>{item.title}</strong><small>{formats.filter(format => item.selectedMedia?.includes(format.id)).map(format => format.label).join(" · ") || item.file?.name || "Teks materi"}</small></span></button><div className="material-card-actions" role="group" aria-label={`Kelola ${item.title}`}><button type="button" disabled={busy} title={item.pinned ? "Lepas sematan" : "Sematkan"} aria-label={item.pinned ? "Lepas sematan" : "Sematkan"} aria-pressed={Boolean(item.pinned)} onClick={() => update(item, { pinned: !item.pinned }, item.pinned ? "Sematan dilepas" : "Materi disematkan")}>{item.pinned ? <PinOff size={20} /> : <Pin size={20} />}</button><button type="button" disabled={busy} title={item.archived ? "Pulihkan materi" : "Arsipkan"} aria-label={item.archived ? "Pulihkan materi" : "Arsipkan"} onClick={() => update(item, { archived: !item.archived }, item.archived ? "Materi dipulihkan" : "Materi diarsipkan")}>{item.archived ? <ArchiveRestore size={20} /> : <Archive size={20} />}</button><button type="button" disabled={busy} title="Pindahkan materi" aria-label="Pindahkan materi" onClick={() => { setMoving(item); setDestination(item.folderId || ""); setMoveError(""); }}><FolderInput size={20} /></button><button className="material-delete" type="button" disabled={busy} title="Hapus materi" aria-label="Hapus materi" onClick={() => { setDeleteError(""); setDeleting(item); }}><Trash2 size={20} /></button></div></article>)}</div> : <div className="empty-library" role="status"><Mascot kind="correction" mood="calm" /><div><h3>{query ? "Materi tidak ditemukan" : archive ? "Belum ada materi di arsip" : folderId ? "Belum ada materi di folder ini" : "Materi pertama Anda dimulai di sini."}</h3>{!archive && !query && <button type="button" className="empty-upload" onClick={() => setUploading(true)}>Tambahkan bahan ajar <span aria-hidden="true">+</span></button>}</div></div>}
