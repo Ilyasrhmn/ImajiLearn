@@ -1,4 +1,6 @@
 const messages = {
+  MUSIC_CREDITS_REQUIRED: "Kuota pembuatan lagu habis. Periksa saldo layanan musik.",
+  MUSIC_REQUEST_UNKNOWN: "Status pengiriman lagu belum dapat dipastikan. Jangan membuat ulang agar kuota tidak terpotong dua kali.",
   INVALID_AI_FEATURE: "Fitur AI tidak tersedia.",
   AI_NOT_CONFIGURED: "Layanan AI belum dikonfigurasi.",
   INVALID_AI_CONFIG: "Konfigurasi layanan AI tidak sesuai.",

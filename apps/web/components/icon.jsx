@@ -1,6 +1,7 @@
-import { Presentation, Upload } from "lucide-react";
+import { Music2, Presentation, Upload } from "lucide-react";
 
 export default function Icon({ name, size = 22, ...props }) {
+  if (name === "song") return <Music2 size={size} strokeWidth={1.8} aria-hidden="true" {...props} />;
   if (name === "slides") return <Presentation size={size} strokeWidth={1.8} aria-hidden="true" data-icon={name} {...props} />;
   if (name === "upload") return <Upload size={size} strokeWidth={1.8} aria-hidden="true" data-icon={name} {...props} />;
   const paths = {

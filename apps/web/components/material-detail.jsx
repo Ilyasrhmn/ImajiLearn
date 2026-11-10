@@ -7,6 +7,7 @@ import Icon from "./icon";
 import MaterialReading from "./material-reading";
 import MaterialVisual from "./material-visual";
 import MaterialSlides from "./material-slides";
+import MaterialSong from "./material-song";
 import { downloadMaterial, updateMaterial } from "../lib/materials";
 import { studioRequest } from "../lib/studio-api.mjs";
 import "./material-detail.css";
@@ -21,16 +22,11 @@ const outputActions = [
   { id: "reading", segment: "reading", label: "bacaan", icon: "book" },
   { id: "mindmap", segment: "visual", label: "visual", icon: "map" },
   { id: "slides", segment: "slides", label: "slide", icon: "slides" },
-];
-const songs = [
-  { id: "balonku", title: "Balonku Ada Lima" },
-  { id: "cicak_dinding", title: "Cicak-Cicak di Dinding" },
-  { id: "potong_bebek", title: "Potong Bebek Angsa" },
+  { id: "song", segment: "song", label: "lagu", icon: "song" },
 ];
 
 export default function MaterialDetail({ teacherId, material, onClose, onSaved }) {
   const [selected, setSelected] = useState(() => Array.isArray(material.selectedMedia) ? material.selectedMedia.filter(id => formats.some(format => format.id === id)) : []);
-  const [song, setSong] = useState(() => songs.some(item => item.id === material.songTemplateId) ? material.songTemplateId : "balonku");
   const [busyId, setBusyId] = useState(null);
   const busy = busyId !== null;
   const [error, setError] = useState("");
@@ -64,9 +60,8 @@ export default function MaterialDetail({ teacherId, material, onClose, onSaved }
     setBusyId(id); setError("");
     try {
       const previous = material.selectedMedia ?? [];
-      if (previous.length !== selected.length || selected.some(id => !previous.includes(id)) ||
-          song !== (material.songTemplateId ?? "balonku")) {
-        onSaved(await updateMaterial(teacherId, material, { selectedMedia: selected, songTemplateId: song }));
+      if (previous.length !== selected.length || selected.some(id => !previous.includes(id))) {
+        onSaved(await updateMaterial(teacherId, material, { selectedMedia: selected, songTemplateId: material.songTemplateId ?? "balonku" }));
       }
       const result = saved ?? (await studioRequest(teacherId, sourcePath + "/" + segment, { method: "POST" })).data;
       if (detail.current?.isConnected) {
@@ -93,6 +88,8 @@ export default function MaterialDetail({ teacherId, material, onClose, onSaved }
     openId === "mindmap" ? <MaterialVisual visual={outputs.mindmap} onBack={back} /> :
     openId === "slides" ? <MaterialSlides deck={outputs.slides} teacherId={teacherId}
       illustrationsPath={sourcePath + "/slides/illustrations"} revision={material.revision} onBack={back} /> :
+    openId === "song" ? <MaterialSong song={outputs.song} teacherId={teacherId}
+      songPath={sourcePath + "/song"} revision={material.revision} onBack={back} /> :
     <div className="format-detail" ref={detail}>
       <h2>{material.title}</h2>
       {material.file ? (
@@ -114,7 +111,7 @@ export default function MaterialDetail({ teacherId, material, onClose, onSaved }
             ))}
           </div>
         </fieldset>
-        <div className="song-settings" data-open={selected.includes("song")} inert={!selected.includes("song")} aria-hidden={!selected.includes("song")}><div><fieldset><legend>Pakai lagu yang mana?</legend><div className="song-options">{songs.map(item => <label className={`song-option${song === item.id ? " selected" : ""}`} key={item.id}><input type="radio" name="song" checked={song === item.id} onChange={() => setSong(item.id)} /><span>{item.title}</span></label>)}</div></fieldset></div></div>
+        {selected.includes("song") && <p className="song-description">Buat lagu ceria dari isi materi, dengan musik energik dan refrain untuk dinyanyikan bersama anak.</p>}
         <div className="media-selection-actions">
           <button type="button" className="format-select-all" disabled={busy} onClick={() => setSelected(selected.length === formats.length ? [] : formats.map(format => format.id))}>
             {selected.length === formats.length ? "Batalkan semua" : "Pilih semua"}
