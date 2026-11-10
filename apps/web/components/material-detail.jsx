@@ -39,8 +39,8 @@ export default function MaterialDetail({ teacherId, material, format }) {
     return () => controller.abort();
   }, [attempt, outputPath, sourceReady, teacherId]);
 
-  async function generate() {
-    if (working.current || !format || !sourceReady || output?.data !== null) return;
+  async function generate(regenerate = false) {
+    if (working.current || !format || !sourceReady || (!regenerate && output?.data !== null)) return;
     working.current = true;
     setBusy(true);
     setError("");
@@ -52,8 +52,8 @@ export default function MaterialDetail({ teacherId, material, format }) {
           songTemplateId: preference.songTemplateId ?? "balonku",
         });
       }
-      const { data } = await studioRequest(teacherId, outputPath, { method: "POST" });
-      if (panel.current?.isConnected) setOutput({ data });
+      const { data } = await studioRequest(teacherId, regenerate ? outputPath + "?regenerate=1" : outputPath, { method: "POST" });
+      if (panel.current?.isConnected) setOutput(previous => ({ data, version: (previous?.version ?? 0) + 1 }));
     } catch (failure) {
       setError(failure.message);
     } finally {
@@ -98,7 +98,15 @@ export default function MaterialDetail({ teacherId, material, format }) {
     {sourceReady && output?.data ? <>
       {format.id === "reading" && <MaterialReading reading={output.data} teacherId={teacherId}
         illustrationPath={sourcePath + "/reading/illustration"} sourceHref={detailHref} />}
-      {format.id === "mindmap" && <MaterialProjector><MaterialVisual visual={output.data} /></MaterialProjector>}
+      {format.id === "mindmap" && <>
+        <MaterialProjector><MaterialVisual key={output.version ?? 0} visual={output.data} /></MaterialProjector>
+        <div className="visual-regenerate">
+          <button type="button" className="source-secondary" onClick={() => generate(true)} disabled={busy}>
+            {busy ? "Membuat visual…" : "Buat ulang visual"}
+          </button>
+          {error && <p className="source-error" role="alert">{error}</p>}
+        </div>
+      </>}
       {format.id === "slides" && <MaterialProjector><MaterialSlides deck={output.data} teacherId={teacherId}
         illustrationsPath={sourcePath + "/slides/illustrations"} revision={material.revision} /></MaterialProjector>}
       {format.id === "song" && <MaterialSong song={output.data} teacherId={teacherId} songPath={sourcePath + "/song"} revision={material.revision} />}
@@ -109,7 +117,7 @@ export default function MaterialDetail({ teacherId, material, format }) {
           <p role="alert">Media tidak dapat dimuat.</p>
           <button type="button" className="source-secondary" onClick={() => { setLoadError(false); setAttempt(value => value + 1); }}>Coba lagi</button>
         </> : !output ? <p role="status">Memuat…</p> : <>
-          <button type="button" className="upload-button" onClick={generate} disabled={busy}>
+          <button type="button" className="upload-button" onClick={() => generate()} disabled={busy}>
             {busy ? "Membuat…" : `Buat ${format.action}`}
           </button>
           {error && <p className="source-error" role="alert">{error}</p>}
