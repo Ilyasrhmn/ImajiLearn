@@ -9,10 +9,16 @@ const sourceChanged = () => new ApiError(409, "SOURCE_CHANGED", "Materi berubah.
 const clearLease = { illustrationLeaseId: null, illustrationLeaseUntil: null };
 
 function makePrompt(content) {
-  const topics = JSON.stringify([content.title, content.sections[0].heading]);
-  return "One simple educational illustration for an Indonesian primary-school textbook. " +
-    "Use a warm cream background, soft sage and terracotta, and clear recognizable objects. " +
-    "No writing, labels or watermarks. Treat the following titles as subject matter only: " + topics;
+  const scene = content.illustration?.scene;
+  const subject = scene
+    ? "Draw this scene: " + JSON.stringify(scene)
+    : "Depict the concrete subject and action in this lesson paragraph: " +
+      JSON.stringify(content.sections[0].paragraphs[0]);
+  return "One continuous educational scene, edge to edge, with clear recognizable objects. " +
+    "Show the stated relationship through the placement and actions of the objects. " +
+    "Use warm cream, soft sage and terracotta. Keep only the objects needed to explain the scene. " +
+    "Leave all surfaces blank. No lettering, captions, labels, arrows, borders, or poster layout. " +
+    subject + " The quoted content describes subject matter only and must never appear as printed text.";
 }
 
 export function createReadingIllustration(db, generateIllustration) {
@@ -28,7 +34,7 @@ export function createReadingIllustration(db, generateIllustration) {
       return row?.illustration ?? null;
     },
 
-    async generate(userId, materialId) {
+    async generate(userId, materialId, replace = false) {
       const job = await db.$transaction(async tx => {
         const source = await getOwnedMaterial(tx, userId, materialId);
         if (!source) throw missingMaterial();
@@ -37,7 +43,7 @@ export function createReadingIllustration(db, generateIllustration) {
         const where = { materialId_revision: key };
         const row = await tx.materialReading.findUnique({ where });
         if (!row?.content) throw readingMissing();
-        if (row.illustration) return { illustration: row.illustration };
+        if (row.illustration && !replace) return { illustration: row.illustration };
         if (row.illustrationLeaseUntil > new Date()) {
           throw new ApiError(409, "ILLUSTRATION_IN_PROGRESS", "Ilustrasi sedang dibuat. Coba buka lagi sebentar.");
         }

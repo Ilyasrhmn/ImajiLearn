@@ -19,6 +19,7 @@ test("an illustration is private, retryable, and generated once per saved readin
     const content = {
       title: "Fotosintesis",
       sections: [{ heading: "Cahaya matahari", paragraphs: ["Tumbuhan membuat gula."] }],
+      illustration: { sectionIndex: 0, paragraphIndex: 0, evidence: "Tumbuhan membuat gula.", scene: "A living plant with a green leaf as the main subject." },
       quiz: [{ question: "Apa yang dibuat tumbuhan?", options: ["Gula", "Garam", "Batu"], answerIndex: 0, explanation: "Tumbuhan membuat gula." }],
     };
     const reading = createMaterialReading(storage.db, async () => ({ content }));
@@ -27,10 +28,12 @@ test("an illustration is private, retryable, and generated once per saved readin
     const finish = Promise.withResolvers();
     let calls = 0;
     const illustration = createReadingIllustration(storage.db, async prompt => {
-      assert.match(prompt, /Fotosintesis/);
-      assert.doesNotMatch(prompt, /SOURCE_ONLY|@example/);
+      assert.match(prompt, /living plant with a green leaf/);
+      assert.doesNotMatch(prompt, /SOURCE_ONLY|@example|Fotosintesis|Cahaya matahari|Tumbuhan membuat gula/);
       calls++;
       if (calls === 1) throw new Error("synthetic provider failure");
+      if (calls === 3) throw new Error("replacement failed");
+      if (calls === 4) return Uint8Array.of(255, 216, 1, 255, 217);
       started.resolve();
       return finish.promise;
     });
@@ -52,5 +55,10 @@ test("an illustration is private, retryable, and generated once per saved readin
     assert.deepEqual(await illustration.get(owner.id, source.id), bytes);
     assert.deepEqual(await illustration.generate(owner.id, source.id), bytes);
     assert.equal(calls, 2);
+    await assert.rejects(illustration.generate(owner.id, source.id, true), /replacement failed/);
+    assert.deepEqual(await illustration.get(owner.id, source.id), bytes);
+    const replacement = await illustration.generate(owner.id, source.id, true);
+    assert.notDeepEqual(replacement, bytes);
+    assert.deepEqual(await illustration.get(owner.id, source.id), replacement);
   } finally { await storage.close(); }
 });

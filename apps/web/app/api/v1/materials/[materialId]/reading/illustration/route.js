@@ -12,7 +12,9 @@ const illustrationRoute = action => (request, context) => endpoint(async () => {
   const db = database();
   const teacher = await createSessionHandlers(db, config).requireTeacher(request);
   const { materialId } = await context.params;
-  const image = await createReadingIllustration(db, generateIllustration)[action](teacher.id, materialId);
+  const image = await createReadingIllustration(db, generateIllustration)[action](
+    teacher.id, materialId, new URL(request.url).searchParams.get("replace") === "1",
+  );
   if (!image) return new Response(null, { status: 204 });
   return new Response(image, { headers: { "content-type": "image/jpeg", "x-content-type-options": "nosniff" } });
 }, process.env.APP_ORIGIN)(request);
