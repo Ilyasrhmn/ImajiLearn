@@ -3,12 +3,13 @@ import { AIError } from "../ai/errors.mjs";
 import { ApiError } from "../core/errors.mjs";
 import { consumeRateLimit } from "../core/rate-limit.mjs";
 import { canonicalMaterialId, getOwnedMaterial } from "./readers.mjs";
+import { generateLessonParts } from "./lesson-content.mjs";
 
 const missingMaterial = () => new ApiError(404, "MATERIAL_NOT_FOUND", "Materi tidak ditemukan.");
 const sourceChanged = () => new ApiError(409, "SOURCE_CHANGED", "Materi berubah. Buka ulang materi lalu coba lagi.");
 const leaseDuration = 150_000; // The provider timeout cannot exceed 120 seconds.
 
-export function createGeneratedMaterial(db, generateJson, { delegate, feature, instructions, validate, archived, inProgress }) {
+export function createGeneratedMaterial(db, generateJson, { delegate, feature, instructions, validate, combineParts, archived, inProgress }) {
   return {
     async get(userId, materialId) {
       const id = canonicalMaterialId(materialId);
@@ -44,11 +45,25 @@ export function createGeneratedMaterial(db, generateJson, { delegate, feature, i
 
       if (job.content) return job.content;
       try {
-        const result = await generateJson(feature, { messages: [
-          { role: "system", content: instructions },
-          { role: "user", content: JSON.stringify({ title: job.source.title, text: job.source.text }) },
-        ] });
-        const content = validate(result.content, job.source);
+        async function generate(text, isPartial = false) {
+          const guidance = isPartial
+            ? "\nIni potongan berurutan dari materi yang lebih panjang. Jelaskan konsep di potongan ini saja. Lewati pengantar dan penutup umum. Jangan ulangi materi dari luar potongan."
+            : "";
+          const result = await generateJson(feature, { messages: [
+            { role: "system", content: instructions + guidance },
+            { role: "user", content: JSON.stringify({ title: job.source.title, text }) },
+          ] });
+          return validate(result.content, { ...job.source, text });
+        }
+        async function renew() {
+          const updated = await db[delegate].updateMany({
+            where: job.reservation, data: { leaseUntil: new Date(Date.now() + leaseDuration) },
+          });
+          if (!updated.count) throw sourceChanged();
+        }
+        const content = combineParts
+          ? await generateLessonParts(job.source, generate, combineParts, renew)
+          : await generate(job.source.text);
         await db.$transaction(async tx => {
           const latest = await getOwnedMaterial(tx, userId, job.source.id);
           if (!latest || latest.archived || latest.revision !== job.source.revision) throw sourceChanged();

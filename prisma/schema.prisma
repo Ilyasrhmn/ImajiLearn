@@ -160,7 +160,24 @@ model MaterialReading {
   illustrationLeaseUntil DateTime? @db.Timestamptz(3)
   material   Material @relation(fields: [materialId], references: [id], onDelete: Cascade)
 
+  illustrations MaterialReadingIllustration[]
+
   @@id([materialId, revision])
+}
+
+model MaterialReadingIllustration {
+  materialId   String @db.Uuid
+  revision     String @db.Char(64)
+  sectionIndex Int
+  sourcePage   Int?
+  sourceBytes  Bytes?
+  visualSkipped Boolean @default(false)
+  bytes        Bytes?
+  leaseId      String? @db.Uuid
+  leaseUntil   DateTime? @db.Timestamptz(3)
+  reading      MaterialReading @relation(fields: [materialId, revision], references: [materialId, revision], onDelete: Cascade)
+
+  @@id([materialId, revision, sectionIndex])
 }
 
 model MaterialVisual {
@@ -210,6 +227,9 @@ model MaterialSlideIllustration {
   materialId String    @db.Uuid
   revision   String    @db.Char(64)
   slideIndex Int
+  sourcePage   Int?
+  sourceBytes  Bytes?
+  visualSkipped Boolean @default(false)
   bytes      Bytes?
   leaseId    String?   @db.Uuid
   leaseUntil DateTime? @db.Timestamptz(3)

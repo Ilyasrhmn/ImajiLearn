@@ -50,6 +50,22 @@ test("reading creation validates, serializes duplicate requests, and reopens onl
     assert.deepEqual(await reading.generate(owner.id, source.id), content);
     assert.equal(calls, 3);
 
+    const detailed = await materials.create(owner.id, {
+      title: "Fotosintesis lengkap", text: "Cahaya, air, karbon dioksida, dan hasil fotosintesis.",
+    }, randomUUID());
+    const sections = ["Cahaya", "Air", "Karbon dioksida", "Hasil"].map(heading => ({
+      heading, paragraphs: [`Bagian tentang ${heading}.`],
+    }));
+    const detailedReading = createMaterialReading(storage.db, async () => ({ content: {
+      ...content, sections,
+      illustration: { ...content.illustration, sectionIndex: 3, evidence: sections[3].paragraphs[0] },
+      quiz: [{ ...content.quiz[0], sectionIndex: 3 }],
+    } }));
+    const complete = await detailedReading.generate(owner.id, detailed.id);
+    assert.equal(complete.sections.length, 4);
+    assert.equal(complete.illustration.sectionIndex, 3);
+    assert.equal(complete.quiz[0].sectionIndex, 3);
+
     const archived = await materials.create(owner.id, { title: "Arsip", text: "Sumber arsip." }, randomUUID());
     await materials.patch(owner.id, archived.id, { archived: true }, archived.resourceVersion);
     await assert.rejects(reading.generate(owner.id, archived.id), { code: "MATERIAL_ARCHIVED" });
