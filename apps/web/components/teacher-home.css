@@ -11,6 +11,10 @@
 .home-sidebar a[aria-current=page] { color: #a4402b; background: #f8e7dc; }
 .home-sidebar a span { transition: opacity 140ms ease; }
 .is-collapsed .home-sidebar a span { opacity: 0; pointer-events: none; }
+@media (min-width: 761px) {
+  .is-collapsed .home-sidebar a { width: 52px; height: 52px; margin-inline: auto; padding: 0; gap: 0; justify-content: center; border-radius: 50%; }
+  .is-collapsed .home-sidebar a span { display: none; }
+}
 .home-workspace .teacher-home { max-width: none; margin-left: var(--home-sidebar-width); padding: 112px 40px 64px; transition: margin-left 220ms ease; }
 .home-welcome { display: flex; align-items: center; justify-content: space-between; gap: 24px; min-height: 290px; padding: 36px 40px; border-radius: 28px; background: #f1ecdc; }
 .home-welcome > div:first-child { flex: 1; min-width: 0; }

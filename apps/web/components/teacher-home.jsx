@@ -75,7 +75,7 @@ export default function TeacherHome({ teacherId, name }) {
       </section>
       <div className="home-columns">
         <section className="home-section" aria-labelledby="home-schedule-title">
-          <div className="home-section-heading"><h2 id="home-schedule-title">Jadwal hari ini</h2><Link className="home-text-link" href="/jadwal">Lihat jadwal<ArrowRight size={16} aria-hidden="true" /></Link></div>
+          <div className="home-section-heading"><h2 id="home-schedule-title">Jadwal hari ini</h2></div>
           {now && <p className="home-date">{now.toLocaleDateString("id-ID", { weekday: "long", day: "numeric", month: "long" })}</p>}
           {scheduleError ? <div className="home-error" role="alert"><p>Jadwal belum dapat dimuat.</p><button className="source-secondary" onClick={retry}>Coba lagi</button></div>
             : !scheduleReady || !now ? <LoadingRows label="Memuat jadwal" />
