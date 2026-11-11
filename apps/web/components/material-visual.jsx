@@ -5,6 +5,7 @@ import { ArrowLeft, ArrowRight, ChevronDown, Layers3, RotateCcw, RotateCw } from
 import { CubeModel, EarthModel } from "./visual-models";
 import PhotosynthesisFigure from "./visual-photosynthesis";
 import VisualScene from "./visual-scene";
+import GeometryFallback from "./visual-geometry";
 import { AssemblyFigure } from "./visual-solids";
 import VisualDisclosure from "./visual-disclosure";
 import { clotParticles, clotStages, orbitBodies, resolveVisualModel } from "../lib/visual-templates.mjs";
@@ -161,6 +162,7 @@ export default function MaterialVisual({ visual: savedVisual }) {
   if (!visual) return null;
   return <article className="format-detail material-reading material-visual">
     <h2 tabIndex={-1} data-output-heading>{visual.title}</h2>
+    {visual.kind === "geometry" && <VisualScene visual={visual} fallback={<GeometryFallback visual={visual} />} />}
     {visual.kind === "earth" && <VisualScene visual={visual} fallback={<EarthModel details={visual.details} />} />}
     {visual.kind === "blood_clot" && <VisualScene visual={visual} fallback={<ClotFallback />} />}
     {visual.kind === "solar_system" && <VisualScene visual={visual} fallback={<SolarFallback visual={visual} />} />}

@@ -1,5 +1,6 @@
 import * as T from "three";
 import { assemblyScenes, clotScenes, cubeScenes, earthScenes, plantScenes, solarScenes } from "./scene-models.mjs";
+import { geometryScenes } from "./geometry-scenes.mjs";
 
 const v = (x, y, z) => new T.Vector3(x, y, z);
 const svgElement = tag => document.createElementNS("http://www.w3.org/2000/svg", tag);
@@ -19,6 +20,7 @@ export function mountVisualScene(root, visual, step, unavailable) {
   scene.background = new T.Color(0xe9eee0);
   const renderer = new T.WebGLRenderer({ antialias: true });
   const views = visual.kind === "blood_clot" ? clotScenes()
+    : visual.kind === "geometry" ? geometryScenes(visual)
     : visual.kind === "cube_net" ? cubeScenes(visual.detail)
     : visual.kind === "solar_system" ? solarScenes(visual)
     : step ? plantScenes(step) : visual.kind === "earth" ? earthScenes(visual.details) : assemblyScenes(visual);
