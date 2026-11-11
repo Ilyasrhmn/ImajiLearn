@@ -1,11 +1,11 @@
 @media (prefers-reduced-motion: no-preference) {
   @scope (.dashboard, .account-main, .exam-main, .lkpd-main, .schedule-main, .workspace-header, .modal, .auth-page) {
-    :where(svg.lucide, svg[data-icon]) {
+    :where(svg.lucide, svg[data-icon]):not(:where(.lucide-search)) {
       --icon-hover-motion: scale(1.06);
       transform-origin: center;
       transition: transform 260ms cubic-bezier(0.2, 0.75, 0.25, 1);
     }
-    :is(svg.lucide, svg[data-icon]) > *,
+    :is(svg.lucide, svg[data-icon]):not(.lucide-search) > *,
     [data-icon-part] {
       transform-box: view-box;
       transform-origin: 12px 12px;
@@ -121,13 +121,13 @@
     :is(button, a, label, summary, [role="button"]):focus-visible:not(
         :disabled
       ):not([aria-disabled="true"])
-      :is(svg.lucide, svg[data-icon]) {
+      :is(svg.lucide, svg[data-icon]):not(.lucide-search) {
       transform: var(--icon-hover-motion);
     }
     :is(button, a, label, summary, [role="button"]):focus-visible:not(
         :disabled
       ):not([aria-disabled="true"])
-      :is(svg.lucide, svg[data-icon])
+      :is(svg.lucide, svg[data-icon]):not(.lucide-search)
       > * {
       transform: var(--icon-part-motion, none);
     }
@@ -135,21 +135,21 @@
       :is(button, a, label, summary, [role="button"]):hover:not(:disabled):not(
           [aria-disabled="true"]
         )
-        :is(svg.lucide, svg[data-icon]) {
+        :is(svg.lucide, svg[data-icon]):not(.lucide-search) {
         transform: var(--icon-hover-motion);
       }
       :is(button, a, label, summary, [role="button"]):hover:not(:disabled):not(
           [aria-disabled="true"]
         )
-        :is(svg.lucide, svg[data-icon])
+        :is(svg.lucide, svg[data-icon]):not(.lucide-search)
         > * {
         transform: var(--icon-part-motion, none);
       }
     }
-    label:has(input:focus-visible) :is(svg.lucide, svg[data-icon]) {
+    label:has(input:focus-visible) :is(svg.lucide, svg[data-icon]):not(.lucide-search) {
       transform: var(--icon-hover-motion);
     }
-    label:has(input:focus-visible) :is(svg.lucide, svg[data-icon]) > * {
+    label:has(input:focus-visible) :is(svg.lucide, svg[data-icon]):not(.lucide-search) > * {
       transform: var(--icon-part-motion, none);
     }
   }
