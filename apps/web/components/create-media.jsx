@@ -59,7 +59,7 @@ export default function CreateMedia({ teacherId, name, kind }) {
     <main id="main" className="teacher-home create-media">
       <section className="create-media-welcome" aria-labelledby="create-media-title">
         <h1 id="create-media-title">Kelola materi dan buat media ajar bersama AI.</h1>
-        <Image className="create-media-header-art" src="/illustrations/create-media-paper.png" width={240} height={210} alt="" />
+        <Image className="create-media-header-art" src="/illustrations/create-media-paper.webp" width={240} height={210} sizes="(max-width: 600px) 180px, (max-width: 1000px) 190px, 240px" alt="" />
       </section>
       <section className="create-media-toolkit" aria-labelledby="create-media-tools-title">
         <h2 id="create-media-tools-title">Buat media <Sparkles size={24} aria-hidden="true" /></h2>
