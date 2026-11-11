@@ -6,7 +6,7 @@ import { createSlideIllustrations } from "../apps/web/server/materials/slide-ill
 import { createMaterialSlides } from "../apps/web/server/materials/slides.mjs";
 import { testDatabase } from "./support/database.mjs";
 
-test("slide images use individual slide text and keep successful images across retries", async () => {
+test("slide images use scene descriptions and keep successful images across retries", async () => {
   const storage = await testDatabase();
   try {
     for (const migration of storage.migrations) await storage.migrate(migration);
@@ -26,14 +26,18 @@ test("slide images use individual slide text and keep successful images across r
     let failed = false;
     const images = createSlideIllustrations(storage.db, async prompt => {
       prompts.push(prompt);
-      if (prompt.includes("Air menguap dari laut.")) {
+      assert.doesNotMatch(prompt, /Penguapan|Air menguap dari laut|Air jatuh dari awan/);
+      if (prompt.includes("rising from the sea")) {
         ready.resolve();
         return release.promise;
       }
-      assert.match(prompt, /Air jatuh dari awan/);
+      assert.match(prompt, /raindrops falling from a cloud/);
       if (!failed) { failed = true; throw Error("synthetic failure"); }
       return bytes[1];
-    });
+    }, async (_feature, { messages }) => ({
+      content: { figureId: null, generate: true, composition: "One central subject.", details: "Show water moving in the correct direction.", subject: JSON.parse(messages[1].content).title === "Penguapan" ?
+        "Water vapor rising from the sea." : "Visible raindrops falling from a cloud." },
+    }));
     const args = [owner.id, source.id, source.revision];
     assert.deepEqual(await images.list(...args), []);
     await assert.rejects(images.get(other.id, source.id, source.revision, 0), { status: 404 });
@@ -52,5 +56,7 @@ test("slide images use individual slide text and keep successful images across r
     assert.deepEqual(await images.get(...args, 1), bytes[1]);
     await images.generate(...args, 0);
     assert.equal(prompts.length, 3);
+    await images.generate(...args, 0, true);
+    assert.equal(prompts.length, 4);
   } finally { await storage.close(); }
 });
