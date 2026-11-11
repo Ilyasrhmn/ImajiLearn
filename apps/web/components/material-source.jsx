@@ -30,14 +30,16 @@ function SourceBlock({ block, page }) {
   return <p className={block.kind === "caption" ? "material-source-caption" : undefined}><SourceRuns runs={block.runs} /></p>;
 }
 
-export default function MaterialSource({ teacherId, sourcePath, material }) {
+export default function MaterialSource({ teacherId, sourcePath, material, firstPage = 1, lastPage, selectedPages, onVisiblePage }) {
   const pdf = material.file?.mime === "application/pdf";
   const [pages, setPages] = useState([]);
-  const [requested, setRequested] = useState(1);
+  const [requested, setRequested] = useState(firstPage);
   const [attempt, setAttempt] = useState(0);
   const [failed, setFailed] = useState(false);
   const marker = useRef(null);
-  const next = pages.at(-1)?.next ?? null;
+  const documentBody = useRef(null);
+  const candidate = selectedPages?.length && pages.length ? selectedPages[pages.length] : pages.at(-1)?.next;
+  const next = candidate && (!lastPage || candidate <= lastPage) ? candidate : null;
 
   useEffect(() => {
     if (!pdf) return;
@@ -60,6 +62,37 @@ export default function MaterialSource({ teacherId, sourcePath, material }) {
     return () => observer.disconnect();
   }, [next, requested]);
 
+  useEffect(() => {
+    if (!onVisiblePage || !pages.length || !documentBody.current) return;
+    const elements = [...documentBody.current.querySelectorAll("[data-source-page]")];
+    const navigation = document.querySelector(".material-navigation");
+    let frame = 0;
+    function updatePage() {
+      frame = 0;
+      const edge = Math.max(0, navigation?.getBoundingClientRect().bottom ?? 0) + 24;
+      let active = elements[0];
+      for (const element of elements) {
+        if (element.getBoundingClientRect().top > edge) break;
+        active = element;
+      }
+      onVisiblePage(Number(active.dataset.sourcePage));
+    }
+    function schedule() {
+      if (!frame) frame = requestAnimationFrame(updatePage);
+    }
+    updatePage();
+    window.addEventListener("scroll", schedule, { passive: true });
+    window.addEventListener("resize", schedule);
+    const resize = new ResizeObserver(schedule);
+    resize.observe(documentBody.current);
+    return () => {
+      window.removeEventListener("scroll", schedule);
+      window.removeEventListener("resize", schedule);
+      resize.disconnect();
+      cancelAnimationFrame(frame);
+    };
+  }, [onVisiblePage, pages]);
+
   if (!pdf || (failed && !pages.length)) {
     return material.text ? <div className="material-source-text">
       {formatSourceText(material.text, pdf).map((block, index) => <SourceBlock key={index} block={block} />)}
@@ -67,8 +100,8 @@ export default function MaterialSource({ teacherId, sourcePath, material }) {
       : <p role="status">Teks sumber tidak tersedia.</p>;
   }
 
-  return <div className="material-source-text">
-    {pages.map(page => <div className="material-source-page" key={page.page}>
+  return <div className="material-source-text" ref={documentBody}>
+    {pages.map(page => <div className="material-source-page" data-source-page={page.page} key={page.page}>
       {page.blocks.map((block, index) => <SourceBlock key={index} block={block} page={page.page} />)}
     </div>)}
     {failed ? <button type="button" className="source-secondary" onClick={() => {

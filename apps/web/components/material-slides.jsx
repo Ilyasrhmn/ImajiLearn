@@ -10,9 +10,8 @@ export default function MaterialSlides({ deck, teacherId, illustrationsPath, rev
   const [index, setIndex] = useState(0);
   const [speaking, setSpeaking] = useState(false);
   const [error, setError] = useState("");
-  const [visuals, setVisuals] = useState({});
+  const [visuals, setVisuals] = useState(() => Object.fromEntries((deck.illustrations ?? []).map((status, index) => [index, status])));
   const [imageError, setImageError] = useState("");
-  const [attempt, setAttempt] = useState(0);
   const [replacing, setReplacing] = useState(false);
   const [imageVersions, setImageVersions] = useState({});
   const [zoomed, setZoomed] = useState(false);
@@ -24,24 +23,6 @@ export default function MaterialSlides({ deck, teacherId, illustrationsPath, rev
   const imagePath = illustrationsPath + "/" + index + illustrationQuery;
   const statusPath = imagePath + "&view=status";
   const imageUrl = "/api/v1" + imagePath + "&imageVersion=" + (imageVersions[index] ?? 0);
-
-  useEffect(() => {
-    if (visual) return;
-    const controller = new AbortController();
-    const { signal } = controller;
-    const load = () => studioRequest(teacherId, statusPath, { signal });
-    load().then(async ({ data }) => {
-      if (data.ready || data.skipped || signal.aborted) return data;
-      await studioRequest(teacherId, illustrationsPath + illustrationQuery, { method: "POST", body: { index }, signal });
-      return (await load()).data;
-    }).then(data => {
-      if (!signal.aborted) setVisuals(current => ({ ...current, [index]: data }));
-    }).catch(error => {
-      if (!signal.aborted) setImageError(error.message);
-    });
-    return () => controller.abort();
-  }, [teacherId, illustrationsPath, illustrationQuery, statusPath, index, visual, attempt]);
-
 
   useEffect(() => () => {
     if (!currentSpeech.current) return;
@@ -120,21 +101,13 @@ export default function MaterialSlides({ deck, teacherId, illustrationsPath, rev
       {visual?.ready ? (
         <button className="material-slide-image" type="button" aria-expanded={zoomed}
           aria-label={zoomed ? "Kecilkan ilustrasi" : "Perbesar ilustrasi"} onClick={() => setZoomed(current => !current)}>
-          <Image src={imageUrl}
+          <Image loading="eager" src={imageUrl}
             alt={"Ilustrasi " + slide.title} width={1024} height={1024} unoptimized />
           <span className="material-slide-image-control" aria-hidden="true">
             {zoomed ? <Minimize2 size={18} /> : <Maximize2 size={18} />}
           </span>
         </button>
-      ) : !visual?.skipped && (
-        <div className="material-slide-image-placeholder">
-          {imageError ? <>
-            <p role="alert">{imageError}</p>
-            <button type="button" className="source-secondary"
-              onClick={() => { setImageError(""); setAttempt(current => current + 1); }}>Coba lagi</button>
-          </> : <p role="status">Menyiapkan ilustrasi…</p>}
-        </div>
-      )}
+      ) : null}
     </section>
     <div className="material-slide-controls">
       <div className="material-slide-pagination">

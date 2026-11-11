@@ -5,7 +5,9 @@ import "@/components/material-detail.css";
 
 export default async function MaterialLayout({ children, params }) {
   const { materialId } = await params;
-  const { material: { id, folderId, file } } = await getMaterialContext(materialId);
+  const { material } = await getMaterialContext(materialId);
+  const { id } = material;
+  const { folderId, file } = material.parentId ? (await getMaterialContext(material.parentId)).material : material;
 
   return <>
     <SessionReload />
