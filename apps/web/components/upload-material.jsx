@@ -20,7 +20,7 @@ export default function UploadMaterial({ teacherId, onClose, onSaved, folders, i
   const retry = useRef(null);
 
   async function choose(next) {
-    if (!next) return;
+    if (!next || saving) return;
     const sequence = ++request.current;
     setFile(null);
     setReading(false);
@@ -56,14 +56,14 @@ export default function UploadMaterial({ teacherId, onClose, onSaved, folders, i
       onSaved(await saveMaterial(teacherId, material, key));
     } catch (error) { setError(error.message); setSaving(false); }
   }
-  return <Modal title="Unggah materi" onClose={onClose} wide>
+  return <Modal title="Unggah materi" onClose={onClose} dismissible={!saving} wide>
     <form className="source-form" onSubmit={submit}>
       <div className="source-heading"><h2>Unggah materi</h2><Mascot kind="pen" mood="think" /></div>
       <div className="source-field source-folder-field"><label htmlFor="upload-folder">Mata pelajaran (opsional)</label><ThemedSelect id="upload-folder" value={folderId} onChange={event => setFolderId(event.target.value)}><option value="">{NO_SUBJECT_LABEL}</option>{folders.map(folder => <option key={folder.id} value={folder.id}>{folder.name}</option>)}</ThemedSelect></div>
       <div className="source-upload" onDragOver={e => e.preventDefault()} onDrop={e => { e.preventDefault(); choose(e.dataTransfer.files[0]); }}>
         {file ? <FileText size={30} /> : <Upload size={30} />}
         <div>{file ? <strong>{file.name}</strong> : <p>PDF atau TXT, maksimal 10 MB</p>}</div>
-        <button className="source-secondary" type="button" onClick={() => input.current?.click()}>{file ? "Ganti file" : "Pilih file"}</button>
+        <button className="source-secondary" type="button" disabled={saving} onClick={() => input.current?.click()}>{file ? "Ganti file" : "Pilih file"}</button>
         <input ref={input} className="source-file-input" type="file" accept=".pdf,.txt" aria-label="Pilih file materi" onChange={e => { choose(e.target.files[0]); e.target.value = ""; }} />
       </div>
       <label className="source-field">Judul materi<input value={title} onChange={e => setTitle(e.target.value)} maxLength={120} placeholder="Judul pelajaran Anda" /></label>

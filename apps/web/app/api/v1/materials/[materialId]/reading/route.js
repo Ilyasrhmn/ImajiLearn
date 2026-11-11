@@ -4,6 +4,8 @@ import { sessionConfig } from "@/server/core/config.mjs";
 import { database } from "@/server/core/database.mjs";
 import { endpoint } from "@/server/core/http.mjs";
 import { createMaterialReading } from "@/server/materials/reading.mjs";
+import { createPreparedLesson } from "@/server/materials/prepared-lesson.mjs";
+import { generateIllustration } from "@/server/ai/providers/cloudflare-image.mjs";
 
 export const runtime = "nodejs";
 
@@ -12,7 +14,7 @@ const readingRoute = action => (request, context) => endpoint(async () => {
   const db = database();
   const teacher = await createSessionHandlers(db, config).requireTeacher(request);
   const { materialId } = await context.params;
-  const data = await createMaterialReading(db, generateJson)[action](teacher.id, materialId);
+  const data = await createPreparedLesson(db, createMaterialReading(db, generateJson), "reading", generateIllustration, generateJson)[action](teacher.id, materialId);
   return Response.json({ data });
 }, process.env.APP_ORIGIN)(request);
 

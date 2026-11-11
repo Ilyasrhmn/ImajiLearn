@@ -84,7 +84,7 @@ export function closeModal(onClose) {
   animation.finished.catch(() => {}).then(onClose);
 }
 
-export default function Modal({ title, children, onClose, wide = false, className = "" }) {
+export default function Modal({ title, children, onClose, wide = false, className = "", dismissible = true, showClose = true }) {
   const ref = useRef(null);
   useEffect(() => {
     const dialog = ref.current;
@@ -110,10 +110,10 @@ export default function Modal({ title, children, onClose, wide = false, classNam
       className={`modal${wide ? " modal-wide" : ""}${className ? ` ${className}` : ""}`}
       onCancel={(e) => {
         e.preventDefault();
-        closeModal(onClose);
+        if (dismissible) closeModal(onClose);
       }}
       onClick={(e) => {
-        if (e.target === ref.current) {
+        if (dismissible && e.target === ref.current) {
           const r = ref.current.getBoundingClientRect();
           if (
             e.clientX < r.left ||
@@ -125,13 +125,14 @@ export default function Modal({ title, children, onClose, wide = false, classNam
         }
       }}
     >
-      <button
+      {dismissible && showClose && <button
+        type="button"
         className="icon-button modal-close"
         aria-label="Tutup dialog"
         onClick={() => closeModal(onClose)}
       >
         <Icon name="close" />
-      </button>
+      </button>}
       <div className="modal-content">{children}</div>
     </dialog>
   );

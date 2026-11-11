@@ -11,5 +11,6 @@ export default async function MaterialPage({ params }) {
   const format = formats.find(item => item.segment === media[0]);
   if (media.length > 1 || (media.length && !format)) notFound();
 
-  return <MaterialDetail key={`${material.id}:${format?.id ?? "source"}`} teacherId={teacherId} material={material} format={format} />;
+  const parent = material.parentId ? (await getMaterialContext(material.parentId)).material : null;
+  return <MaterialDetail parent={parent} key={`${format ? material.id : parent?.id ?? material.id}:${format?.id ?? "source"}`} teacherId={teacherId} material={material} format={format} />;
 }

@@ -1,6 +1,8 @@
 import { AnnotationMode, getDocument, OPS, Util } from "pdfjs-dist/legacy/build/pdf.mjs";
 import { ApiError } from "../core/errors.mjs";
 import { sourceBlocks, sourceFormulas, sourceRows } from "./pdf-source-layout.mjs";
+import { sourceTextLimit, sourceTextLimitMessage } from "../../lib/material-limits.mjs";
+import { sectionLabel } from "../../lib/material-section-label.mjs";
 
 function openPdf(bytes, options = {}) {
   return getDocument({
@@ -9,7 +11,13 @@ function openPdf(bytes, options = {}) {
   });
 }
 
-export async function extractPdf(bytes) {
+function pdfTextError(error, expired) {
+  if (expired) return new ApiError(422, "SOURCE_EXTRACTION_TIMEOUT", "PDF membutuhkan waktu terlalu lama untuk dibaca.");
+  if (error instanceof ApiError) return error;
+  return new ApiError(422, "SOURCE_TEXT_UNREADABLE", "PDF tidak dapat dibaca. Periksa file sumber.");
+}
+
+export async function extractPdf(bytes, range) {
   const loading = openPdf(bytes);
   let expired = false;
   const timer = setTimeout(() => {
@@ -19,18 +27,27 @@ export async function extractPdf(bytes) {
   try {
     const document = await loading.promise;
     if (document.numPages > 100) throw new ApiError(422, "SOURCE_TOO_MANY_PAGES", "PDF maksimal 100 halaman.");
+    const { first = 1, last = document.numPages } = range ?? {};
+    if (!Number.isInteger(first) || !Number.isInteger(last) || first < 1 || last < first || last > document.numPages) {
+      throw new ApiError(422, "INVALID_PAGE_RANGE", "Rentang halaman tidak valid.");
+    }
     let source = "";
-    for (let index = 1; index <= document.numPages; index++) {
+    for (const index of range?.pages ?? Array.from({ length: last - first + 1 }, (_, i) => first + i)) {
       const page = await document.getPage(index);
       const reader = page.streamTextContent().getReader();
+      let tooLong = false;
       try {
         while (true) {
           const { done, value } = await reader.read();
           if (done) break;
+          if (tooLong) continue;
           for (const item of value.items) {
             if (typeof item.str !== "string") continue;
             source += item.str + (item.hasEOL ? "\n" : " ");
-            if (source.length > 40000) throw new ApiError(422, "SOURCE_TEXT_TOO_LONG", "Teks materi maksimal 40.000 karakter.");
+            if (source.length > sourceTextLimit) {
+              tooLong = true;
+              break;
+            }
           }
         }
       } finally {
@@ -38,12 +55,12 @@ export async function extractPdf(bytes) {
         reader.releaseLock();
         page.cleanup();
       }
+      if (tooLong) throw new ApiError(422, "SOURCE_TEXT_TOO_LONG", sourceTextLimitMessage);
       source += "\n";
     }
     return source.trim();
   } catch (error) {
-    if (expired) throw new ApiError(422, "SOURCE_EXTRACTION_TIMEOUT", "PDF membutuhkan waktu terlalu lama untuk dibaca.");
-    throw error;
+    throw pdfTextError(error, expired);
   } finally {
     clearTimeout(timer);
     await loading.destroy().catch(() => {});
@@ -102,16 +119,18 @@ function figuresOnPage(imageCoordinates, items, width, height) {
 }
 
 // Prefer captioned figures. Large backgrounds and unlabelled decorative images are poor evidence.
-export async function findPdfFigures(bytes, topic) {
+export async function findPdfFigures(bytes, topic, range) {
   const loading = openPdf(bytes, { maxImageSize: 16_000_000 });
-  const timer = setTimeout(() => { void loading.destroy().catch(() => {}); }, 8000);
+  let expired = false;
+  const timer = setTimeout(() => { expired = true; void loading.destroy().catch(() => {}); }, 30000);
   const terms = new Set(topic.toLowerCase().match(/\p{L}{4,}/gu) ?? []);
   const figures = [];
   try {
     const pdf = await loading.promise;
     if (pdf.numPages > 100) return figures;
     const candidates = [];
-    for (let number = 1; number <= pdf.numPages; number++) {
+    for (let number = range?.first ?? 1; number <= Math.min(range?.last ?? pdf.numPages, pdf.numPages); number++) {
+      if (range?.pages?.length && !range.pages.includes(number)) continue;
       const page = await pdf.getPage(number);
       try {
         const { items } = await page.getTextContent();
@@ -124,7 +143,7 @@ export async function findPdfFigures(bytes, topic) {
     }
     candidates.sort((a, b) => b.score - a.score);
 
-    for (const { number, items } of candidates.slice(0, 4)) {
+    for (const { number, items } of candidates) {
       const page = await pdf.getPage(number);
       const base = page.getViewport({ scale: 1 });
       const viewport = page.getViewport({ scale: 1300 / Math.max(base.width, base.height) });
@@ -135,7 +154,7 @@ export async function findPdfFigures(bytes, topic) {
         const task = page.render({ canvas, canvasContext: context, viewport, recordImages: true, annotationMode: AnnotationMode.DISABLE });
         await task.promise;
         const bounds = figuresOnPage(task.imageCoordinates, pageText(items, viewport), canvas.width, canvas.height);
-        for (const figure of bounds.slice(0, 4)) {
+        for (const figure of bounds) {
           const width = figure.right - figure.left, height = figure.bottom - figure.top;
           const crop = factory.create(width, height);
           try {
@@ -150,8 +169,11 @@ export async function findPdfFigures(bytes, topic) {
       }
     }
     return figures;
-  } catch {
-    return figures;
+  } catch (error) {
+    if (error instanceof ApiError) throw error;
+    throw new ApiError(422, "SOURCE_FIGURES_SCAN_FAILED", expired
+      ? "Pemeriksaan gambar sumber terlalu lama. Pilih bagian yang lebih kecil."
+      : "Gambar sumber belum dapat diperiksa. Coba lagi.");
   } finally {
     clearTimeout(timer);
     await loading.destroy().catch(() => {});
@@ -226,6 +248,109 @@ export async function readPdfSourcePage(bytes, number) {
   } catch (error) {
     if (error instanceof ApiError) throw error;
     throw new ApiError(422, "SOURCE_PAGE_UNREADABLE", "Halaman PDF tidak dapat ditampilkan.");
+  } finally {
+    clearTimeout(timer);
+    await loading.destroy().catch(() => {});
+  }
+}
+
+export async function describePdfSections(bytes) {
+  const loading = openPdf(bytes);
+  let expired = false;
+  const timer = setTimeout(() => {
+    expired = true;
+    void loading.destroy().catch(() => {});
+  }, 10000);
+  try {
+    const pdf = await loading.promise;
+    if (pdf.numPages > 100) throw new ApiError(422, "SOURCE_TOO_MANY_PAGES", "PDF maksimal 100 halaman.");
+    const headings = new Map();
+    const outline = await pdf.getOutline() ?? [];
+    // A single top-level bookmark commonly names the entire module.
+    const queue = [...(outline.length === 1 && outline[0].items?.length ? outline[0].items : outline)];
+    for (let index = 0; index < queue.length && index < 200; index++) {
+      const item = queue[index];
+      if (item.items?.length) queue.push(...item.items.slice(0, 200 - queue.length));
+      try {
+        const destination = typeof item.dest === "string" ? await pdf.getDestination(item.dest) : item.dest;
+        if (!destination?.length || !item.title?.trim()) continue;
+        const ref = destination[0];
+        const number = (typeof ref === "number" ? ref : await pdf.getPageIndex(ref)) + 1;
+        if (number >= 1 && number <= pdf.numPages && !headings.has(number)) headings.set(number, item.title.trim().slice(0, 120));
+      } catch { /* A broken bookmark leaves manual selection available. */ }
+    }
+    const detectHeadings = headings.size < 2;
+    const pageLengths = [0];
+    const subheadings = new Map();
+    for (let number = 1; number <= pdf.numPages; number++) {
+      const page = await pdf.getPage(number);
+      try {
+        const { items } = await page.getTextContent();
+        const length = items.reduce((total, item) => total + (typeof item.str === "string" ? item.str.length + 1 : 0), 1);
+        pageLengths.push(pageLengths.at(-1) + length);
+        const heading = items.slice(0, 16).find(item => /^(?:bab|subbab|pembelajaran|kegiatan belajar)\s+(?:[ivxlcdm]+|\d+)\b/iu.test(item.str?.trim()));
+        if (detectHeadings && heading && !headings.has(number)) headings.set(number, heading.str.trim().slice(0, 120));
+        const bodyHeights = items.filter(item => item.str?.trim().length >= 30).map(item => item.height).sort((a, b) => a - b);
+        const bodyHeight = bodyHeights[Math.floor(bodyHeights.length / 2)] ?? 0;
+        const rows = sourceRows(pageText(items, page.getViewport({ scale: 1 })));
+        const labels = rows.filter(row => row.height > bodyHeight * 1.06 && row.text.length < 100 &&
+          /^(?:\d+(?:\.\d+)*[.)]|[A-Z][.)]|\([a-z0-9]+\)|[a-z]\))\s*\p{L}/u.test(row.text));
+        if (labels[0]) subheadings.set(number, labels[0].text);
+      } finally { page.cleanup(); }
+    }
+    const ordered = [...headings].sort(([a], [b]) => a - b);
+    let sections = ordered.map(([first, title], index) => ({
+      first, last: (ordered[index + 1]?.[0] ?? pdf.numPages + 1) - 1, title,
+    })).filter(({ first, last }) => first !== 1 || last !== pdf.numPages);
+    const lengthOf = (first, last) => pageLengths[last] - pageLengths[first - 1];
+    if (!sections.length && pageLengths.at(-1) > sourceTextLimit) {
+      sections.push({ first: 1, last: pdf.numPages, title: ordered[0]?.[1] ?? "Halaman", pageGroup: !ordered.length });
+    } else if (!sections.length && pdf.numPages > 12) {
+      for (let first = 1; first <= pdf.numPages; first += 8) {
+        const last = Math.min(first + 7, pdf.numPages);
+        sections.push({ first, last, title: `Halaman ${first} - ${last}`, pageGroup: true });
+      }
+    }
+    sections = sections.flatMap(section => {
+      if (lengthOf(section.first, section.last) <= sourceTextLimit) return [section];
+      const parts = [];
+      let first = section.first;
+      while (first <= section.last) {
+        let last = first;
+        while (last < section.last && lengthOf(first, last + 1) <= sourceTextLimit) last++;
+        const boundary = [...subheadings.keys()].filter(page => page > first + (last - first) / 2 &&
+          page <= last + 1 && page <= section.last).at(-1);
+        if (boundary && last < section.last) last = boundary - 1;
+        parts.push({ ...section, first, last,
+          ...(lengthOf(first, last) > sourceTextLimit ? { unavailable: true } : {}),
+        });
+        first = last + 1;
+      }
+      return parts.map((part, index) => ({ ...part,
+        title: part.pageGroup ? `Halaman ${part.first} - ${part.last}`
+          : subheadings.get(part.first) ?? `${section.title} (${index + 1})`,
+      }));
+    });
+    while (sections.length > 9) {
+      let merge = -1;
+      for (let index = 0; index < sections.length - 1; index++) {
+        const combined = lengthOf(sections[index].first, sections[index + 1].last);
+        if (combined <= sourceTextLimit &&
+          (merge < 0 || combined < lengthOf(sections[merge].first, sections[merge + 1].last))) merge = index;
+      }
+      if (merge < 0) break;
+      const [first, second] = sections.slice(merge, merge + 2);
+      const firstTitle = first.firstTitle ?? first.title;
+      const lastTitle = second.lastTitle ?? second.title;
+      const title = first.pageGroup ? `Halaman ${first.first} - ${second.last}`
+        : sectionLabel(firstTitle, lastTitle);
+      sections.splice(merge, 2, { ...first, last: second.last, title, firstTitle, lastTitle });
+    }
+    return { pages: pdf.numPages, sections: sections.map(({ first, last, title, pageGroup, unavailable }) => ({
+      first, last, title: sectionLabel(title), ...(pageGroup ? { pageGroup } : {}), ...(unavailable ? { unavailable } : {}),
+    })), maxTextLength: sourceTextLimit };
+  } catch (error) {
+    throw pdfTextError(error, expired);
   } finally {
     clearTimeout(timer);
     await loading.destroy().catch(() => {});

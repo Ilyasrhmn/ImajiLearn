@@ -8,66 +8,10 @@ import { ProjectorButton } from "./material-projector";
 import Modal, { closeModal } from "./modal";
 import { Mascot } from "./mascot";
 import "./material-reading.css";
-import { ImagePlus } from "lucide-react";
-import { studioRequest } from "../lib/studio-api.mjs";
 
-function ReadingIllustration({ teacherId, path, title }) {
-  const [visual, setVisual] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
-  const [version, setVersion] = useState(0);
-  const request = useRef(null);
-  const generating = useRef(false);
-
-  useEffect(() => {
-    const controller = new AbortController();
-    request.current = controller;
-    const { signal } = controller;
-    const load = () => studioRequest(teacherId, path + "&view=status", { signal });
-    load().then(async ({ data }) => {
-      if (data.ready || data.skipped || signal.aborted) return data;
-      return (await studioRequest(teacherId, path + "&view=status", { method: "POST", signal })).data;
-    }).then(data => {
-      if (!signal.aborted) setVisual(data);
-    }).catch(error => {
-      if (!signal.aborted) setError(error.message);
-    }).finally(() => {
-      if (!signal.aborted) setLoading(false);
-    });
-    return () => controller.abort();
-  }, [teacherId, path]);
-
-  async function generate() {
-    if (generating.current || loading) return;
-    const { signal } = request.current;
-    generating.current = true;
-    setBusy(true);
-    setError("");
-    try {
-      const statusPath = path + "&view=status" + (visual?.ready ? "&replace=1" : "");
-      const { data } = await studioRequest(teacherId, statusPath, { method: "POST", signal });
-      if (!signal.aborted) {
-        setVisual(data);
-        setVersion(current => current + 1);
-      }
-    } catch (error) {
-      if (!signal.aborted) setError(error.message);
-    } finally {
-      generating.current = false;
-      if (!signal.aborted) setBusy(false);
-    }
-  }
-
-  if (visual?.skipped) return null;
-  const url = "/api/v1" + path + "&imageVersion=" + version;
+function ReadingIllustration({ path, title }) {
   return <div className="reading-illustration">
-    {visual?.ready && <Image src={url} alt={"Ilustrasi " + title} width={1024} height={1024} unoptimized />}
-    <button className="source-secondary" type="button" onClick={generate} disabled={loading || busy}>
-      <ImagePlus size={18} aria-hidden="true" />
-      {busy || loading ? "Menyiapkan ilustrasi…" : visual?.ready ? "Buat ulang ilustrasi" : "Buat ilustrasi"}
-    </button>
-    {error && <p className="source-error" role="alert">{error}</p>}
+    <Image src={"/api/v1" + path + "&imageVersion=0"} alt={"Ilustrasi " + title} width={1024} height={1024} unoptimized loading="eager" />
   </div>;
 }
 
@@ -205,7 +149,7 @@ function Projector({ section, index, total, change, exit, illustration, question
   </>;
 }
 
-export default function MaterialReading({ reading, teacherId, illustrationPath, sourceHref }) {
+export default function MaterialReading({ reading, illustrationPath, sourceHref }) {
   const [index, setIndex] = useState(0);
   const [question, setQuestion] = useState(null);
   const [classroom, setClassroom] = useState(false);
@@ -215,6 +159,7 @@ export default function MaterialReading({ reading, teacherId, illustrationPath, 
   const { sections, quiz } = reading;
   const section = sections[index];
   const total = sections.length;
+  const hasIllustration = reading.illustrations?.[index]?.ready;
   const chapterIllustration = `${illustrationPath}?section=${index}`;
   const questions = quiz.some(item => item.sectionIndex !== undefined)
     ? quiz.filter((item, position) => (item.sectionIndex ?? Math.min(position, total - 1)) === index)
@@ -248,21 +193,21 @@ export default function MaterialReading({ reading, teacherId, illustrationPath, 
 
   return <article ref={lesson} className={`immersive-reading lesson-page${classroom ? " classroom-mode" : ""}`} aria-label={reading.title}>
     {classroom ? <Projector section={section} index={index} total={total} change={setIndex} exit={toggleProjector}
-      questions={questions} onQuestion={setQuestion} illustration={<ReadingIllustration key={chapterIllustration} teacherId={teacherId} path={chapterIllustration} title={section.heading} />} /> : <>
+      questions={questions} onQuestion={setQuestion} illustration={hasIllustration ? <ReadingIllustration key={chapterIllustration} path={chapterIllustration} title={section.heading} /> : null} /> : <>
     <div className="lesson-toolbar">
       <ProjectorButton onClick={toggleProjector} />
     </div>
     <ViewTransition update="immersive-page" default="none">
       <div className="reading-content">
         <h2 ref={heading} tabIndex={-1}>{section.heading}</h2>
-        <div className="reading-columns">
+        <div className={"reading-columns" + (hasIllustration ? "" : " reading-text-only")}>
           <div className="reading-paragraphs">
             {section.paragraphs.map((paragraph, i) => <div className="paragraph-wrap" key={i}>
               <p>{paragraph}</p>
               {i === Math.min(1, section.paragraphs.length - 1) && questions.length > 0 && <QuestionTriggers questions={questions} onQuestion={setQuestion} />}
             </div>)}
           </div>
-          <ReadingIllustration key={chapterIllustration} teacherId={teacherId} path={chapterIllustration} title={section.heading} />
+          {hasIllustration && <ReadingIllustration key={chapterIllustration} path={chapterIllustration} title={section.heading} />}
         </div>
       </div>
     </ViewTransition>

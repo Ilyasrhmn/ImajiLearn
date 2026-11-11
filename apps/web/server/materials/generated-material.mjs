@@ -74,7 +74,9 @@ export function createGeneratedMaterial(db, generateJson, { delegate, feature, i
           const latest = await getOwnedMaterial(tx, userId, job.source.id);
           if (!latest || latest.archived || latest.revision !== job.source.revision) throw sourceChanged();
           const updated = await tx[delegate].updateMany({
-            where: job.reservation, data: { content, leaseId: null, leaseUntil: null },
+            where: job.reservation, data: { content, leaseId: null, leaseUntil: null,
+              ...(feature === "mindmap" ? { generatedAt: new Date() } : {}),
+            },
           });
           if (!updated.count) throw sourceChanged();
         });
@@ -87,6 +89,12 @@ export function createGeneratedMaterial(db, generateJson, { delegate, feature, i
           await db[delegate].deleteMany({ where: job.reservation }).catch(() => {});
         }
         if (error instanceof AIError) {
+          if (error.code === "PROVIDER_UNAVAILABLE") {
+            console.warn("[media-generation] Provider unavailable", {
+              media: delegate,
+              upstreamStatus: error.status ?? null,
+            });
+          }
           const status = error.code === "RATE_LIMITED" ? 429 : 503;
           throw new ApiError(status, error.code, error.message);
         }

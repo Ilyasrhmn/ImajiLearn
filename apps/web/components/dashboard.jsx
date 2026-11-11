@@ -27,6 +27,7 @@ export default function Dashboard({ teacherId }) {
   const [materials, setMaterials] = useState([]);
   const [storageError, setStorageError] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [loadAttempt, setLoadAttempt] = useState(0);
   const router = useRouter();
   const [deleting, setDeleting] = useState(null);
   const [deleteError, setDeleteError] = useState("");
@@ -35,13 +36,42 @@ export default function Dashboard({ teacherId }) {
   const dismissNotice = useCallback(() => setNotice(null), []);
   useEffect(() => {
     let active = true;
-    const syncLocation = () => setFolderId(new URLSearchParams(window.location.search).get("folder") || "");
+    function syncLocation() {
+      setFolderId(new URLSearchParams(window.location.search).get("folder") || "");
+      setQuery("");
+    }
     window.addEventListener("popstate", syncLocation);
-    Promise.all([listMaterials(teacherId), listFolders(teacherId)]).then(([items, subjects]) => { if (active) { setMaterials(items.sort((a, b) => b.createdAt - a.createdAt)); setFolders(subjects); setFolderId(new URLSearchParams(window.location.search).get("folder") || ""); } }).catch(() => { if (active) setStorageError(true); }).finally(() => { if (active) setLoading(false); });
+    Promise.all([listMaterials(teacherId), listFolders(teacherId)]).then(([items, subjects]) => {
+      if (!active) return;
+      setMaterials(items);
+      setFolders(subjects);
+      const folder = new URLSearchParams(window.location.search).get("folder");
+      if (folder && !subjects.some(subject => subject.id === folder)) {
+        const url = new URL(window.location.href);
+        url.searchParams.delete("folder");
+        window.history.replaceState({}, "", url);
+      }
+      syncLocation();
+    }).catch(() => { if (active) setStorageError(true); }).finally(() => { if (active) setLoading(false); });
     return () => { active = false; window.removeEventListener("popstate", syncLocation); };
-  }, [teacherId]);
+  }, [teacherId, loadAttempt]);
   const activeFolder = folders.find(folder => folder.id === folderId);
   const visible = materials.filter(item => Boolean(item.archived) === archive && (folderId ? item.folderId === folderId : archive || query.trim() || !item.folderId) && `${item.title} ${item.file?.name || ""}`.toLocaleLowerCase("id").includes(query.trim().toLocaleLowerCase("id"))).sort((a, b) => Number(Boolean(b.pinned)) - Number(Boolean(a.pinned)) || b.createdAt - a.createdAt);
+  function onSaved(material) {
+    setMaterials(items => [material, ...items.filter(item => item.id !== material.id)]);
+    setUploading(false);
+    setArchive(false);
+    setQuery("");
+    const destination = folders.find(folder => folder.id === material.folderId);
+    const message = destination ? `Materi tersimpan di ${destination.name}`
+      : folderId ? `Materi tersimpan di ${NO_SUBJECT_LABEL}` : "Materi tersimpan";
+    setNotice({ message, type: "success" });
+  }
+  function retryLoad() {
+    setStorageError(false);
+    setLoading(true);
+    setLoadAttempt(attempt => attempt + 1);
+  }
   function openFolder(id) {
     const url = new URL(window.location.href);
     if (id) url.searchParams.set("folder", id); else url.searchParams.delete("folder");
@@ -94,7 +124,7 @@ export default function Dashboard({ teacherId }) {
         <a href="/jadwal"><CalendarDays size={20} />Jadwal</a>
       </nav>
       <section className="welcome" aria-labelledby="welcome-title">
-        <div><h1 id="welcome-title">Besok mengajar apa,<br />Guru?</h1><button className="upload-button" type="button" onClick={() => setUploading(true)}><Upload size={20} />Unggah materi</button></div>
+        <div><h1 id="welcome-title">Besok mengajar apa,<br />Guru?</h1><button className="upload-button" type="button" disabled={loading || storageError} onClick={() => setUploading(true)}><Upload size={20} />Unggah materi</button></div>
         <div className="welcome-character" aria-hidden="true"><Mascot kind="book" /><Mascot kind="pencil" mood="think" /></div>
       </section>
       <section className="materials" aria-labelledby="materials-title">
@@ -116,13 +146,13 @@ export default function Dashboard({ teacherId }) {
         </label>
         {!archive && !folderId && !query.trim() && folders.length > 0 && <div className="subject-folder-grid">{folders.map(folder => <button className="subject-folder" type="button" key={folder.id} onClick={() => openFolder(folder.id)}><span className="subject-folder-icon" aria-hidden="true"><Folder size={48} strokeWidth={1.5} /><FolderClosed className="folder-flap" size={48} strokeWidth={1.5} /></span><span>{folder.name}</span></button>)}</div>}
         {!archive && !folderId && !query.trim() && folders.length > 0 && visible.length > 0 && <h3 className="unfiled-heading">{NO_SUBJECT_LABEL}</h3>}
-        {loading ? <div className="materials-skeleton" role="status" aria-label="Memuat materi"><span /><span /></div> : storageError ? <p role="alert">Materi tidak dapat dimuat. Muat ulang untuk mencoba lagi.</p> : !archive && !folderId && !query.trim() && folders.length > 0 && !visible.length ? null : visible.length ? <div className="material-list">{visible.map(item => <article className="material-card" key={item.id}><button className="material-card-open" type="button" disabled={busy} onClick={() => router.push(`/materi/${encodeURIComponent(item.id)}`)}><span className="material-file-icon"><FileText size={30} /></span><span className="material-card-label"><strong>{item.title}</strong><small>{formats.filter(format => item.selectedMedia?.includes(format.id)).map(format => format.label).join(" · ") || item.file?.name || "Teks materi"}</small></span></button><div className="material-card-actions" role="group" aria-label={`Kelola ${item.title}`}><button type="button" disabled={busy} title={item.pinned ? "Lepas sematan" : "Sematkan"} aria-label={item.pinned ? "Lepas sematan" : "Sematkan"} aria-pressed={Boolean(item.pinned)} onClick={() => update(item, { pinned: !item.pinned }, item.pinned ? "Sematan dilepas" : "Materi disematkan")}>{item.pinned ? <PinOff size={20} /> : <Pin size={20} />}</button><button type="button" disabled={busy} title={item.archived ? "Pulihkan materi" : "Arsipkan"} aria-label={item.archived ? "Pulihkan materi" : "Arsipkan"} onClick={() => update(item, { archived: !item.archived }, item.archived ? "Materi dipulihkan" : "Materi diarsipkan")}>{item.archived ? <ArchiveRestore size={20} /> : <Archive size={20} />}</button><button type="button" disabled={busy} title="Pindahkan materi" aria-label="Pindahkan materi" onClick={() => { setMoving(item); setDestination(item.folderId || ""); setMoveError(""); }}><FolderInput size={20} /></button><button className="material-delete" type="button" disabled={busy} title="Hapus materi" aria-label="Hapus materi" onClick={() => { setDeleteError(""); setDeleting(item); }}><Trash2 size={20} /></button></div></article>)}</div> : <div className="empty-library" role="status"><Mascot kind="correction" mood="calm" /><div><h3>{query ? "Materi tidak ditemukan" : archive ? "Belum ada materi di arsip" : folderId ? "Belum ada materi di folder ini" : "Materi pertama Anda dimulai di sini."}</h3>{!archive && !query && <button type="button" className="empty-upload" onClick={() => setUploading(true)}>Tambahkan bahan ajar <span aria-hidden="true">+</span></button>}</div></div>}
+        {loading ? <div className="materials-skeleton" role="status" aria-label="Memuat materi"><span /><span /></div> : storageError ? <div><p role="alert">Materi tidak dapat dimuat.</p><button className="source-secondary" type="button" onClick={retryLoad}>Coba lagi</button></div> : !archive && !folderId && !query.trim() && folders.length > 0 && !visible.length ? null : visible.length ? <div className="material-list">{visible.map(item => <article className="material-card" key={item.id}><button className="material-card-open" type="button" disabled={busy} onClick={() => router.push(`/materi/${encodeURIComponent(item.id)}`)}><span className="material-file-icon"><FileText size={30} /></span><span className="material-card-label"><strong>{item.title}</strong><small>{formats.filter(format => item.selectedMedia?.includes(format.id)).map(format => format.label).join(" · ") || item.file?.name || "Teks materi"}</small></span></button><div className="material-card-actions" role="group" aria-label={`Kelola ${item.title}`}><button type="button" disabled={busy} title={item.pinned ? "Lepas sematan" : "Sematkan"} aria-label={item.pinned ? "Lepas sematan" : "Sematkan"} aria-pressed={Boolean(item.pinned)} onClick={() => update(item, { pinned: !item.pinned }, item.pinned ? "Sematan dilepas" : "Materi disematkan")}>{item.pinned ? <PinOff size={20} /> : <Pin size={20} />}</button><button type="button" disabled={busy} title={item.archived ? "Pulihkan materi" : "Arsipkan"} aria-label={item.archived ? "Pulihkan materi" : "Arsipkan"} onClick={() => update(item, { archived: !item.archived }, item.archived ? "Materi dipulihkan" : "Materi diarsipkan")}>{item.archived ? <ArchiveRestore size={20} /> : <Archive size={20} />}</button><button type="button" disabled={busy} title="Pindahkan materi" aria-label="Pindahkan materi" onClick={() => { setMoving(item); setDestination(item.folderId || ""); setMoveError(""); }}><FolderInput size={20} /></button><button className="material-delete" type="button" disabled={busy} title="Hapus materi" aria-label="Hapus materi" onClick={() => { setDeleteError(""); setDeleting(item); }}><Trash2 size={20} /></button></div></article>)}</div> : <div className="empty-library" role="status"><Mascot kind="correction" mood="calm" /><div><h3>{query ? "Materi tidak ditemukan" : archive ? "Belum ada materi di arsip" : folderId ? "Belum ada materi di folder ini" : "Materi pertama Anda dimulai di sini."}</h3>{!archive && !query && <button type="button" className="empty-upload" onClick={() => setUploading(true)}>Tambahkan bahan ajar <span aria-hidden="true">+</span></button>}</div></div>}
       </section>
     </main>
     {managing && <FolderManager teacherId={teacherId} folders={folders} onClose={() => { setManaging(false); setNotice(null); }} onNotice={setNotice} onChange={next => { setFolders(next); if (folderId && !next.some(folder => folder.id === folderId)) openFolder(""); }} />}
     {moving && <Modal title="Pindahkan materi" onClose={() => setMoving(null)}><div className="move-material"><h2>Pindahkan materi</h2><label className="source-field" htmlFor="move-destination">Mapel</label><ThemedSelect id="move-destination" value={destination} onChange={e => setDestination(e.target.value)}><option value="">{NO_SUBJECT_LABEL}</option>{folders.map(folder => <option key={folder.id} value={folder.id}>{folder.name}</option>)}</ThemedSelect>{moveError && <p className="source-error" role="alert">{moveError}</p>}<div className="source-actions"><button type="button" className="source-secondary" onClick={() => closeModal(() => setMoving(null))} disabled={busy}>Batal</button><button type="button" className="upload-button" disabled={busy} onClick={moveMaterial}>Pindahkan</button></div></div></Modal>}
     {notice && <Notice notice={notice} onDismiss={dismissNotice} insideDialog={managing} />}
     {deleting && <Modal title="Hapus materi" onClose={() => !busy && setDeleting(null)}><div className="material-confirm"><Mascot kind="eraser" mood="think" /><h2>Hapus materi ini?</h2><p><strong>{deleting.title}</strong> akan dihapus dari akun Anda.</p>{deleteError && <p className="source-error" role="alert">{deleteError}</p>}<div className="source-actions"><button type="button" className="source-secondary" disabled={busy} onClick={() => closeModal(() => setDeleting(null))}>Batal</button><button type="button" className="upload-button" disabled={busy} onClick={remove}>{busy ? "Menghapus..." : "Ya, hapus materi"}</button></div></div></Modal>}
-    {uploading && <UploadMaterial teacherId={teacherId} folders={folders} initialFolder={folderId} onClose={() => setUploading(false)} onSaved={material => { setMaterials(items => [material, ...items]); setStorageError(false); setArchive(false); openFolder(material.folderId || ""); setUploading(false); setNotice({ message: "Materi tersimpan", type: "success" }); }} />}
+    {uploading && <UploadMaterial teacherId={teacherId} folders={folders} initialFolder={folderId} onClose={() => setUploading(false)} onSaved={onSaved} />}
   </>;
 }
