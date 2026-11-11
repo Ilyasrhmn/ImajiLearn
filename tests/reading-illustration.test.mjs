@@ -132,6 +132,6 @@ test("an illustration is private, retryable, and generated once per saved readin
     assert.equal(await selective.generate(owner.id, pdfSource.id, false, 2), null);
     assert.deepEqual(await selective.get(owner.id, pdfSource.id, 2, "status"), { ready: false, skipped: true });
     assert.equal(imageCalls, 1);
-    assert.equal(plans, 3);
+    assert.equal(plans, 2);
   } finally { await storage.close(); }
 });

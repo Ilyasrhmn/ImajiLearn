@@ -160,6 +160,7 @@ model MaterialReading {
   materialId String   @db.Uuid
   revision   String   @db.Char(64)
   content    Json?    @db.JsonB
+  generatedAt DateTime? @db.Timestamptz(3)
   leaseId    String?  @db.Uuid
   leaseUntil DateTime? @db.Timestamptz(3)
   illustration Bytes?
@@ -194,6 +195,7 @@ model MaterialVisual {
   materialId String   @db.Uuid
   revision   String   @db.Char(64)
   content    Json?    @db.JsonB
+  generatedAt DateTime? @db.Timestamptz(3)
   leaseId    String?  @db.Uuid
   leaseUntil DateTime? @db.Timestamptz(3)
   material   Material @relation(fields: [materialId], references: [id], onDelete: Cascade)
@@ -205,6 +207,7 @@ model MaterialSlideDeck {
   materialId String    @db.Uuid
   revision   String    @db.Char(64)
   content    Json?     @db.JsonB
+  generatedAt DateTime? @db.Timestamptz(3)
   leaseId    String?   @db.Uuid
   leaseUntil DateTime? @db.Timestamptz(3)
   material   Material  @relation(fields: [materialId], references: [id], onDelete: Cascade)

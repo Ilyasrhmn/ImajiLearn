@@ -33,7 +33,8 @@ export function parseLessonIndex(value) {
 }
 
 function requiredText(value, max) {
-  if (typeof value === "string" && value.trim() && value.length <= max) return value.trim();
+  if (Array.isArray(value) && value.every(item => typeof item === "string")) value = value.join(". ");
+  if (typeof value === "string" && value.trim() && value.length <= 5000) return value.trim().replace(/\s+/gu, " ").slice(0, max);
   throw new ApiError(502, "INVALID_ILLUSTRATION_PLAN", "Arahan gambar belum lengkap. Coba lagi.");
 }
 
@@ -47,11 +48,29 @@ function supportingExcerpts(text, lines) {
   }).filter(item => item.score > 0).sort((a, b) => b.score - a.score).slice(0, 3).map(item => item.excerpt);
 }
 
-export async function resolveLessonIllustration(db, generateJson, generateImage, { userId, source, feature, title, lines, scene, outline }) {
+function matchingSourceFigure(figures, title) {
+  const generic = new Set(["gambar", "ilustrasi", "proses", "mekanisme", "kerja", "cara", "bagian", "fungsi",
+    "tempat", "utama", "dalam", "untuk", "yang", "dari", "dengan", "pada", "serta", "adalah", "mengenal", "darah"]);
+  const terms = [...new Set(title.toLowerCase().match(/\p{L}{4,}/gu) ?? [])].filter(word => !generic.has(word));
+  if (!terms.length) return null;
+  const ranked = figures.map(figure => {
+    const words = new Set(figure.caption.toLowerCase().match(/\p{L}{4,}/gu) ?? []);
+    return { figure, matches: terms.filter(word => words.has(word)).length };
+  }).sort((a, b) => b.matches - a.matches);
+  return ranked[0]?.matches === terms.length ? ranked[0].figure : null;
+}
+
+export async function lessonSourceFigures(db, userId, source, topics) {
   const file = await db.materialFile.findFirst({
-    where: { materialId: source.id, userId, mime: "application/pdf" }, select: { bytes: true },
+    where: { materialId: source.parentId ?? source.id, userId, mime: "application/pdf" }, select: { bytes: true },
   });
-  const figures = file ? await (await import("./pdf.mjs")).findPdfFigures(file.bytes, [title, ...lines].join(" ")) : [];
+  return file ? await (await import("./pdf.mjs")).findPdfFigures(file.bytes, topics.join(" "), source.parentId ? { first: source.pageStart, last: source.pageEnd, pages: source.sectionPages } : undefined) : [];
+}
+
+export async function resolveLessonIllustration(db, generateJson, generateImage, { userId, source, feature, title, lines, scene, outline, sourceFigures }) {
+  const figures = sourceFigures ?? await lessonSourceFigures(db, userId, source, [title, ...lines]);
+  const match = matchingSourceFigure(figures, title);
+  if (match) return { bytes: match.bytes, sourcePage: match.page, sourceBytes: null, visualSkipped: false };
   const candidates = figures.map(({ page, caption }, index) => ({ id: index + 1, page, caption }));
   const { content } = await generateJson(feature, { schema, messages: [
     { role: "system", content: instructions },

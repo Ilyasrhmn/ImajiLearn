@@ -38,7 +38,7 @@ export function createReadingIllustration(db, generateIllustration, generateJson
       return image?.sourceBytes ?? image?.bytes ?? null;
     },
 
-    async generate(userId, materialId, replace = false, sectionIndex) {
+    async generate(userId, materialId, replace = false, sectionIndex, preparation = {}) {
       const job = await db.$transaction(async tx => {
         const source = await getOwnedMaterial(tx, userId, materialId);
         if (!source) throw missingMaterial();
@@ -55,7 +55,7 @@ export function createReadingIllustration(db, generateIllustration, generateJson
         if (stored?.leaseUntil > new Date()) {
           throw new ApiError(409, "ILLUSTRATION_IN_PROGRESS", "Ilustrasi sedang dibuat. Coba buka lagi sebentar.");
         }
-        await consumeRateLimit(tx, "reading-illustration:" + userId, 10, 15 * 60_000);
+        if (!preparation.budgeted) await consumeRateLimit(tx, "reading-illustration:" + userId, 10, 15 * 60_000);
         const lease = { leaseId: randomUUID(), leaseUntil: new Date(Date.now() + 180_000) };
         await tx.materialReadingIllustration.upsert({
           where: imageWhere, create: { ...image, ...lease }, update: lease,
@@ -69,7 +69,7 @@ export function createReadingIllustration(db, generateIllustration, generateJson
       try {
         const visual = await resolveLessonIllustration(db, generateJson, generateIllustration, {
           userId, source: job.source, feature: "reading", title: job.chapter.heading, lines: job.chapter.paragraphs, scene: job.scene,
-          outline: job.outline,
+          outline: job.outline, sourceFigures: preparation.sourceFigures,
         });
         await db.$transaction(async tx => {
           const latest = await getOwnedMaterial(tx, userId, job.reservation.materialId);

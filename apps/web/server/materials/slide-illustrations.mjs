@@ -42,7 +42,7 @@ export function createSlideIllustrations(db, generateIllustration, generateJson)
       return row?.sourceBytes ?? row?.bytes ?? null;
     },
 
-    async generate(userId, materialId, revision, slideIndex, replace = false) {
+    async generate(userId, materialId, revision, slideIndex, replace = false, preparation = {}) {
       const job = await db.$transaction(async tx => {
         const source = await getOwnedMaterial(tx, userId, materialId);
         if (!source) throw missing();
@@ -60,7 +60,7 @@ export function createSlideIllustrations(db, generateIllustration, generateJson)
         if (row?.leaseUntil > new Date()) {
           throw new ApiError(409, "ILLUSTRATION_IN_PROGRESS", "Ilustrasi sedang dibuat. Coba buka lagi sebentar.");
         }
-        await consumeRateLimit(tx, "slide-illustration:" + userId, 12, 15 * 60_000);
+        if (!preparation.budgeted) await consumeRateLimit(tx, "slide-illustration:" + userId, 12, 15 * 60_000);
         const lease = { leaseId: randomUUID(), leaseUntil: new Date(Date.now() + 180_000) };
         await tx.materialSlideIllustration.upsert({ where, create: { ...imageKey, ...lease }, update: lease });
         return { source, slide, outline: deck.content.slides.map(item => item.title), hadImage: Boolean(row?.bytes), reservation: { ...imageKey, leaseId: lease.leaseId } };
@@ -70,7 +70,7 @@ export function createSlideIllustrations(db, generateIllustration, generateJson)
       try {
         const visual = await resolveLessonIllustration(db, generateJson, generateIllustration, {
           userId, source: job.source, feature: "slides", title: job.slide.title, lines: job.slide.points, scene: job.slide.scene,
-          outline: job.outline,
+          outline: job.outline, sourceFigures: preparation.sourceFigures,
         });
         await db.$transaction(async tx => {
           const latest = await getOwnedMaterial(tx, userId, job.reservation.materialId);
