@@ -1,4 +1,5 @@
 import { earthLayers, resolveVisualModel } from "../../lib/visual-templates.mjs";
+import { geometryCatalog } from "../../lib/geometry-catalog.mjs";
 import { ApiError } from "../core/errors.mjs";
 import { createGeneratedMaterial } from "./generated-material.mjs";
 
@@ -22,11 +23,12 @@ const instructions = [
   'Untuk pembekuan darah, gunakan kind "flow", layout "sequence", judul "Pembekuan darah", dan kutipan asli untuk tahapan yang ada pada sumber. Sistem akan menampilkan model pembuluh darah, trombosit, dan fibrin.',
   "Details harus berupa objek dengan empat kunci " + layerIds.join(", ") + ". Isinya satu keterangan pendek per lapisan. Isi null jika lapisan itu tidak dijelaskan di sumber. Jangan menambah fakta.",
   'Untuk jaring-jaring kubus yang dibahas sumber, keluarkan kind "cube_net", title, evidence berupa kutipan persis dari sumber, dan detail singkat tentang enam sisi saat dilipat. Gunakan jenis ini hanya untuk kubus, bukan balok atau bangun lain.',
+  'Untuk bangun datar atau bangun ruang, gunakan kind "geometry", title, dan shapes berisi 1–8 bentuk yang benar-benar dibahas. Tiap bentuk memiliki shape, evidence (kutipan persis sumber yang menyebut bentuk), dan detail (penjelasan sesuai sumber, maksimal 300 karakter). Shape yang tersedia: ' + Object.keys(geometryCatalog).join(", ") + '. Model menampilkan bentuk yang dapat diputar, dengan sisi/rusuk/titik sudut yang dapat diklik. Jangan menolak geometri sebagai unsupported. Jangan memakai assembly untuk menggantikan model geometri. Untuk jaring-jaring kubus khusus tetap gunakan cube_net.',
   'Jika konsep utamanya fotosintesis, gunakan kind "photosynthesis", title, dan steps berisi 2–6 langkah dengan fokus berbeda. Setiap langkah punya label, detail, evidence berupa kutipan persis dari sumber, dan focus yang salah satu dari light (cahaya ke daun), water (air dari akar), carbon (CO2 masuk), leaf (proses di dalam daun), oxygen (oksigen keluar), sugar (distribusi gula).',
   "Untuk fotosintesis, pilih hanya fokus yang mekanismenya didukung kutipan. Untuk air, CO2, oksigen, atau distribusi gula, cari kutipan yang menjelaskan arah gerak, bukan sekadar daftar bahan atau hasil. Untuk fokus leaf pilih kutipan dari dalam daun, misalnya kloroplas. Jelaskan satu fakta yang dapat dilihat per langkah, dengan bahasa siswa SD.",
   'Untuk objek fisik yang dapat dirakit dari bentuk sederhana, gunakan kind "assembly", title, parts (2–6), dengan id, label, detail, evidence (kutipan persis untuk bagian ini), shape ("slab", "cylinder", "ring", "wedge"), at [x,y,z] (titik tengah alas), size [lebar,kedalaman,tinggi], tone ("clay", "sage", "ochre", "blue", "ink"), spread [dx,dy,dz] (pergeseran saat terurai).',
   "Gunakan assembly hanya jika bentuk dan posisi sesuai sumber. Susun bagian yang bersentuhan dengan tepi yang pas tanpa tumpang tindih volume, misalnya papan tuas mulai pada tinggi puncak tumpuan. Gunakan koordinat at antara -100 dan 100, size antara 4 dan 180, dan spread antara -80 dan 80. Cylinder dan ring punya lebar dan kedalaman yang sama. Saat dirakit dan sepanjang gerak, bagian tidak saling menembus. Gunakan flow jika bentuk sederhana tidak dapat mewakili objek.",
-  'Kind "flow" hanya untuk Tata Surya atau pembekuan darah. Isinya title, layout "sequence" dan steps berisi 2–5 objek dengan label pendek, detail satu kalimat, serta evidence berupa kutipan persis dari sumber. Untuk topik yang tidak punya model atau interaksi yang cocok di atas, keluarkan {"kind":"unsupported"}.',
+  'Kind "flow" hanya untuk Tata Surya atau pembekuan darah. Isinya title, layout "sequence" dan steps berisi 2–5 objek dengan label pendek, detail satu kalimat, serta evidence berupa kutipan persis dari sumber. Untuk topik yang tidak punya model atau interaksi yang cocok di atas (termasuk setelah memeriksa geometry), keluarkan {"kind":"unsupported"}.',
   "Susun steps sesuai urutan proses jika ada, atau urutan penjelasan yang masuk akal. Jangan mengarang hubungan sebab-akibat.",
   "Pakai judul maksimal 120 karakter, label maksimal 80 karakter, dan keterangan maksimal 300 karakter.",
 ].join("\n");
@@ -129,8 +131,24 @@ function validateAssembly(content, title, sourceText) {
 }
 
 function validateVisual(content, source) {
-  if (content?.kind === "unsupported") throw unsupportedVisual();
+  if (content?.kind === "unsupported") {
+    const recovered = recoverGeometry(source);
+    if (!recovered) throw unsupportedVisual();
+    content = recovered;
+  }
   const title = text(content?.title, 120);
+  if (content.kind === "geometry") {
+    if (!Array.isArray(content.shapes) || content.shapes.length < 1 || content.shapes.length > 8) throw invalidVisual();
+    const sourceText = normalizeSource(source.text);
+    const shapes = content.shapes.map(item => {
+      const spec = Object.hasOwn(geometryCatalog, item?.shape ?? "") && geometryCatalog[item.shape];
+      const evidence = text(item?.evidence, 600);
+      if (!spec || !spec.pattern.test(evidence) || !sourceText.includes(normalizeSource(evidence))) throw invalidVisual();
+      return { shape: item.shape, evidence, detail: text(item.detail, 300) };
+    });
+    if (new Set(shapes.map(item => item.shape)).size !== shapes.length) throw invalidVisual();
+    return { kind: "geometry", title, shapes };
+  }
   if (content.kind === "assembly") return validateAssembly(content, title, normalizeSource(source.text));
   if (content.kind === "cube_net") {
     const evidence = text(content.evidence, 450);
@@ -167,6 +185,16 @@ function validateVisual(content, source) {
   }
   if (new Set(steps.map(step => step.focus)).size !== steps.length) throw invalidVisual();
   return { kind: content.kind, title, steps };
+}
+
+function recoverGeometry(source) {
+  if (!/bangun\s+(?:datar|ruang)|geometri|luas|keliling|volume|jaring[\s-]+jaring/iu.test(source.text)) return null;
+  const sentences = sentencesIn(source.text);
+  const shapes = Object.entries(geometryCatalog).flatMap(([shape, spec]) => {
+    const evidence = sentences.find(sentence => spec.pattern.test(sentence.text))?.text;
+    return evidence ? [{ shape, evidence, detail: evidence.slice(0, 300) }] : [];
+  }).slice(0, 8);
+  return shapes.length ? { kind: "geometry", title: "Mengenal bangun", shapes } : null;
 }
 
 export function createMaterialVisual(db, generateJson) {

@@ -7,6 +7,33 @@ import { AIError } from "../apps/web/server/ai/errors.mjs";
 import { resolveVisualModel } from "../apps/web/lib/visual-templates.mjs";
 import { testDatabase } from "./support/database.mjs";
 
+test("geometry generation grounds shapes in owned source and reuses saved results", async () => {
+  const storage = await testDatabase();
+  try {
+    for (const migration of storage.migrations) await storage.migrate(migration);
+    const owner = await storage.db.teacher.create({ data: { name: "Geometry", email: "geometry@example.test" } });
+    const other = await storage.db.teacher.create({ data: { name: "Other", email: "other-geometry@example.test" } });
+    const sourceText = "Bangun ruang kubus memiliki enam sisi berbentuk persegi. Balok memiliki sisi berbentuk persegi panjang. Tabung memiliki alas lingkaran.";
+    const source = await createMaterialService(storage.db).create(owner.id, { title: "Bangun ruang", text: sourceText }, randomUUID());
+    const shape = { shape: "cuboid", evidence: "Balok memiliki sisi berbentuk persegi panjang.", detail: "Balok memiliki sisi persegi panjang." };
+    const content = { kind: "geometry", title: "Balok", shapes: [shape] };
+    const invalid = createMaterialVisual(storage.db, async () => ({ content: { ...content, shapes: [{ ...shape, shape: "sphere" }] } }));
+    await assert.rejects(invalid.generate(owner.id, source.id), { code: "INVALID_VISUAL" });
+    const visual = createMaterialVisual(storage.db, async () => ({ content }));
+    await assert.rejects(visual.generate(other.id, source.id), { status: 404 });
+    assert.deepEqual(await visual.generate(owner.id, source.id), content);
+    const cached = createMaterialVisual(storage.db, () => assert.fail("Saved geometry should not call the provider"));
+    assert.deepEqual(await cached.generate(owner.id, source.id), content);
+    assert.deepEqual(await cached.get(owner.id, source.id), content);
+    const recover = createMaterialVisual(storage.db, async () => ({ content: { kind: "unsupported" } }));
+    const recovered = await recover.generate(owner.id, source.id, { regenerate: true });
+    assert.equal(recovered.kind, "geometry");
+    assert.ok(recovered.shapes.some(item => item.shape === "cube"));
+    assert.ok(recovered.shapes.every(item => sourceText.includes(item.evidence)));
+    assert.ok(!recovered.shapes.some(item => item.shape === "sphere"));
+  } finally { await storage.close(); }
+});
+
 test("saved orbital flows keep their explanations and select the correct center", () => {
   const steps = [
     { label: "Paham Geosentris", detail: "Bumi berada di pusat model." },

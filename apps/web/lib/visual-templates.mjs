@@ -1,3 +1,5 @@
+import { geometryCatalog } from "./geometry-catalog.mjs";
+
 export const earthLayers = [
   { id: "crust", label: "Kerak Bumi", radius: 172, inner: 155, offset: 0, fill: "#89a782", side: "#587559" },
   { id: "mantle", label: "Mantel", radius: 155, inner: 97, offset: 190, fill: "#d99168", side: "#a75b43" },
@@ -41,6 +43,10 @@ const validVector = value => Array.isArray(value) && value.length === 3 && value
 
 function isSupportedModel(visual) {
   switch (visual.kind) {
+    case "geometry": return Array.isArray(visual.shapes) && visual.shapes.length <= 8 &&
+      validItems(visual.shapes, item => Object.hasOwn(geometryCatalog, item.shape) && validText(item.detail) &&
+        validText(item.evidence) && geometryCatalog[item.shape].pattern.test(item.evidence)) &&
+      new Set(visual.shapes.map(item => item.shape)).size === visual.shapes.length;
     case "blood_clot": return true;
     case "solar_system": return validItems(visual.orbitSteps, step =>
       ["earth", "sun"].includes(step.center) && validText(step.label) && validText(step.detail));
