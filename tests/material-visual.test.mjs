@@ -4,9 +4,28 @@ import { test } from "node:test";
 import { createMaterialVisual } from "../apps/web/server/materials/visual.mjs";
 import { createMaterialService } from "../apps/web/server/materials/service.mjs";
 import { AIError } from "../apps/web/server/ai/errors.mjs";
+import { resolveVisualModel } from "../apps/web/lib/visual-templates.mjs";
 import { testDatabase } from "./support/database.mjs";
 
-test("visual generation keeps Earth and flow outputs private, validated, and reusable", async () => {
+test("saved orbital flows keep their explanations and select the correct center", () => {
+  const steps = [
+    { label: "Paham Geosentris", detail: "Bumi berada di pusat model." },
+    { label: "Transisi ke Heliosentris", detail: "Matahari menjadi pusat model." },
+    { label: "Dukungan Ilmu Pengetahuan", detail: "Pengamatan mendukung perubahan tersebut." },
+  ];
+  const visual = resolveVisualModel({ kind: "flow", title: "Perkembangan Konsep Pusat Tata Surya", steps });
+  assert.equal(visual.kind, "solar_system");
+  assert.deepEqual(visual.orbitSteps.map(step => step.center), ["earth", "sun", "sun"]);
+  assert.deepEqual(visual.orbitSteps.map(step => step.detail), steps.map(step => step.detail));
+  assert.equal(resolveVisualModel({ kind: "flow", title: "Gerhana Bulan", steps: [
+    { label: "Bumi", detail: "Bumi berada di antara Matahari dan Bulan." },
+    { label: "Bayangan", detail: "Bulan masuk ke bayangan Bumi." },
+  ] }), null);
+  assert.equal(resolveVisualModel({ kind: "photosynthesis", title: "Fotosintesis", steps: [] }), null);
+  assert.equal(resolveVisualModel({ kind: "main_idea", title: "Kalimat utama" }), null);
+});
+
+test("visual generation validates supported models and rejects diagrams without a model", async () => {
   const storage = await testDatabase();
   try {
     for (const migration of storage.migrations) await storage.migrate(migration);
@@ -90,7 +109,6 @@ test("visual generation keeps Earth and flow outputs private, validated, and reu
     await assert.rejects(unavailable.generate(other.id, lever.id, { regenerate: true }), { code: "INVALID_PROVIDER_RESPONSE" });
     for (const [content, sourceText] of [
       [{ kind: "cube_net", title: "Jaring-jaring kubus", evidence: "Enam persegi membentuk jaring-jaring kubus.", detail: "Enam persegi bertemu saat dilipat." }, "Enam persegi membentuk jaring-jaring kubus."],
-      [{ kind: "main_idea", title: "Kalimat utama", sentences: ["Kucing merawat anaknya.", "Ia menyusui anaknya."], answerIndex: 0, detail: "Kalimat kedua memberi contoh perawatan." }, "Kucing merawat anaknya. Ia menyusui anaknya."],
     ]) {
       const material = await materials.create(owner.id, { title: content.title, text: sourceText }, randomUUID());
       const invalid = content.kind === "cube_net" ? { ...content, evidence: "Tidak ada di sumber." } : { ...content, sentences: content.sentences.toReversed() };
@@ -119,7 +137,26 @@ test("visual generation keeps Earth and flow outputs private, validated, and reu
     assert.deepEqual(await pending, earthContent);
     assert.deepEqual(await visual.get(owner.id, earth.id), earthContent);
     assert.deepEqual(await visual.generate(owner.id, earth.id), earthContent);
-    assert.deepEqual(await visual.generate(owner.id, flow.id), flowContent);
+    await assert.rejects(visual.generate(owner.id, flow.id), { code: "VISUAL_MODEL_UNSUPPORTED" });
+    assert.equal(await visual.get(owner.id, flow.id), null);
     assert.equal(calls, 3);
+    const clot = {
+      kind: "flow", layout: "sequence", title: "Mekanisme Proses Pembekuan Darah",
+      steps: [
+        { label: "Trombosit", detail: "Trombosit menempel.", evidence: "Trombosit menempel." },
+        { label: "Fibrin", detail: "Fibrin memperkuat sumbat.", evidence: "Fibrin memperkuat sumbat." },
+      ],
+    };
+    const source = await materials.create(other.id, { title: clot.title, text: clot.steps.map(step => step.evidence).join(" ") }, randomUUID());
+    const generated = await createMaterialVisual(storage.db, async () => ({ content: clot })).generate(other.id, source.id);
+    assert.deepEqual(generated, resolveVisualModel(clot));
+    assert.equal(generated.kind, "blood_clot");
+    await storage.db.materialVisual.updateMany({ where: { materialId: source.id }, data: { content: clot } });
+    const cachedVisual = createMaterialVisual(storage.db, () => assert.fail("A compatible saved result should be reused"));
+    assert.deepEqual(await cachedVisual.get(other.id, source.id), generated);
+    assert.deepEqual(await cachedVisual.generate(other.id, source.id), generated);
+    await storage.db.materialVisual.updateMany({ where: { materialId: source.id }, data: { content: flowContent } });
+    assert.equal(await cachedVisual.get(other.id, source.id), null);
+    assert.deepEqual(await createMaterialVisual(storage.db, async () => ({ content: clot })).generate(other.id, source.id), generated);
   } finally { await storage.close(); }
 });
