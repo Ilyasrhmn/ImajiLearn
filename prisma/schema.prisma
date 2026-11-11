@@ -137,7 +137,14 @@ model Material {
   mediaPreference MediaPreference?
   file            MaterialFile?
   worksheetDocuments WorksheetDocument[]
+  parentId        String?  @db.Uuid
+  pageStart       Int?
+  pageEnd         Int?
+  sectionPages    Int[] @default([])
+  parent          Material? @relation("MaterialSections", fields: [parentId, userId], references: [id, userId], onDelete: Cascade)
+  sections        Material[] @relation("MaterialSections")
 
+  @@unique([parentId, revision])
   @@unique([id, userId])
   @@index([userId, updatedAt, id])
   @@index([folderId, userId])
