@@ -77,7 +77,6 @@
   .modal::backdrop { background:#172a3066; }
   .modal-close { position:absolute;right:12px;top:12px; }
   .modal-content h2 { margin:0 30px 20px 0;font-size:24px; }
-  .modal .material-confirm>.mascot { width:64px;height:85px;margin-bottom:12px; }
   .modal .source-actions,.modal .draft-actions { display:flex;gap:12px;margin-top:22px; }
   .modal .source-actions>*,.modal .draft-actions>* { flex:1;display:flex;align-items:center;justify-content:center;min-height:48px;border-radius:12px;padding:10px;font-weight:800; }
   .modal .source-secondary { background:#fff;border:1px solid #cbd4c8;color:#243e43; }
