@@ -1,9 +1,10 @@
 "use client";
 import ThemedSelect from "./themed-select";
 import { useState } from "react";
-import { ArrowRight, Copy, FileText, PencilLine, Trash2 } from "lucide-react";
+import { ArrowRight, Copy, FileText, PencilLine, Search, Trash2 } from "lucide-react";
 import { examTitle, filterExams } from "../lib/exams.mjs";
 import Modal, { closeModal } from "./modal";
+import "./exam-source-tools.css";
 
 export default function ExamLibrary({ exams, onOpen, onDelete, onDuplicate, onRename }) {
   const [query, setQuery] = useState(""), [grade, setGrade] = useState(""), [subject, setSubject] = useState(""), [sort, setSort] = useState("newest");
@@ -19,7 +20,10 @@ export default function ExamLibrary({ exams, onOpen, onDelete, onDuplicate, onRe
   return <section className="exam-saved" aria-labelledby="exam-saved-title">
     <h2 id="exam-saved-title">Naskah tersimpan</h2>
     <div className="exam-library-filters">
-      <input type="search" aria-label="Cari naskah" placeholder="Cari naskah" value={query} onChange={e => setQuery(e.target.value)} />
+      <label className="exam-source-search">
+        <Search size={18} aria-hidden="true" />
+        <input type="search" aria-label="Cari naskah" placeholder="Cari naskah" value={query} onChange={e => setQuery(e.target.value)} />
+      </label>
       <ThemedSelect aria-label="Filter kelas" value={grade} onChange={e => setGrade(e.target.value)}><option value="">Semua kelas</option>{[1,2,3,4,5,6].map(n => <option key={n} value={n}>Kelas {n}</option>)}</ThemedSelect>
       <ThemedSelect aria-label="Filter mata pelajaran" value={subject} onChange={e => setSubject(e.target.value)}><option value="">Semua pelajaran</option>{[...new Set(exams.map(exam => exam.header.subject))].filter(Boolean).sort().map(name => <option key={name}>{name}</option>)}</ThemedSelect>
       <ThemedSelect aria-label="Urutkan naskah" value={sort} onChange={e => setSort(e.target.value)}><option value="newest">Terbaru</option><option value="oldest">Terlama</option><option value="name">Nama A–Z</option></ThemedSelect>

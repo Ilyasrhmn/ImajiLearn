@@ -51,7 +51,7 @@
   .mobile-document .exam-summary textarea { min-height:120px; }
   .mobile-document .exam-saved { margin-top:32px; }
   .mobile-document .exam-library-filters { grid-template-columns:repeat(2,minmax(0,1fr));gap:10px; }
-  .mobile-document .exam-library-filters>input { grid-column:1/-1; }
+  .mobile-document .exam-library-filters > .exam-source-search { grid-column:1/-1; }
   .mobile-document .exam-saved-item { flex-wrap:wrap;gap:0;padding:12px; }
   .mobile-document .exam-saved-open { width:100%;gap:10px;min-width:0; }
   .mobile-document .exam-saved-open strong { font-size:16px;overflow-wrap:anywhere; }
