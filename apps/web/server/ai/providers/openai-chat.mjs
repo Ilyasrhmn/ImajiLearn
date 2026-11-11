@@ -90,7 +90,7 @@ export async function requestJson(config, request, transport = fetch) {
       body, signal: controller.signal, redirect: "error", cache: "no-store",
     });
     if (!response.ok) {
-      await response.body?.cancel();
+      await response.body?.cancel().catch(() => {});
       const code = [401, 403].includes(response.status) ? "PROVIDER_AUTH_ERROR" : response.status === 429 ? "RATE_LIMITED" :
         response.status >= 500 ? "PROVIDER_UNAVAILABLE" : "PROVIDER_REQUEST_REJECTED";
       throw new AIError(code, { status: response.status });
