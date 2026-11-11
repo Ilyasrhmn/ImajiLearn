@@ -13,6 +13,7 @@ import Modal, { closeModal } from "./modal";
 import FolderManager from "./folder-manager";
 import ThemedSelect from "./themed-select";
 import { NO_SUBJECT_LABEL, deleteMaterial, listFolders, listMaterials, updateMaterial } from "../lib/materials";
+import ActionConfirmation from "@imajilearn/shared/components/action-confirmation.jsx";
 
 export default function Dashboard({ teacherId }) {
   const [archive, setArchive] = useState(false);
@@ -152,7 +153,12 @@ export default function Dashboard({ teacherId }) {
     {managing && <FolderManager teacherId={teacherId} folders={folders} onClose={() => { setManaging(false); setNotice(null); }} onNotice={setNotice} onChange={next => { setFolders(next); if (folderId && !next.some(folder => folder.id === folderId)) openFolder(""); }} />}
     {moving && <Modal title="Pindahkan materi" onClose={() => setMoving(null)}><div className="move-material"><h2>Pindahkan materi</h2><label className="source-field" htmlFor="move-destination">Mapel</label><ThemedSelect id="move-destination" value={destination} onChange={e => setDestination(e.target.value)}><option value="">{NO_SUBJECT_LABEL}</option>{folders.map(folder => <option key={folder.id} value={folder.id}>{folder.name}</option>)}</ThemedSelect>{moveError && <p className="source-error" role="alert">{moveError}</p>}<div className="source-actions"><button type="button" className="source-secondary" onClick={() => closeModal(() => setMoving(null))} disabled={busy}>Batal</button><button type="button" className="upload-button" disabled={busy} onClick={moveMaterial}>Pindahkan</button></div></div></Modal>}
     {notice && <Notice notice={notice} onDismiss={dismissNotice} insideDialog={managing} />}
-    {deleting && <Modal title="Hapus materi" onClose={() => !busy && setDeleting(null)}><div className="material-confirm"><Mascot kind="eraser" mood="think" /><h2>Hapus materi ini?</h2><p><strong>{deleting.title}</strong> akan dihapus dari akun Anda.</p>{deleteError && <p className="source-error" role="alert">{deleteError}</p>}<div className="source-actions"><button type="button" className="source-secondary" disabled={busy} onClick={() => closeModal(() => setDeleting(null))}>Batal</button><button type="button" className="upload-button" disabled={busy} onClick={remove}>{busy ? "Menghapus..." : "Ya, hapus materi"}</button></div></div></Modal>}
+    {deleting && <Modal title="Hapus materi" className="action-confirmation-dialog" dismissible={!busy} onClose={() => setDeleting(null)}>
+      <ActionConfirmation title="Hapus materi ini?" confirmLabel="Hapus materi" busy={busy} error={deleteError}
+        onCancel={() => closeModal(() => setDeleting(null))} onConfirm={remove}>
+        <p><strong>{deleting.title}</strong> akan dihapus dari akun Anda.</p>
+      </ActionConfirmation>
+    </Modal>}
     {uploading && <UploadMaterial teacherId={teacherId} folders={folders} initialFolder={folderId} onClose={() => setUploading(false)} onSaved={onSaved} />}
   </>;
 }
