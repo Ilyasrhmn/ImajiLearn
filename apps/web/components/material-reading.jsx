@@ -6,46 +6,45 @@ import { ArrowLeft, ImagePlus } from "lucide-react";
 import { studioRequest } from "../lib/studio-api.mjs";
 
 function ReadingIllustration({ teacherId, path, title }) {
-  const [image, setImage] = useState(null);
+  const [visual, setVisual] = useState(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [version, setVersion] = useState(0);
   const request = useRef(null);
-  const objectUrl = useRef(null);
   const generating = useRef(false);
 
   useEffect(() => {
     const controller = new AbortController();
     request.current = controller;
-    studioRequest(teacherId, path, { binary: true, signal: controller.signal }).then(blob => {
-      if (controller.signal.aborted || !blob?.size) return;
-      objectUrl.current = URL.createObjectURL(blob);
-      setImage(objectUrl.current);
+    const { signal } = controller;
+    const load = () => studioRequest(teacherId, path + "&view=status", { signal });
+    load().then(async ({ data }) => {
+      if (data.ready || data.skipped || signal.aborted) return data;
+      return (await studioRequest(teacherId, path + "&view=status", { method: "POST", signal })).data;
+    }).then(data => {
+      if (!signal.aborted) setVisual(data);
     }).catch(error => {
-      if (!controller.signal.aborted) setError(error.message);
+      if (!signal.aborted) setError(error.message);
     }).finally(() => {
-      if (!controller.signal.aborted) setLoading(false);
+      if (!signal.aborted) setLoading(false);
     });
-    return () => {
-      controller.abort();
-      if (objectUrl.current) URL.revokeObjectURL(objectUrl.current);
-      objectUrl.current = null;
-    };
+    return () => controller.abort();
   }, [teacherId, path]);
 
   async function generate() {
     if (generating.current || loading) return;
-    const signal = request.current.signal;
+    const { signal } = request.current;
     generating.current = true;
     setBusy(true);
     setError("");
     try {
-      const blob = await studioRequest(teacherId, image ? path + "?replace=1" : path, { method: "POST", binary: true, signal });
-      if (signal.aborted) return;
-      const nextUrl = URL.createObjectURL(blob);
-      if (objectUrl.current) URL.revokeObjectURL(objectUrl.current);
-      objectUrl.current = nextUrl;
-      setImage(objectUrl.current);
+      const statusPath = path + "&view=status" + (visual?.ready ? "&replace=1" : "");
+      const { data } = await studioRequest(teacherId, statusPath, { method: "POST", signal });
+      if (!signal.aborted) {
+        setVisual(data);
+        setVersion(current => current + 1);
+      }
     } catch (error) {
       if (!signal.aborted) setError(error.message);
     } finally {
@@ -54,11 +53,13 @@ function ReadingIllustration({ teacherId, path, title }) {
     }
   }
 
+  if (visual?.skipped) return null;
+  const url = "/api/v1" + path + "&imageVersion=" + version;
   return <div className="reading-illustration">
-    {image && <Image src={image} alt={"Ilustrasi " + title} width={1024} height={1024} unoptimized />}
+    {visual?.ready && <Image src={url} alt={"Ilustrasi " + title} width={1024} height={1024} unoptimized />}
     <button className="source-secondary" type="button" onClick={generate} disabled={loading || busy}>
       <ImagePlus size={18} aria-hidden="true" />
-      {busy ? "Membuat ilustrasi…" : image ? "Buat ulang ilustrasi" : "Buat ilustrasi"}
+      {busy || loading ? "Menyiapkan ilustrasi…" : visual?.ready ? "Buat ulang ilustrasi" : "Buat ilustrasi"}
     </button>
     {error && <p className="source-error" role="alert">{error}</p>}
   </div>;
@@ -89,7 +90,7 @@ export default function MaterialReading({ reading, teacherId, illustrationPath, 
           <div key={number}>
             <p>{paragraph}</p>
             {index === (reading.illustration?.sectionIndex ?? 0) && number === (reading.illustration?.paragraphIndex ?? 0) &&
-              <ReadingIllustration key={illustrationPath} teacherId={teacherId} path={illustrationPath} title={section.heading} />}
+              <ReadingIllustration key={illustrationPath} teacherId={teacherId} path={`${illustrationPath}?section=${index}`} title={section.heading} />}
           </div>
         ))}
       </section>
