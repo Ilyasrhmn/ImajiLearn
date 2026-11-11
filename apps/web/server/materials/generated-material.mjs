@@ -9,7 +9,7 @@ const missingMaterial = () => new ApiError(404, "MATERIAL_NOT_FOUND", "Materi ti
 const sourceChanged = () => new ApiError(409, "SOURCE_CHANGED", "Materi berubah. Buka ulang materi lalu coba lagi.");
 const leaseDuration = 150_000; // The provider timeout cannot exceed 120 seconds.
 
-export function createGeneratedMaterial(db, generateJson, { delegate, feature, instructions, validate, combineParts, prepareInput, recover, archived, inProgress }) {
+export function createGeneratedMaterial(db, generateJson, { delegate, feature, instructions, validate, readContent, combineParts, prepareInput, recover, archived, inProgress }) {
   return {
     async get(userId, materialId) {
       const id = canonicalMaterialId(materialId);
@@ -19,7 +19,8 @@ export function createGeneratedMaterial(db, generateJson, { delegate, feature, i
         where: { materialId_revision: { materialId: source.id, revision: source.revision } },
         select: { content: true },
       });
-      return row?.content ?? null;
+      const content = row?.content ?? null;
+      return readContent ? readContent(content) : content;
     },
 
     async generate(userId, materialId, { regenerate = false } = {}) {
@@ -33,7 +34,8 @@ export function createGeneratedMaterial(db, generateJson, { delegate, feature, i
         const key = { materialId: source.id, revision: source.revision };
         const where = { materialId_revision: key };
         const existing = await tx[delegate].findUnique({ where, select: { content: true, leaseUntil: true } });
-        if (existing?.content && !regenerate) return { content: existing.content };
+        const cached = readContent ? readContent(existing?.content) : existing?.content;
+        if (cached && !regenerate) return { content: cached };
         if (existing?.leaseUntil > new Date()) {
           throw new ApiError(409, ...inProgress);
         }
