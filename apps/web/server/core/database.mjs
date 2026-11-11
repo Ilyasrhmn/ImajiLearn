@@ -27,8 +27,10 @@ export function createDatabase(connectionString, { schema, maxConnections = 10 }
 }
 
 export function database() {
-  if (!globalThis.imajilearnDatabase) {
+  if (!globalThis.imajilearnDatabase ||
+      (process.env.NODE_ENV === "development" && globalThis.imajilearnDatabaseClient !== PrismaClient)) {
     globalThis.imajilearnDatabase = createDatabase(process.env.DATABASE_URL);
+    globalThis.imajilearnDatabaseClient = PrismaClient;
   }
   return globalThis.imajilearnDatabase;
 }
