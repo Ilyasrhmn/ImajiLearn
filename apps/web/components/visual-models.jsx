@@ -192,14 +192,3 @@ export function CubeModel({ detail }) {
     <p>{detail}</p>
   </>;
 }
-
-export function legacyPlantFocus(step) {
-  const label = step.label.toLowerCase();
-  if (/translokasi|distribusi gula/.test(label)) return "sugar";
-  if (/reaksi gelap|calvin|pembentukan gula/.test(label)) return "leaf";
-  if (/oksigen/.test(label)) return "oxygen";
-  if (/karbon dioksida|co₂|co2/.test(label)) return "carbon";
-  if (/air|akar/.test(label)) return "water";
-  if (/cahaya|energi|reaksi terang/.test(label)) return "light";
-  return null;
-}

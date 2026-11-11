@@ -4,6 +4,7 @@ import { RotateCw } from "lucide-react";
 export default function VisualScene({ visual, step, fallback }) {
   const figure = useRef(null);
   const [failed, setFailed] = useState(false);
+  const [ready, setReady] = useState(false);
 
   useEffect(() => {
     const root = figure.current;
@@ -14,7 +15,9 @@ export default function VisualScene({ visual, step, fallback }) {
       if (live) setFailed(true);
     }
     import("../lib/anatomy/scene-viewer.mjs").then(({ mountVisualScene }) => {
-      if (live) dispose = mountVisualScene(root, visual, step, unavailable);
+      if (!live) return;
+      dispose = mountVisualScene(root, visual, step, unavailable);
+      setReady(true);
     }).catch(unavailable);
     return () => {
       live = false;
@@ -24,11 +27,11 @@ export default function VisualScene({ visual, step, fallback }) {
 
   if (failed) return fallback;
 
-  return <figure className="visual-specimen visual-photo-specimen visual-scene" ref={figure}>
+  return <figure className="visual-specimen visual-photo-specimen visual-scene" ref={figure} aria-busy={!ready}>
     <nav className="visual-location" aria-label="Posisi di model" data-scene-location />
     <div className="visual-stage visual-scene-stage" data-scene-stage tabIndex={-1}>
       <svg className="visual-scene-leaders" data-scene-leaders aria-hidden="true" />
-      <div className="visual-scene-controls">
+      <div className="visual-scene-controls" hidden={!ready}>
         <label className="visual-scene-range" hidden>
           <span>Pisahkan lapisan</span><input type="range" min="0" max="100" defaultValue="0" />
         </label>
@@ -37,8 +40,8 @@ export default function VisualScene({ visual, step, fallback }) {
         </button>
       </div>
     </div>
-    <figcaption className="visual-caption" role="status" aria-atomic="true">
-      <div className="visual-caption-copy"><strong>{step?.label ?? visual.title}</strong><p>{step?.detail ?? ""}</p></div>
+    <figcaption className="visual-caption" role="status" aria-atomic="true" hidden={!ready}>
+      <div className="visual-caption-copy"><strong /><p /></div>
     </figcaption>
   </figure>;
 }

@@ -1,5 +1,5 @@
 import * as T from "three";
-import { earthLayers } from "../visual-templates.mjs";
+import { clotParticles, clotStages, earthLayers, orbitBodies } from "../visual-templates.mjs";
 
 const v = (x, y, z) => new T.Vector3(x, y, z);
 const mat = (color, extra = {}) => new T.MeshStandardMaterial({color, roughness:.75, ...extra});
@@ -266,6 +266,114 @@ export function earthScenes(details) {
 }
 
 const tones = { clay: 0xc57e63, sage: 0x81a66c, ochre: 0xd7ae66, blue: 0x77a5b5, ink: 0x647d86 };
+
+export function cubeScenes(detail) {
+  const group = new T.Group();
+  const panel = (parent, color, x, z) => {
+    const face = mesh(parent, new T.PlaneGeometry(.98, .98), mat(color, { side: T.DoubleSide }), x, 0, z);
+    face.rotation.x = -Math.PI / 2;
+    return face;
+  };
+  const pivot = (parent, x, z) => {
+    const hinge = new T.Group();
+    hinge.position.set(x, 0, z);
+    parent.add(hinge);
+    return hinge;
+  };
+  const front = pivot(group, 0, .5), back = pivot(group, 0, -.5);
+  const left = pivot(group, -.5, 0), right = pivot(group, .5, 0);
+  const lid = pivot(back, 0, -1);
+  const panels = [
+    panel(group, 0xaec6a2, 0, 0), panel(back, 0xe2a183, 0, -.5),
+    panel(lid, 0xeed395, 0, -.5), panel(front, 0x8fb4bc, 0, .5),
+    panel(left, 0xc6add3, -.5, 0), panel(right, 0xe6aeaa, .5, 0),
+  ];
+  const pins = panels.map((face, index) => {
+    face.userData.pin = index;
+    return { label: `Sisi ${index + 1}`, info: detail,
+      at: () => face.getWorldPosition(v(0, 0, 0)), side: index % 2 ? "left" : "right" };
+  });
+  return [{ name: "Jaring-jaring kubus", group, target: v(0, 0, -.5), distance: 6.4, angle: .3, pitch: .84,
+    detail, pins, slider: "Lipat jaring-jaring",
+    setSpread(value) {
+      const angle = value * Math.PI / 2;
+      front.rotation.x = -angle;
+      back.rotation.x = lid.rotation.x = angle;
+      left.rotation.z = -angle;
+      right.rotation.z = angle;
+    },
+  }];
+}
+
+export function clotScenes() {
+  return clotStages.map((stage, index) => {
+    const group = new T.Group();
+    const wall = mat(0xbb6865, { side: T.DoubleSide });
+    const vessel = mesh(group, new T.CylinderGeometry(.98, .98, 5.1, 64, 1, true, Math.PI * .5, Math.PI * 1.43), wall);
+    vessel.rotation.z = Math.PI / 2;
+    vessel.rotation.y = .4;
+    vessel.userData.pin = 0;
+    const injury = mesh(group, new T.SphereGeometry(1, 24, 12), mat(0x743d46), 0, -.78, .2);
+    injury.scale.set(.94, .16, .45);
+    injury.userData.pin = 0;
+    const platelets = mat(0xe9b65a);
+    clotParticles(index).forEach(([x, y, z], i) => {
+      const particle = orb(group, platelets, x, y - .69, z + .18, .14, .058, .11);
+      particle.rotation.set(i * .43, i * .73, i * .62);
+      particle.userData.pin = 1;
+    });
+    const fibers = mat(0xffdfb7);
+    if (index === 2) for (let i = 0; i < 12; i++) {
+      const angle = i * Math.PI / 6;
+      const x = Math.cos(angle) * .92, z = Math.sin(angle) * .57;
+      tube(group, [v(x, -.59, .18 + z), v(-z * .6, -.24, .18 + x * .3), v(-x * .72, -.57, .18 - z * .8)], .021, fibers).userData.pin = 2;
+    }
+    const pins = clotStages.slice(0, Math.min(3, index + 2)).map((item, part) => ({
+      ...item, info: item.detail,
+      at: () => [v(.76, -.66, .48), v(-.26, -.34, .32), v(.46, -.28, .48)][part],
+      side: part === 1 ? "left" : "right", lift: [30, -25, -54][part],
+      ...(part === index + 1 ? { go: part } : {}),
+    }));
+    return { name: stage.label, group, target: v(0, -.18, 0), distance: 7.6, angle: .26, pitch: .73,
+      detail: stage.detail, pins };
+  });
+}
+
+export function solarScenes(visual) {
+  return visual.orbitSteps.map((step, index) => {
+    const group = new T.Group();
+    const historical = step.center === "earth";
+    const pins = orbitBodies(step.center).map(({ label, color, size, radius, angle }, pin) => {
+      if (radius) {
+        const ring = mesh(group, new T.RingGeometry(radius - .012, radius + .012, 96),
+          new T.MeshBasicMaterial({ color: 0x859784, side: T.DoubleSide }));
+        ring.rotation.x = -Math.PI / 2;
+      }
+      const body = orb(group, mat(color, label === "Matahari" ? { emissive: color, emissiveIntensity: .32 } : {}),
+        radius * Math.cos(angle), size * .24, radius * Math.sin(angle), size, size, size);
+      body.userData.pin = pin;
+      return {
+        label,
+        at: () => body.position.clone().add(v(0, size * .6, 0)),
+        info: radius ? (historical ? `${label} digambarkan mengelilingi Bumi dalam model historis ini.` : `${label} mengorbit Matahari.`) : step.detail,
+        side: pin % 2 ? "left" : "right",
+        lift: pin * 12 - 25,
+      };
+    });
+    const next = visual.orbitSteps[index + 1];
+    if (next) {
+      pins.push({
+        label: next.label, at: () => v(1.55, 0, 1.55),
+        go: index + 1, side: "right", lift: 46,
+      });
+    }
+    return {
+      name: historical ? "Geosentris" : "Heliosentris", parent: index === 0 ? -1 : 0,
+      group, target: v(0, 0, 0), distance: 8, angle: .2, pitch: .85,
+      caption: step.label, detail: step.detail, pins,
+    };
+  });
+}
 
 function partGeometry(shape, width, depth, height) {
   if (shape === "slab") return new T.BoxGeometry(width, height, depth).translate(0, height / 2, 0);
