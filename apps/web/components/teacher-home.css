@@ -33,8 +33,8 @@
   .home-app-header { height: 76px; padding: 0 16px; gap: 12px; }
   .home-app-brand { gap: 8px; } .home-app-header .brand-wordmark { width: 115px; }
   .home-account-name { display: none; }
-  .home-sidebar { top: 76px; width: 228px; background: var(--paper, #fcfaf4); transform: translateX(-100%); transition: transform 220ms ease; }
-  .home-workspace:not(.is-collapsed) .home-sidebar { transform: translateX(0); box-shadow: 12px 0 30px #233f4610; }
+  .home-sidebar { top: 76px; width: 228px; background: var(--paper, #fcfaf4); transform: translateX(-100%); visibility: hidden; transition: transform 220ms ease, visibility 0s linear 220ms; }
+  .home-workspace:not(.is-collapsed) .home-sidebar { transform: translateX(0); visibility: visible; transition-delay: 0s; box-shadow: 12px 0 30px #233f4610; }
   .home-workspace .teacher-home { margin-left: 0; padding: 96px 20px 40px; }
   .home-welcome { gap: 12px; min-height: 240px; padding: 24px; } .home-welcome-characters { width: 130px; } .home-welcome-characters .mascot { height: 150px; } .home-welcome-characters .mascot + .mascot { height: 130px; }
 }
