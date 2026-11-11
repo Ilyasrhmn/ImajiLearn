@@ -6,6 +6,16 @@ const maxImageBytes = 2 * 1024 * 1024;
 const maxResponseBytes = 3 * 1024 * 1024;
 const model = "@cf/black-forest-labs/flux-1-schnell";
 
+function providerError(status, payload) {
+  const messages = Array.isArray(payload?.errors) ? payload.errors.map(error => error?.message ?? "").join(" ") : "";
+  if (/daily free allocation|daily.*(?:limit|quota)|quota.*exceeded/iu.test(messages)) {
+    return new ApiError(429, "ILLUSTRATION_QUOTA_EXHAUSTED", "Kuota gambar hari ini habis. Coba lagi setelah kuota diperbarui. Bacaan yang sudah dibuat tetap tersimpan.");
+  }
+  if (status === 429) return new ApiError(429, "ILLUSTRATION_RATE_LIMITED", "Permintaan gambar sedang dibatasi. Coba lagi sebentar.");
+  if (status === 401 || status === 403) return new ApiError(503, "ILLUSTRATION_ACCESS_DENIED", "Akses layanan gambar belum aktif. Hubungi pengelola.");
+  return unavailable();
+}
+
 async function readPayload(response) {
   const reader = response.body?.getReader();
   if (!reader) throw invalidImage();
@@ -42,13 +52,13 @@ export async function generateIllustration(prompt) {
       cache: "no-store",
     });
     if (!response.ok) {
-      await response.body?.cancel();
-      if (response.status === 429) throw new ApiError(429, "ILLUSTRATION_RATE_LIMITED", "Kuota ilustrasi sedang dibatasi. Coba lagi nanti.");
-      throw unavailable();
+      const payload = await readPayload(response).catch(() => null);
+      throw providerError(response.status, payload);
     }
     const payload = await readPayload(response);
     const encoded = payload?.result?.image;
-    if (!payload?.success || typeof encoded !== "string") throw invalidImage();
+    if (!payload?.success) throw providerError(response.status, payload);
+    if (typeof encoded !== "string") throw invalidImage();
     const bytes = Buffer.from(encoded, "base64");
     if (bytes.length < 4 || bytes.length > maxImageBytes || bytes.subarray(0, 3).toString("hex") !== "ffd8ff" ||
         bytes.subarray(-2).toString("hex") !== "ffd9") throw invalidImage();
