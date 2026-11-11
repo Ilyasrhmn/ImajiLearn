@@ -18,6 +18,7 @@ test("reading creation validates, serializes duplicate requests, and reopens onl
     const content = {
       title: "Fotosintesis",
       sections: [{ heading: "Cahaya", paragraphs: ["Tumbuhan memakai cahaya untuk membuat gula."] }],
+      illustration: { sectionIndex: 0, paragraphIndex: 0, evidence: "Tumbuhan memakai cahaya untuk membuat gula.", scene: "A green leaf catching sunlight on a living plant." },
       quiz: [{ question: "Apa yang dibuat tumbuhan?", options: ["Gula", "Garam", "Batu"], answerIndex: 0, explanation: "Tumbuhan membuat gula." }],
     };
     let calls = 0;
@@ -27,6 +28,7 @@ test("reading creation validates, serializes duplicate requests, and reopens onl
       assert.match(messages[1].content, /membuat gula/);
       calls++;
       if (calls === 1) return { content: { ...content, quiz: [{ ...content.quiz[0], answerIndex: 3 }] } };
+      if (calls === 2) return { content: { ...content, illustration: { ...content.illustration, paragraphIndex: 1 } } };
       providerStarted.resolve();
       return providerFinished.promise;
     });
@@ -37,6 +39,7 @@ test("reading creation validates, serializes duplicate requests, and reopens onl
     await assert.rejects(reading.generate(owner.id, source.id), { code: "INVALID_READING" });
     assert.equal(await reading.get(owner.id, source.id), null);
 
+    await assert.rejects(reading.generate(owner.id, source.id), { code: "INVALID_READING" });
     const generation = reading.generate(owner.id, source.id);
     try {
       await providerStarted.promise;
@@ -45,7 +48,7 @@ test("reading creation validates, serializes duplicate requests, and reopens onl
     assert.deepEqual(await generation, content);
     assert.deepEqual(await reading.get(owner.id, source.id), content);
     assert.deepEqual(await reading.generate(owner.id, source.id), content);
-    assert.equal(calls, 2);
+    assert.equal(calls, 3);
 
     const archived = await materials.create(owner.id, { title: "Arsip", text: "Sumber arsip." }, randomUUID());
     await materials.patch(owner.id, archived.id, { archived: true }, archived.resourceVersion);
