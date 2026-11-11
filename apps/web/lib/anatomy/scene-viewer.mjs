@@ -1,5 +1,5 @@
 import * as T from "three";
-import { assemblyScenes, earthScenes, plantScenes } from "./scene-models.mjs";
+import { assemblyScenes, clotScenes, cubeScenes, earthScenes, plantScenes, solarScenes } from "./scene-models.mjs";
 
 const v = (x, y, z) => new T.Vector3(x, y, z);
 const svgElement = tag => document.createElementNS("http://www.w3.org/2000/svg", tag);
@@ -18,7 +18,10 @@ export function mountVisualScene(root, visual, step, unavailable) {
   const scene = new T.Scene();
   scene.background = new T.Color(0xe9eee0);
   const renderer = new T.WebGLRenderer({ antialias: true });
-  const views = step ? plantScenes(step) : visual.kind === "earth" ? earthScenes(visual.details) : assemblyScenes(visual);
+  const views = visual.kind === "blood_clot" ? clotScenes()
+    : visual.kind === "cube_net" ? cubeScenes(visual.detail)
+    : visual.kind === "solar_system" ? solarScenes(visual)
+    : step ? plantScenes(step) : visual.kind === "earth" ? earthScenes(visual.details) : assemblyScenes(visual);
   const raycaster = new T.Raycaster();
   const pointer = new T.Vector2();
   renderer.setPixelRatio(Math.min(devicePixelRatio, 1.75));
