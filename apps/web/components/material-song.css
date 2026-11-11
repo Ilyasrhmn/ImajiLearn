@@ -21,3 +21,20 @@
 .song-attribution a{color:#435b50;text-underline-offset:3px}
 .song-description{margin:18px 0 0;max-width:70ch;color:#435b50;line-height:1.6}
 @media(max-width:650px){.song-lyrics{grid-template-columns:1fr;gap:24px}.material-song .song-player{padding:18px}.song-lyric-section li{font-size:19px}.song-progress{padding:22px 18px}}
+
+.material-projector.is-active .material-song:has(.song-current-line) :is(.song-lyrics, .song-learning) { display: none; }
+
+.material-projector.is-active .song-player {
+  display: flex;
+  flex-direction: column;
+  order: 1;
+  margin: auto 0 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+.material-projector.is-active .song-player:has(.song-current-line) { flex: 1 0 auto; }
+.material-projector.is-active .song-current-line { flex: 1 0 auto; margin: 0 0 12px; background: transparent; }
+.material-projector.is-active .song-current-line p { font-size: clamp(24px, min(6vw, 9dvh), 64px); }
+.material-projector.is-active .song-attribution { order: 2; margin: 8px 0 0; }

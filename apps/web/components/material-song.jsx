@@ -1,15 +1,16 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { ArrowLeft, Music2, RefreshCw } from "lucide-react";
+import { Music2, RefreshCw } from "lucide-react";
 import { studioRequest } from "../lib/studio-api.mjs";
+import MaterialProjector from "./material-projector";
 import "./material-song.css";
 
 const labels = { verse: "Bait", chorus: "Refrain", response: "Tanya jawab" };
 const pending = song => song && !["ready", "failed", "uncertain"].includes(song.status);
 const progress = { writing: "Menyusun lirik dari materi…", submitting: "Mengirim lirik untuk dibuat menjadi lagu…", generating: "Membuat musik dan vokal…" };
 
-export default function MaterialSong({ song: initialSong, teacherId, songPath, revision, onBack }) {
+export default function MaterialSong({ song: initialSong, teacherId, songPath, revision }) {
   const [song, setSong] = useState(initialSong);
   const [error, setError] = useState("");
   const [attempt, setAttempt] = useState(0);
@@ -52,8 +53,7 @@ export default function MaterialSong({ song: initialSong, teacherId, songPath, r
   const lines = song?.sections?.flatMap(section => section.lines) ?? [];
   const ready = song?.status === "ready";
   let lineIndex = 0;
-  return <article className="format-detail material-song">
-    <button type="button" className="source-secondary" onClick={onBack}><ArrowLeft size={18} aria-hidden="true" />Kembali</button>
+  return <MaterialProjector enabled={ready}><article className="format-detail material-song">
     <h2 tabIndex={-1} data-output-heading>{song?.title ?? "Lagu belajar"}</h2>
     {ready ? <>
       <section className="song-player" aria-label="Pemutar lagu belajar">
@@ -81,5 +81,5 @@ export default function MaterialSong({ song: initialSong, teacherId, songPath, r
       </div>}
     {error && <div className="song-error" role="alert"><p>{error}</p><button className="source-secondary" type="button" onClick={() => { setError(""); setAttempt(value => value + 1); }}>Periksa lagi</button></div>}
     <p className="song-attribution"><a href="https://treblo.com" target="_blank" rel="noopener noreferrer">Powered by Treblo</a></p>
-  </article>;
+  </article></MaterialProjector>;
 }

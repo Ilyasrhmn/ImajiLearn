@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { ArrowLeft } from "lucide-react";
 import { CubeModel, EarthModel, legacyPlantFocus, PhotosynthesisModel } from "./visual-models";
 import "./material-visual.css";
 
@@ -35,9 +34,8 @@ function MainIdeaVisual({ sentences, answerIndex, detail }) {
   </section>;
 }
 
-export default function MaterialVisual({ visual, onBack }) {
+export default function MaterialVisual({ visual }) {
   return <article className="format-detail material-reading material-visual">
-    <button type="button" className="source-secondary" onClick={onBack}><ArrowLeft size={18} aria-hidden="true" />Kembali</button>
     <h2 tabIndex={-1} data-output-heading>{visual.title}</h2>
     {visual.kind === "earth" && <EarthModel details={visual.details} />}
     {visual.kind === "cube_net" && <CubeModel detail={visual.detail} />}

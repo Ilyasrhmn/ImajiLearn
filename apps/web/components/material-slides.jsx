@@ -2,11 +2,11 @@
 
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
-import { ArrowLeft, ChevronLeft, ChevronRight, Maximize2, Minimize2, Volume2, VolumeX } from "lucide-react";
+import { ChevronLeft, ChevronRight, Maximize2, Minimize2, Volume2, VolumeX } from "lucide-react";
 import { studioRequest } from "../lib/studio-api.mjs";
 import "./material-slides.css";
 
-export default function MaterialSlides({ deck, teacherId, illustrationsPath, revision, onBack }) {
+export default function MaterialSlides({ deck, teacherId, illustrationsPath, revision }) {
   const [index, setIndex] = useState(0);
   const [speaking, setSpeaking] = useState(false);
   const [error, setError] = useState("");
@@ -110,9 +110,6 @@ export default function MaterialSlides({ deck, teacherId, illustrationsPath, rev
   }
 
   return <article className="format-detail material-reading material-slides">
-    <button type="button" className="source-secondary" onClick={() => { stop(); onBack(); }}>
-      <ArrowLeft size={18} aria-hidden="true" />Kembali
-    </button>
     <h2 tabIndex={-1} data-output-heading>{deck.title}</h2>
     <section className={`material-slide${zoomed ? " material-slide-zoomed" : ""}${visual?.skipped ? " material-slide-text-only" : ""}`} key={index}
       aria-label={`Slide ${index + 1} dari ${deck.slides.length}`}>
@@ -152,12 +149,12 @@ export default function MaterialSlides({ deck, teacherId, illustrationsPath, rev
         {speaking ? "Hentikan suara" : "Bacakan slide"}
       </button>
     </div>
-    {visual?.ready && <>
+    {visual?.ready && <div className="material-slide-regenerate">
       <button type="button" className="source-secondary" onClick={replaceImage} disabled={replacing}>
         {replacing ? "Membuat ilustrasi…" : "Buat ulang ilustrasi"}
       </button>
       {imageError && <p className="source-error" role="alert">{imageError}</p>}
-    </>}
+    </div>}
     {error && <p className="source-error" role="alert">{error}</p>}
   </article>;
 }
