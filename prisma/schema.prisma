@@ -143,7 +143,14 @@ model Material {
   songs           MaterialSong[]
   file            MaterialFile?
   worksheetDocuments WorksheetDocument[]
+  parentId        String?  @db.Uuid
+  pageStart       Int?
+  pageEnd         Int?
+  sectionPages    Int[] @default([])
+  parent          Material? @relation("MaterialSections", fields: [parentId, userId], references: [id, userId], onDelete: Cascade)
+  sections        Material[] @relation("MaterialSections")
 
+  @@unique([parentId, revision])
   @@unique([id, userId])
   @@index([userId, updatedAt, id])
   @@index([folderId, userId])
@@ -153,6 +160,7 @@ model MaterialReading {
   materialId String   @db.Uuid
   revision   String   @db.Char(64)
   content    Json?    @db.JsonB
+  generatedAt DateTime? @db.Timestamptz(3)
   leaseId    String?  @db.Uuid
   leaseUntil DateTime? @db.Timestamptz(3)
   illustration Bytes?
@@ -160,13 +168,34 @@ model MaterialReading {
   illustrationLeaseUntil DateTime? @db.Timestamptz(3)
   material   Material @relation(fields: [materialId], references: [id], onDelete: Cascade)
 
+  illustrations MaterialReadingIllustration[]
+
   @@id([materialId, revision])
 }
 
+model MaterialReadingIllustration {
+  materialId   String @db.Uuid
+  revision     String @db.Char(64)
+  sectionIndex Int
+  sourcePage   Int?
+  sourceBytes  Bytes?
+  visualSkipped Boolean @default(false)
+  bytes        Bytes?
+  leaseId      String? @db.Uuid
+  leaseUntil   DateTime? @db.Timestamptz(3)
+  reading      MaterialReading @relation(fields: [materialId, revision], references: [materialId, revision], onDelete: Cascade)
+
+  @@id([materialId, revision, sectionIndex])
+}
+
 model MaterialVisual {
+  illustration Bytes?
+  illustrationLeaseId String? @db.Uuid
+  illustrationLeaseUntil DateTime? @db.Timestamptz(3)
   materialId String   @db.Uuid
   revision   String   @db.Char(64)
   content    Json?    @db.JsonB
+  generatedAt DateTime? @db.Timestamptz(3)
   leaseId    String?  @db.Uuid
   leaseUntil DateTime? @db.Timestamptz(3)
   material   Material @relation(fields: [materialId], references: [id], onDelete: Cascade)
@@ -178,6 +207,7 @@ model MaterialSlideDeck {
   materialId String    @db.Uuid
   revision   String    @db.Char(64)
   content    Json?     @db.JsonB
+  generatedAt DateTime? @db.Timestamptz(3)
   leaseId    String?   @db.Uuid
   leaseUntil DateTime? @db.Timestamptz(3)
   material   Material  @relation(fields: [materialId], references: [id], onDelete: Cascade)
@@ -207,6 +237,9 @@ model MaterialSlideIllustration {
   materialId String    @db.Uuid
   revision   String    @db.Char(64)
   slideIndex Int
+  sourcePage   Int?
+  sourceBytes  Bytes?
+  visualSkipped Boolean @default(false)
   bytes      Bytes?
   leaseId    String?   @db.Uuid
   leaseUntil DateTime? @db.Timestamptz(3)

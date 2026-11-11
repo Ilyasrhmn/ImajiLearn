@@ -12,6 +12,33 @@ test("database configuration rejects missing and non-PostgreSQL URLs without exp
   }
 });
 
+test("development replaces a cached Prisma client from a previous module", async () => {
+  const { database } = await import("../apps/web/server/core/database.mjs");
+  const oldEnvironment = process.env.NODE_ENV;
+  const oldUrl = process.env.DATABASE_URL;
+  const oldClient = globalThis.imajilearnDatabase;
+  const oldConstructor = globalThis.imajilearnDatabaseClient;
+  const stale = {};
+  let client;
+  try {
+    process.env.NODE_ENV = "development";
+    process.env.DATABASE_URL = "postgresql://localhost/test";
+    globalThis.imajilearnDatabase = stale;
+    globalThis.imajilearnDatabaseClient = class StaleClient {};
+    client = database();
+    assert.notEqual(client, stale);
+    assert.equal(database(), client);
+  } finally {
+    if (client !== stale) await client?.$disconnect();
+    globalThis.imajilearnDatabase = oldClient;
+    globalThis.imajilearnDatabaseClient = oldConstructor;
+    if (oldEnvironment === undefined) delete process.env.NODE_ENV;
+    else process.env.NODE_ENV = oldEnvironment;
+    if (oldUrl === undefined) delete process.env.DATABASE_URL;
+    else process.env.DATABASE_URL = oldUrl;
+  }
+});
+
 test("foundation migration persists teacher records across connections and enforces unique email", async () => {
   const { testDatabase } = await import("./support/database.mjs");
   const storage = await testDatabase();

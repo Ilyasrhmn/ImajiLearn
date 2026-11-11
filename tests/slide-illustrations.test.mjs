@@ -6,7 +6,7 @@ import { createSlideIllustrations } from "../apps/web/server/materials/slide-ill
 import { createMaterialSlides } from "../apps/web/server/materials/slides.mjs";
 import { testDatabase } from "./support/database.mjs";
 
-test("slide images use individual slide text and keep successful images across retries", async () => {
+test("slide images use scene descriptions and keep successful images across retries", async () => {
   const storage = await testDatabase();
   try {
     for (const migration of storage.migrations) await storage.migrate(migration);
@@ -17,7 +17,7 @@ test("slide images use individual slide text and keep successful images across r
     }, randomUUID());
     const deck = {
       title: "Siklus air",
-      slides: [{ title: "Penguapan", points: ["Air menguap dari laut."] }, { title: "Hujan", points: ["Air jatuh dari awan."] }],
+      slides: [{ title: "Penguapan", points: ["Air menguap dari laut."] }, { title: "Hujan", points: ["Air jatuh dari awan."] }, { title: "Ringkasan", points: ["Siklus air berulang."] }],
     };
     await createMaterialSlides(storage.db, async () => ({ content: deck })).generate(owner.id, source.id);
     const bytes = [Uint8Array.of(255, 216, 255, 0, 255, 217), Uint8Array.of(255, 216, 255, 1, 255, 217)];
@@ -26,18 +26,26 @@ test("slide images use individual slide text and keep successful images across r
     let failed = false;
     const images = createSlideIllustrations(storage.db, async prompt => {
       prompts.push(prompt);
-      if (prompt.includes("Air menguap dari laut.")) {
+      assert.doesNotMatch(prompt, /Penguapan|Air menguap dari laut|Air jatuh dari awan/);
+      if (prompt.includes("rising from the sea")) {
         ready.resolve();
         return release.promise;
       }
-      assert.match(prompt, /Air jatuh dari awan/);
+      assert.match(prompt, /raindrops falling from a cloud/);
       if (!failed) { failed = true; throw Error("synthetic failure"); }
       return bytes[1];
+    }, async (_feature, { messages }) => {
+      const { title } = JSON.parse(messages[1].content);
+      if (title === "Ringkasan") return { content: { figureId: null, generate: false } };
+      return { content: { figureId: null, generate: true, composition: "One central subject.",
+        details: "Show water moving in the correct direction.",
+        subject: title === "Penguapan" ? "Water vapor rising from the sea." : "Visible raindrops falling from a cloud.",
+      } };
     });
     const args = [owner.id, source.id, source.revision];
     assert.deepEqual(await images.list(...args), []);
     await assert.rejects(images.get(other.id, source.id, source.revision, 0), { status: 404 });
-    await assert.rejects(images.generate(...args, 2), { status: 404 });
+    await assert.rejects(images.generate(...args, 3), { status: 404 });
     const first = images.generate(...args, 0);
     try {
       await Promise.race([ready.promise, first]);
@@ -52,5 +60,12 @@ test("slide images use individual slide text and keep successful images across r
     assert.deepEqual(await images.get(...args, 1), bytes[1]);
     await images.generate(...args, 0);
     assert.equal(prompts.length, 3);
+    await images.generate(...args, 0, true);
+    assert.equal(prompts.length, 4);
+    await images.generate(...args, 2);
+    await images.generate(...args, 2);
+    assert.deepEqual(await images.get(...args, 2, "status"), { ready: false, skipped: true });
+    assert.deepEqual(await images.list(...args), [0, 1]);
+    assert.equal(prompts.length, 4);
   } finally { await storage.close(); }
 });

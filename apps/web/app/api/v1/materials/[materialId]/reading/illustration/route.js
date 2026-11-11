@@ -1,9 +1,12 @@
+import { generateJson } from "@/server/ai/index.mjs";
 import { createSessionHandlers } from "@/server/accounts/sessions.mjs";
 import { generateIllustration } from "@/server/ai/providers/cloudflare-image.mjs";
 import { sessionConfig } from "@/server/core/config.mjs";
 import { database } from "@/server/core/database.mjs";
 import { endpoint } from "@/server/core/http.mjs";
 import { createReadingIllustration } from "@/server/materials/reading-illustration.mjs";
+
+import { parseLessonIndex } from "@/server/materials/lesson-illustration.mjs";
 
 export const runtime = "nodejs";
 
@@ -12,7 +15,18 @@ const illustrationRoute = action => (request, context) => endpoint(async () => {
   const db = database();
   const teacher = await createSessionHandlers(db, config).requireTeacher(request);
   const { materialId } = await context.params;
-  const image = await createReadingIllustration(db, generateIllustration)[action](teacher.id, materialId);
+  const query = new URL(request.url).searchParams;
+  const section = query.get("section");
+  const index = section === null ? undefined : parseLessonIndex(section);
+  const service = createReadingIllustration(db, generateIllustration, generateJson);
+  const mode = query.get("view");
+  if (action === "get" && mode === "status") {
+    return Response.json({ data: await service.get(teacher.id, materialId, index, mode) });
+  }
+  const image = action === "get"
+    ? await service.get(teacher.id, materialId, index, mode)
+    : await service.generate(teacher.id, materialId, query.get("replace") === "1", index);
+  if (mode === "status") return Response.json({ data: await service.get(teacher.id, materialId, index, mode) });
   if (!image) return new Response(null, { status: 204 });
   return new Response(image, { headers: { "content-type": "image/jpeg", "x-content-type-options": "nosniff" } });
 }, process.env.APP_ORIGIN)(request);
