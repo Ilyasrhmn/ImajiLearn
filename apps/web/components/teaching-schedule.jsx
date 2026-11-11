@@ -1,16 +1,14 @@
 "use client";
-import { useCallback, useEffect, useState } from "react";
-import Image from "next/image";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { BookOpen, CalendarDays, ClipboardPenLine, Clock, FolderCog, PencilLine, Plus, Scissors, Trash2 } from "lucide-react";
+import { Clock, FolderCog, PencilLine, Plus, Trash2 } from "lucide-react";
 import Modal, { closeModal } from "./modal";
 import ActionConfirmation from "@imajilearn/shared/components/action-confirmation.jsx";
 import FolderManager from "./folder-manager";
 import ThemedSelect from "./themed-select";
 import Notice from "./notice";
+import TeacherWorkspace from "./teacher-workspace";
 import { Mascot } from "./mascot";
-import AccountAvatar from "./account-avatar";
-import LogoutButton from "./logout-button";
 import { listFolders } from "../lib/materials";
 import { studioRequest } from "../lib/studio-api.mjs";
 import "./teaching-schedule.css";
@@ -19,12 +17,13 @@ const weekdays = ["Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"];
 const makeId = () => globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2)}`;
 const blank = () => ({ key: makeId(), folderId: "", className: "", day: 1, start: "07:00", end: "08:00" });
 
-export default function TeachingSchedule({ teacherId }) {
+export default function TeachingSchedule({ teacherId, name }) {
   const [folders, setFolders] = useState([]), [terms, setTerms] = useState([]), [ready, setReady] = useState(false), [loadError, setLoadError] = useState(false);
   const [year, setYear] = useState(""), [semester, setSemester] = useState("1");
   const [draft, setDraft] = useState(null), [deleting, setDeleting] = useState(null), [showFolders, setShowFolders] = useState(false);
   const [error, setError] = useState(""), [busy, setBusy] = useState(false), [notice, setNotice] = useState(null);
   const [termError, setTermError] = useState("");
+  const openedFromHome = useRef(false);
   const dismissNotice = useCallback(() => setNotice(null), []);
   useEffect(() => {
     let active = true;
@@ -46,6 +45,13 @@ export default function TeachingSchedule({ teacherId }) {
       if (controller.signal.aborted) return;
       setTermError("");
       setTerms(current => [...current.filter(item => item.key !== data.key), data]);
+      const url = new URL(window.location.href);
+      if (!openedFromHome.current && url.searchParams.get("baru") === "1") {
+        openedFromHome.current = true;
+        url.searchParams.delete("baru");
+        window.history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
+        setDraft({ ...blank(), year: Number(year), semester });
+      }
     }).catch(error => {
       if (!controller.signal.aborted) setTermError(error.message);
     });
@@ -89,12 +95,12 @@ export default function TeachingSchedule({ teacherId }) {
     } catch (err) { setError(err.message); }
     finally { setBusy(false); }
   }
-  return <><a className="skip-link" href="#main">Lewati ke isi</a><header className="workspace-header"><div className="header-inner"><Link className="brand" href="/dashboard" aria-label="ImajiLearn, dashboard"><Image src="/brand/imajilearn-mark.svg" width={52} height={52} alt="" /><Image src="/brand/imajilearn-wordmark.svg" width={153} height={33} alt="" className="brand-wordmark" /></Link><div className="account-actions"><AccountAvatar teacherId={teacherId} /><LogoutButton /></div></div></header>
-    <main id="main" className="workspace-shell schedule-main"><nav className="studio-sections" aria-label="Navigasi studio"><Link href="/dashboard"><BookOpen size={20} />Materi</Link><Link href="/lkpd"><Scissors size={20} />LKPD</Link><Link href="/ujian"><ClipboardPenLine size={20} />Soal &amp; ujian</Link><Link href="/jadwal" aria-current="page"><CalendarDays size={20} />Jadwal</Link></nav>
+  return <TeacherWorkspace name={name} current="/jadwal">
+    <main id="main" className="teacher-home schedule-main">
       {!ready ? <div className="materials-skeleton" role="status" aria-label="Memuat jadwal"><span /><span /></div> : loadError ? <p role="alert">Jadwal tidak dapat dimuat. Muat ulang untuk mencoba lagi.</p> : <>
         <div className="schedule-page-heading"><h1>Jadwal mengajar</h1><div className="schedule-heading-actions"><button className="upload-button" type="button" disabled={!validYear || !term || Boolean(termError)} onClick={() => edit(blank())}><Plus size={20} />Tambah jadwal</button><Mascot kind="book" /></div></div>
         <div className="schedule-term-controls"><label className="schedule-field">Tahun ajaran<div className="school-year"><input aria-label="Awal tahun ajaran" type="number" min={2000} max={2100} required value={year} onChange={event => setYear(event.target.value)} /><span>/ {validYear ? Number(year) + 1 : "..."}</span></div></label><div className="schedule-field"><label htmlFor="schedule-semester">Semester</label><ThemedSelect id="schedule-semester" value={semester} onChange={event => setSemester(event.target.value)}><option value="1">Ganjil</option><option value="2">Genap</option></ThemedSelect></div><button className="schedule-text-button" type="button" onClick={() => setShowFolders(true)}><FolderCog size={18} />Kelola mapel</button></div>
-        {!validYear ? <p className="source-error" role="alert">Isi tahun ajaran 2000–2100.</p> : termError ? <p role="alert">{termError}</p> : !term ? <div className="materials-skeleton" role="status" aria-label="Memuat semester"><span /><span /></div> : entries.length ? <div className="schedule-days">{weekdays.map((day, index) => { const slots = entries.filter(slot => slot.day === index + 1); return slots.length > 0 && <section className="schedule-day" key={day}><h2>{day}</h2>{slots.map(slot => <article className="schedule-slot" key={slot.id}><p><Clock size={17} />{slot.start}–{slot.end}</p><Link href={`/dashboard?folder=${encodeURIComponent(slot.folderId)}`}>{folders.find(folder => folder.id === slot.folderId)?.name || "Mapel tidak tersedia"}</Link><span>Kelas {slot.className}</span><div><button className="icon-button" type="button" aria-label={`Ubah jadwal ${day} ${slot.start}`} title="Ubah jadwal" onClick={() => edit(slot)}><PencilLine size={18} /></button><button className="icon-button schedule-danger" type="button" aria-label={`Hapus jadwal ${day} ${slot.start}`} title="Hapus jadwal" onClick={() => { setError(""); setDeleting({ ...slot, termKey: term.key }); }}><Trash2 size={18} /></button></div></article>)}</section>; })}</div> : <div className="schedule-empty"><Mascot kind="correction" mood="calm" /><h2>Belum ada jadwal semester ini.</h2></div>}
+        {!validYear ? <p className="source-error" role="alert">Isi tahun ajaran 2000–2100.</p> : termError ? <p role="alert">{termError}</p> : !term ? <div className="materials-skeleton" role="status" aria-label="Memuat semester"><span /><span /></div> : entries.length ? <div className="schedule-days">{weekdays.map((day, index) => { const slots = entries.filter(slot => slot.day === index + 1); return slots.length > 0 && <section className="schedule-day" key={day}><h2>{day}</h2>{slots.map(slot => <article className="schedule-slot" key={slot.id}><p><Clock size={17} />{slot.start}–{slot.end}</p><Link href={`/buat-media?folder=${encodeURIComponent(slot.folderId)}#materi`}>{folders.find(folder => folder.id === slot.folderId)?.name || "Mapel tidak tersedia"}</Link><span>Kelas {slot.className}</span><div><button className="icon-button" type="button" aria-label={`Ubah jadwal ${day} ${slot.start}`} title="Ubah jadwal" onClick={() => edit(slot)}><PencilLine size={18} /></button><button className="icon-button schedule-danger" type="button" aria-label={`Hapus jadwal ${day} ${slot.start}`} title="Hapus jadwal" onClick={() => { setError(""); setDeleting({ ...slot, termKey: term.key }); }}><Trash2 size={18} /></button></div></article>)}</section>; })}</div> : <div className="schedule-empty"><Mascot kind="correction" mood="calm" /><h2>Belum ada jadwal semester ini.</h2></div>}
       </>}
     </main>
     {showFolders && <FolderManager teacherId={teacherId} folders={folders} onClose={() => { setShowFolders(false); setNotice(null); }} onChange={setFolders} onNotice={setNotice} />}
@@ -106,5 +112,5 @@ export default function TeachingSchedule({ teacherId }) {
       </ActionConfirmation>
     </Modal>}
     {notice && <Notice notice={notice} onDismiss={dismissNotice} insideDialog={showFolders} />}
-  </>;
+  </TeacherWorkspace>;
 }

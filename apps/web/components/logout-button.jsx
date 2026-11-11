@@ -3,7 +3,7 @@ import { useRef, useState } from "react";
 import { LogOut } from "lucide-react";
 import { navigateAfterSessionChange } from "./session-reload";
 
-export default function LogoutButton() {
+export default function LogoutButton({ label }) {
   const [pending, setPending] = useState(false);
   const [failed, setFailed] = useState(false);
   const submitting = useRef(false);
@@ -23,7 +23,7 @@ export default function LogoutButton() {
     }
   }
   return <>
-    <button type="button" className="logout" aria-label="Keluar" title="Keluar" disabled={pending} onClick={logout}><LogOut size={20} aria-hidden="true" /></button>
+    <button type="button" className="logout" aria-label="Keluar" title="Keluar" disabled={pending} onClick={logout}><LogOut size={20} aria-hidden="true" />{label && <span>{pending ? "Keluar…" : label}</span>}</button>
     {failed && <span role="alert">Gagal keluar. Coba lagi.</span>}
   </>;
 }

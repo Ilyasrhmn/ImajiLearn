@@ -1,12 +1,9 @@
 "use client";
 import { startTransition, useCallback, useEffect, useRef, useState, ViewTransition } from "react";
-import Image from "next/image";
-import Link from "next/link";
-import { BookOpen, CalendarDays, Check, ClipboardPenLine, Eye, EyeOff, LockKeyhole, Scissors, UserRound } from "lucide-react";
-import AccountAvatar from "./account-avatar";
-import LogoutButton from "./logout-button";
+import { Check, Eye, EyeOff, LockKeyhole, UserRound } from "lucide-react";
 import ThemedSelect from "./themed-select";
 import Notice from "./notice";
+import TeacherWorkspace from "./teacher-workspace";
 import { Mascot } from "./mascot";
 import { readProfile } from "../lib/teacher-profile.mjs";
 import { requestAccount } from "../lib/account-client.mjs";
@@ -77,7 +74,7 @@ function SignInSettings({ teacherId, profile, notify }) {
     {auth?.googleLinked ? <section className="account-google" aria-labelledby="google-linked-title"><h2 id="google-linked-title">Google terhubung</h2></section> : auth?.googleEnabled && auth?.hasPassword ? <GoogleLinkForm teacherId={teacherId} email={profile.email} /> : null}
   </div>;
 }
-export default function AccountSettings({ teacherId, googleNotice = null }) {
+export default function AccountSettings({ teacherId, name, googleNotice = null }) {
   const [ready, setReady] = useState(false), [loadError, setLoadError] = useState(""), [tab, setTab] = useState(googleNotice ? "password" : "profile");
   const [retry, setRetry] = useState(0), [saving, setSaving] = useState(false);
   const submitting = useRef(false);
@@ -116,8 +113,8 @@ export default function AccountSettings({ teacherId, googleNotice = null }) {
     }
   }
   const tabs = [{ id: "profile", label: "Profil", Icon: UserRound }, { id: "password", label: profile.auth?.googleEnabled || profile.auth?.googleLinked ? "Metode masuk" : "Kata sandi", Icon: LockKeyhole }];
-  return <><a className="skip-link" href="#main">Lewati ke isi</a><header className="workspace-header"><div className="header-inner"><Link className="brand" href="/dashboard" aria-label="ImajiLearn, dashboard"><Image src="/brand/imajilearn-mark.svg" width={52} height={52} alt="" /><Image src="/brand/imajilearn-wordmark.svg" width={153} height={33} alt="" className="brand-wordmark" /></Link><div className="account-actions"><Link href="/dashboard" className="account-home" aria-label="Studio" title="Studio"><BookOpen size={20} aria-hidden="true" /><span>Studio</span></Link><AccountAvatar teacherId={teacherId} name={profile.name} current /><LogoutButton /></div></div></header>
-    <main id="main" className="workspace-shell account-main"><nav className="studio-sections" aria-label="Navigasi studio"><Link href="/dashboard"><BookOpen size={20} />Materi</Link><Link href="/lkpd"><Scissors size={20} />LKPD</Link><Link href="/ujian"><ClipboardPenLine size={20} />Soal &amp; ujian</Link><Link href="/jadwal"><CalendarDays size={20} />Jadwal</Link></nav>
+  return <TeacherWorkspace name={profile.name || name} current="/akun">
+    <main id="main" className="teacher-home account-main">
       {!ready ? <div className="materials-skeleton" role="status" aria-label="Memuat akun"><span /><span /></div> : loadError ? <div><p role="alert">{loadError}</p><button type="button" className="upload-button" onClick={() => { setReady(false); setLoadError(""); setRetry(attempt => attempt + 1); }}>Coba lagi</button></div> : <><div className="account-heading"><h1>Pengaturan akun</h1><div aria-hidden="true"><Mascot kind="pen" mood="calm" /></div></div>
         <div className="account-tabs" role="tablist" aria-label="Pengaturan akun">{tabs.map((item, index) => <button key={item.id} id={`account-tab-${item.id}`} role="tab" type="button" aria-selected={tab === item.id} aria-controls="account-panel" tabIndex={tab === item.id ? 0 : -1} onClick={() => startTransition(() => setTab(item.id))} onKeyDown={event => { if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return; event.preventDefault(); const next = event.key === "Home" ? "profile" : event.key === "End" ? "password" : index === 0 ? "password" : "profile"; startTransition(() => setTab(next)); document.getElementById(`account-tab-${next}`)?.focus(); }}><item.Icon size={20} aria-hidden="true" />{item.label}</button>)}</div>
         <ViewTransition update="panel-swap" default="none"><section id="account-panel" role="tabpanel" aria-labelledby={`account-tab-${tab}`} className="account-panel">{tab === "profile" ? <form method="post" className="account-form" onSubmit={save} aria-busy={saving}>
@@ -129,5 +126,5 @@ export default function AccountSettings({ teacherId, googleNotice = null }) {
         </form> : <SignInSettings teacherId={teacherId} profile={profile} notify={setNotice} />}</section></ViewTransition>
       </>}
     </main>{notice && <Notice notice={notice} onDismiss={dismissNotice} />}
-  </>;
+  </TeacherWorkspace>;
 }

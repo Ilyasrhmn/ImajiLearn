@@ -17,8 +17,7 @@
   grid-template-columns: minmax(0, 1fr);
 }
 
-.material-slide-image,
-.material-slide-image-placeholder {
+.material-slide-image {
   width: 100%;
   overflow: hidden;
   border: 1px solid var(--line);
@@ -56,15 +55,6 @@
   border-radius: 9px;
   background: var(--paper);
   color: var(--ink);
-}
-
-.material-slide-image-placeholder {
-  display: grid;
-  place-content: center;
-  justify-items: center;
-  min-height: 180px;
-  padding: 14px;
-  text-align: center;
 }
 
 .material-slide h3 {
@@ -128,7 +118,6 @@
 }
 
 .material-projector.is-active .material-slides > [data-output-heading],
-.material-projector.is-active .material-slide-image-placeholder,
 .material-projector.is-active .material-slide-regenerate {
   display: none;
 }

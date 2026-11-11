@@ -39,7 +39,7 @@ export default function AuthForm({ register = false, googleEnabled = false, goog
         setNotice(payload?.error?.message || fallback);
         return;
       }
-      navigateAfterSessionChange("/dashboard");
+      navigateAfterSessionChange("/beranda");
       succeeded = true;
     } catch {
       setNotice(fallback);

@@ -1,4 +1,4 @@
-.workspace-shell.material-page {
+.material-page {
   --material-sheet: #fffdf8;
   --material-gutter: #f2ede3;
   --material-selected: #f8e8dc;
@@ -604,3 +604,7 @@ body:has(.material-projector.is-active) .material-navigation { visibility: hidde
 @media (max-width: 650px) {
   .material-source-sections { grid-template-columns: 1fr; }
 }
+
+.home-workspace .material-page { --material-sheet: #fffdf8; --material-gutter: #f2ede3; --material-selected: #f8e8dc; --material-secondary: #596863; width: auto; }
+.home-workspace .material-navigation { top: 88px; }
+@media (max-width: 760px) { .home-workspace .material-navigation { top: 76px; } }

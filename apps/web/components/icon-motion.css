@@ -1,5 +1,5 @@
 @media (prefers-reduced-motion: no-preference) {
-  @scope (.dashboard, .account-main, .exam-main, .lkpd-main, .schedule-main, .workspace-header, .modal, .auth-page) {
+  @scope (.teacher-home, .account-main, .exam-main, .schedule-main, .home-app-header, .workspace-header, .modal, .auth-page) {
     :where(svg.lucide, svg[data-icon]):not(:where(.lucide-search)) {
       --icon-hover-motion: scale(1.06);
       transform-origin: center;
@@ -160,7 +160,7 @@
   .mascot .character-arm { transform-box: fill-box; transform-origin: bottom center; transition: transform 240ms ease-out; }
   .mascot .smile-on-hover { transition: opacity 150ms ease; }
   .subject-folder-icon > svg:first-child { --icon-hover-motion: none; }
-  .studio-sections > :is(a,button), .filters button, .material-card, .subject-folder, .upload-button, .source-secondary { transition: background-color 180ms ease, border-color 180ms ease, color 180ms ease; }
+  .filters button, .material-card, .subject-folder, .upload-button, .source-secondary { transition: background-color 180ms ease, border-color 180ms ease, color 180ms ease; }
   .upload-button:enabled:active, .source-secondary:enabled:active { scale: .97; }
   @media (hover: hover) and (pointer: fine) {
     .mascot:hover .character-arm { transform: rotate(-16deg); }
@@ -173,7 +173,7 @@
 .subject-folder-icon > svg { position: absolute; inset: 0; fill: #fff0bf; }
 .subject-folder-icon > .folder-flap { clip-path: inset(38% 0 0 0); transform-origin: 50% 83%; }
 @media (prefers-reduced-motion: no-preference) {
-  .dashboard, .account-main, .exam-main, .lkpd-main, .schedule-main { animation: workspace-arrive 180ms ease-out; }
+  .account-main, .exam-main, .schedule-main { animation: workspace-arrive 180ms ease-out; }
   @keyframes workspace-arrive { from { opacity: .98; translate: 0 4px; } to { opacity: 1; translate: 0; } }
   ::view-transition-old(.panel-swap) { animation: panel-leave 120ms ease-in both; }
   ::view-transition-new(.panel-swap) { animation: panel-arrive 180ms ease-out both; }
