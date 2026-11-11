@@ -1,7 +1,3 @@
-.exam-main .studio-sections { display: flex; gap: 12px; margin-bottom: 32px; border-bottom: 1px solid var(--line); }
-.exam-main .studio-sections > a { display: inline-flex; align-items: center; justify-content: center; gap: 10px; padding: 14px 18px; border-bottom: 3px solid transparent; font-weight: 750; color: var(--muted); transition: color 180ms, border-color 180ms, background 180ms; }
-.exam-main .studio-sections > a[aria-current="page"] { border-color: var(--primary); color: var(--ink); }
-.exam-main .studio-sections > a:hover { background: var(--cream); color: var(--ink); }
 .exam-main { padding-block: 28px 88px; }
 .exam-focus-target:focus { outline: none; }
 .exam-heading { display: flex; align-items: center; justify-content: space-between; gap: 24px; margin: 12px 0 36px; }
@@ -114,8 +110,6 @@
   .exam-source { padding: 16px; gap: 10px; }
 }
 @media (max-width: 700px) {
-  .exam-main .studio-sections { gap: 0; margin-bottom: 26px; }
-  .exam-main .studio-sections > a { flex: 1; font-size: 15px; gap: 8px; padding: 14px 9px; }
   .exam-main { padding-top: 16px; }
   .exam-heading { margin-bottom: 26px; }
   .exam-heading > svg { width: 64px; height: 90px; }
@@ -149,14 +143,14 @@
   .exam-skeleton-columns { grid-template-columns: 1fr; gap: 32px; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .exam-main *, .exam-main .studio-sections * { animation: none !important; transition: none !important; }
+  .exam-main * { animation: none !important; transition: none !important; }
 }
 @page exam { size: A4; margin: 0 15mm 15mm; }
 @media print {
  :root:has(.exam-main)::view-transition { display: none !important; }
  @scope (body:has(.exam-main)) {
   :scope { background: white !important; color: black !important; height: auto !important; overflow: visible !important; }
-  :scope > .skip-link, .site-header, .exam-main .studio-sections, .exam-editor-heading, .exam-viewer-title, .exam-print-actions, .exam-tabs, .studio-alert-container, dialog { display: none !important; }
+  :scope > .skip-link, .site-header, .exam-editor-heading, .exam-viewer-title, .exam-print-actions, .exam-tabs, .studio-alert-container, dialog { display: none !important; }
   .route-surface, .exam-focus-target, .exam-workspace { animation: none !important; transform: none !important; overflow: visible !important; }
   .exam-main.section-shell { width: 100%; max-width: none; margin: 0; padding: 0; }
   .exam-paper { page: exam; padding: 15mm 0 0; border: 0; border-radius: 0; width: 100%; max-width: none; box-shadow: none; color: black; font: 12pt/1.5 Arial, sans-serif; }
@@ -196,6 +190,5 @@
 .exam-rename { display:grid; gap:18px; padding:12px; }
 .exam-rename .draft-actions { margin-top:14px; }
 @media(max-width:700px) { .exam-library-filters {grid-template-columns:1fr 1fr;} .exam-library-filters > .exam-source-search {grid-column:1/-1;} .exam-saved-item {flex-wrap:wrap;} .exam-library-actions {margin-left:auto;padding:0 12px 12px;} }
-.exam-main{--primary:#b64f38;--muted:#647772;--butter:#fff0bf;--soft:#f3eddd;--paper:#fdfaf3;--surface:#fff;--cream:#f3eddd}.exam-main .button,.exam-rename .button{display:inline-flex;align-items:center;justify-content:center;gap:10px;min-height:56px;padding:14px 24px;border:0;border-radius:14px;background:#b64f38;color:#fff;font:inherit;font-weight:800;cursor:pointer}.exam-main .button-secondary,.exam-rename .button-secondary{border:1px solid #bdcdc2;background:#fffdf8;color:#243e43}.exam-main .text-button{display:inline-flex;align-items:center;gap:8px;border:0;background:transparent;color:#243e43;font:inherit;font-weight:800;cursor:pointer}.exam-main .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}.exam-main .field-error{color:#a83127}.exam-main .exam-counts{padding:0;border:0}.exam-main .danger{color:#b23724}.exam-rename .draft-actions{display:flex;justify-content:flex-end;gap:12px;margin-top:24px}@media print{body:has(.exam-main) .workspace-header,body:has(.exam-main) .skip-link{display:none!important}.exam-main.workspace-shell{width:100%;max-width:none;margin:0;padding:0}}
+.exam-main{--primary:#b64f38;--muted:#647772;--butter:#fff0bf;--soft:#f3eddd;--paper:#fdfaf3;--surface:#fff;--cream:#f3eddd}.exam-main .button,.exam-rename .button{display:inline-flex;align-items:center;justify-content:center;gap:10px;min-height:56px;padding:14px 24px;border:0;border-radius:14px;background:#b64f38;color:#fff;font:inherit;font-weight:800;cursor:pointer}.exam-main .button-secondary,.exam-rename .button-secondary{border:1px solid #bdcdc2;background:#fffdf8;color:#243e43}.exam-main .text-button{display:inline-flex;align-items:center;gap:8px;border:0;background:transparent;color:#243e43;font:inherit;font-weight:800;cursor:pointer}.exam-main .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}.exam-main .field-error{color:#a83127}.exam-main .exam-counts{padding:0;border:0}.exam-main .danger{color:#b23724}.exam-rename .draft-actions{display:flex;justify-content:flex-end;gap:12px;margin-top:24px}@media print{body:has(.exam-main) .skip-link{display:none!important}.home-workspace .exam-main{width:100%;max-width:none;margin:0;padding:0}}
 .exam-field>label{display:block}.exam-main :is(.exam-field input,.exam-field textarea),.exam-rename input{display:block;width:100%;padding:13px 16px;border:1.5px solid #8c9b94;border-radius:12px;background:#fff;color:#243e43;font:inherit}.exam-field textarea{min-height:180px;resize:vertical}.exam-field input::placeholder,.exam-field textarea::placeholder{color:#75807a}.exam-options .exam-field input{min-height:53px}.exam-main .exam-empty-sources p{margin:0;color:#647772}.exam-main .exam-source input{width:19px;height:19px;padding:0}.exam-rename label{display:block}.exam-main .exam-score input{color:#243e43;background:#fff}
-@media(max-width:600px){.exam-main .studio-sections{display:grid;grid-template-columns:1fr 1fr;gap:4px 12px;border:0;margin-bottom:24px}.exam-main .studio-sections>a,.exam-main .studio-sections>button{min-height:48px;padding:12px 6px;font-size:16px;border-bottom-width:2px}.exam-main .studio-sections>a{color:#243e43}}

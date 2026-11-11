@@ -17,3 +17,13 @@ test("ordinary navigation and unrecognized callback status do not broadcast", ()
     completeGoogleSession({ href: `http://localhost:3000${path}` }, { replaceState() { assert.fail("unexpected replacement"); } }, () => assert.fail("unexpected broadcast"));
   }
 });
+
+test("Google callback also completes on the teacher home page", () => {
+  let path;
+  let announcements = 0;
+  completeGoogleSession({ href: "http://localhost:3000/beranda?google=signed_in" }, {
+    replaceState(_state, _unused, target) { path = target; },
+  }, () => announcements++);
+  assert.equal(path, "/beranda");
+  assert.equal(announcements, 1);
+});

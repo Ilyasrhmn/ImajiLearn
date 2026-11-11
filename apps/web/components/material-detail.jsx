@@ -21,6 +21,7 @@ import { preloadLessonImages } from "../lib/lesson-images.mjs";
 import { sourceTextLimitMessage } from "../lib/material-limits.mjs";
 import { sectionLabel as compactSectionLabel } from "../lib/material-section-label.mjs";
 import MaterialMediaHistory from "./material-media-history";
+import { recordMaterialOpen } from "../lib/home-dashboard.mjs";
 
 const prompts = {
   reading: "Buat bacaan bergambar?",
@@ -58,6 +59,9 @@ export default function MaterialDetail({ teacherId, material, format, parent }) 
   const detailHref = `/materi/${id}`;
   const sourcePath = `/materials/${id}`;
   const original = parent ?? material;
+  useEffect(() => {
+    if (!original.archived) recordMaterialOpen(teacherId, original.id);
+  }, [teacherId, original.id, original.archived]);
   const isPdf = original.file?.mime === "application/pdf";
   const current = material.parentId ? { first: material.pageStart, last: material.pageEnd, pages: material.sectionPages } : null;
   const sectionTitle = /^Hlm\. \d+\s*[-–]\s*\d+$/.test(material.title) ? "Pilihan halaman" : compactSectionLabel(material.title);
@@ -316,7 +320,7 @@ export default function MaterialDetail({ teacherId, material, format, parent }) 
 
   function sourceLink(inDialog = false) {
     return <Link className={inDialog ? "upload-button" : "material-return"} data-media-create={inDialog ? undefined : ""}
-      href={material.archived ? "/dashboard" : detailHref}>
+      href={material.archived ? "/buat-media#materi" : detailHref}>
       {material.archived ? "Kembali ke materi" : "Lihat sumber"}
     </Link>;
   }

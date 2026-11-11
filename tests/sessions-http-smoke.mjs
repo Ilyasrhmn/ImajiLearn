@@ -17,7 +17,7 @@ function send(method, path, body, cookie, headers = {}) {
     ...(body === undefined ? {} : { body: JSON.stringify(body) }),
   });
 }
-const privatePages = ["/dashboard", "/akun", "/jadwal", "/ujian", "/lkpd"];
+const privatePages = ["/beranda", "/dashboard", "/akun", "/jadwal", "/ujian", "/lkpd"];
 async function expectPrivateRedirect(path, cookie) {
   const response = await fetch(`${base}${path}`, {
     redirect: "manual", headers: cookie ? { cookie } : {},

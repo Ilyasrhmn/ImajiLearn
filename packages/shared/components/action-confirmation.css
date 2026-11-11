@@ -1,0 +1,41 @@
+.modal.action-confirmation-dialog {
+  width: min(580px, calc(100% - 32px));
+  padding: clamp(20px, 4vw, 32px);
+}
+.action-confirmation-dialog .modal-close { inset-block-start: 12px; inset-inline-end: 12px; }
+.sheet-confirmation { position: relative; }
+.sheet-confirmation .sheet-heading { position: absolute; inset-block-start: 16px; inset-inline-end: 12px; }
+.action-confirmation {
+  display: grid;
+  grid-template-columns: clamp(48px, 12vw, 88px) minmax(0, 1fr);
+  align-items: start;
+  gap: clamp(12px, 3vw, 24px);
+  text-align: start;
+}
+.action-confirmation .mascot { display: block; width: 100%; height: auto; }
+.action-confirmation-copy h2 {
+  margin: 0 0 8px;
+  margin-inline-end: 40px;
+  font-size: clamp(20px, 4vw, 27px);
+  line-height: 1.2;
+}
+.action-confirmation-copy p {
+  margin: 0;
+  color: #60736f;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+.action-confirmation-copy .action-confirmation-error { margin-top: 8px; color: #a83127; }
+.action-confirmation-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-start;
+  gap: 10px;
+  margin-top: 20px;
+}
+.action-confirmation-actions button {
+  width: auto;
+  min-height: 44px;
+  padding: 10px 14px;
+  font-size: 16px;
+}

@@ -9,7 +9,7 @@ export const getMaterialContext = cache(async materialId => {
   const teacher = await requirePageTeacher();
   try {
     const material = await createMaterialService(database()).get(teacher.id, materialId);
-    return { teacherId: teacher.id, material };
+    return { teacherId: teacher.id, teacherName: teacher.name, material };
   } catch (error) {
     if (error instanceof ApiError && error.status === 404) notFound();
     throw error;

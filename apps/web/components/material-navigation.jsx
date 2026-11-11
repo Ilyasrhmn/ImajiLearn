@@ -13,7 +13,7 @@ const media = ["reading", "slides", "song", "mindmap"].map(id => formats.find(fo
 export default function MaterialNavigation({ materialId, folderId, pdf }) {
   const [segment = ""] = useSelectedLayoutSegments();
   const href = `/materi/${encodeURIComponent(materialId)}`;
-  const dashboardHref = folderId ? `/dashboard?folder=${encodeURIComponent(folderId)}` : "/dashboard";
+  const dashboardHref = folderId ? `/buat-media?folder=${encodeURIComponent(folderId)}#materi` : "/buat-media#materi";
 
   function tab(item) {
     return <Link key={item.id} href={item.segment ? `${href}/${item.segment}` : href}
