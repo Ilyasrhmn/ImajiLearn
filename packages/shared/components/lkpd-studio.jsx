@@ -6,6 +6,7 @@ import { ArrowRight, Check, FileText, LoaderCircle, Scissors, Trash2, X } from "
 import { Mascot } from "./mascot";
 import ThemedSelect from "./themed-select";
 import Modal, { closeModal } from "./modal";
+import ActionConfirmation from "./action-confirmation";
 import Notice from "./notice";
 import { TemplateShape } from "./lkpd-shapes";
 import LkpdViewer from "./lkpd-viewer";
@@ -84,7 +85,12 @@ export default function LkpdStudio({ teacherId, Frame, materialsHref = "/dashboa
       </>}
     </Frame>
     {candidate && <LkpdPreflight document={candidate.document} signal={candidate.controller.signal} onChecked={finishCandidate} />}
-    {deleteId && <Modal title="Hapus LKPD" onClose={() => setDeleteId(null)}><div className="material-confirm"><Mascot kind="eraser" mood="think" /><h2>Hapus LKPD ini?</h2><p>Lembar anak dan panduan guru akan dihapus dari perangkat ini.</p><div className="source-actions"><button className="source-secondary" onClick={() => closeModal(() => setDeleteId(null))}>Batal</button><button className="upload-button" onClick={() => { if (persist(documents.filter(item => item.id !== deleteId))) { setDeleteId(null); setNotice({ message: "LKPD dihapus", type: "delete" }); } }}>Ya, hapus LKPD</button></div></div></Modal>}
+    {deleteId && <Modal title="Hapus LKPD" className="action-confirmation-dialog" onClose={() => setDeleteId(null)}>
+      <ActionConfirmation title="Hapus LKPD ini?" confirmLabel="Hapus LKPD" onCancel={() => closeModal(() => setDeleteId(null))}
+        onConfirm={() => { if (persist(documents.filter(item => item.id !== deleteId))) { setDeleteId(null); setNotice({ message: "LKPD dihapus", type: "delete" }); } }}>
+        <p>Lembar anak dan panduan guru akan dihapus dari perangkat ini.</p>
+      </ActionConfirmation>
+    </Modal>}
     {notice && <Notice notice={notice} onDismiss={dismissNotice} />}
   </>;
 }
