@@ -83,7 +83,7 @@ export function closeModal(onClose) {
   animation.finished.catch(() => {}).then(onClose);
 }
 
-export default function Modal({ title, children, onClose, wide = false, busy = false }) {
+export default function Modal({ title, children, onClose, wide = false, busy = false, className = "" }) {
   const ref = useRef(null);
   const requestClose = () => { if (!busy) closeModal(onClose); };
   useEffect(() => {
@@ -107,7 +107,7 @@ export default function Modal({ title, children, onClose, wide = false, busy = f
     <dialog
       ref={ref}
       aria-label={title}
-      className={`modal ${wide ? "modal-wide" : ""}`}
+      className={`modal${wide ? " modal-wide" : ""}${className ? " " + className : ""}`}
       onCancel={(e) => {
         e.preventDefault();
         requestClose();

@@ -1,4 +1,5 @@
 "use client";
+import ActionConfirmation from "@imajilearn/shared/components/action-confirmation.jsx";
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Clock3, FolderCog, PencilLine, Plus, Trash2 } from "lucide-react";
@@ -34,11 +35,17 @@ function SlotForm({ teacherId, folders, period, slot, deleting, onClose, onSaved
   async function submit(event) {
     event.preventDefault(); if (lock.current) return; lock.current = true; setBusy(true); setError("");
     try {
-      const form = Object.fromEntries(new FormData(event.currentTarget));
+      const form = deleting ? null : Object.fromEntries(new FormData(event.currentTarget));
       const body = deleting ? undefined : { ...form, day: Number(form.day), ...(slot.id ? {} : { year: Number(period.year), semester: period.semester }) };
       await studioRequest(teacherId, `/schedule/slots${slot.id ? `/${slot.id}` : ""}`, { method: deleting ? "DELETE" : slot.id ? "PATCH" : "POST", version: slot.resourceVersion, key: slot.key, body });
       closeRef.current.close(() => onSaved(deleting ? "Jadwal dihapus." : "Jadwal disimpan."));
     } catch (err) { setError(err.message); } finally { lock.current = false; setBusy(false); }
   }
-  return <Sheet closeRef={closeRef} title={deleting ? "Hapus jadwal?" : slot.id ? "Ubah jadwal" : "Tambah jadwal"} busy={busy} dirty={dirty} onClose={onClose}><form onSubmit={submit} onChange={() => setDirty(true)}><fieldset className="form-stack" disabled={busy}>{deleting ? <p>{weekdays[slot.day - 1]}, {slot.start}–{slot.end} · Kelas {slot.className}</p> : <>{folders.length ? <label className="field">Mapel<select name="folderId" defaultValue={slot.folderId} required><option value="">Pilih mapel</option>{folders.map(folder => <option key={folder.id} value={folder.id}>{folder.name}</option>)}</select></label> : <label className="field">Mapel<input name="newSubject" required maxLength={80} /></label>}<label className="field">Kelas<input name="className" required maxLength={80} defaultValue={slot.className} placeholder="4A" /></label><label className="field">Hari<select name="day" defaultValue={slot.day}>{weekdays.map((name, i) => <option key={name} value={i + 1}>{name}</option>)}</select></label><div className="term-controls"><label className="field">Mulai<input type="time" name="start" required defaultValue={slot.start} /></label><label className="field">Selesai<input type="time" name="end" required defaultValue={slot.end} /></label></div></>}<Feedback error>{error}</Feedback><button className={deleting ? "danger-button full" : "primary full"} type="submit">{busy ? "Menyimpan…" : deleting ? "Hapus jadwal" : "Simpan jadwal"}</button></fieldset></form></Sheet>;
+  if (deleting) return <Sheet closeRef={closeRef} title="Hapus jadwal?" confirmation busy={busy} onClose={onClose}>
+    <ActionConfirmation mobile title="Hapus jam mengajar ini?" confirmLabel="Hapus jadwal" busy={busy} error={error}
+      onCancel={onClose} onConfirm={submit}>
+      <p>{weekdays[slot.day - 1]}, {slot.start}–{slot.end} · Kelas {slot.className}</p>
+    </ActionConfirmation>
+  </Sheet>;
+  return <Sheet closeRef={closeRef} title={slot.id ? "Ubah jadwal" : "Tambah jadwal"} busy={busy} dirty={dirty} onClose={onClose}><form onSubmit={submit} onChange={() => setDirty(true)}><fieldset className="form-stack" disabled={busy}>{folders.length ? <label className="field">Mapel<select name="folderId" defaultValue={slot.folderId} required><option value="">Pilih mapel</option>{folders.map(folder => <option key={folder.id} value={folder.id}>{folder.name}</option>)}</select></label> : <label className="field">Mapel<input name="newSubject" required maxLength={80} /></label>}<label className="field">Kelas<input name="className" required maxLength={80} defaultValue={slot.className} placeholder="4A" /></label><label className="field">Hari<select name="day" defaultValue={slot.day}>{weekdays.map((name, i) => <option key={name} value={i + 1}>{name}</option>)}</select></label><div className="term-controls"><label className="field">Mulai<input type="time" name="start" required defaultValue={slot.start} /></label><label className="field">Selesai<input type="time" name="end" required defaultValue={slot.end} /></label></div><Feedback error>{error}</Feedback><button className="primary full" type="submit">{busy ? "Menyimpan…" : "Simpan jadwal"}</button></fieldset></form></Sheet>;
 }

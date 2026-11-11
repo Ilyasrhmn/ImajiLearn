@@ -1,4 +1,5 @@
 "use client";
+import ActionConfirmation from "@imajilearn/shared/components/action-confirmation.jsx";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Archive, ArchiveRestore, ArrowRight, FolderCog, FolderInput, MoreHorizontal, Pin, PinOff, Plus, Search, Trash2 } from "lucide-react";
 import { materialAppearance } from "../lib/presentation.mjs";
@@ -62,6 +63,11 @@ export default function MaterialsScreen() {
     {sheet?.type === "folders" && <FolderManager teacherId={teacherId} folders={folders} onClose={onClose} onChange={(next, removed) => { setFolders(next); if (removed) { setItems(previous => previous.map(item => item.folderId === removed ? { ...item, folderId: null } : item)); if (folderId === removed) setFolderId("all"); setAttempt(n => n + 1); } }} />}
     {sheet?.type === "menu" && <Sheet title={sheet.item.title} busy={busy} onClose={onClose}><div className="material-menu"><button disabled={busy} onClick={() => change(sheet.item, { pinned: !sheet.item.pinned }, sheet.item.pinned ? "Sematan dilepas." : "Materi disematkan.")}>{sheet.item.pinned ? <PinOff size={20} /> : <Pin size={20} />}{sheet.item.pinned ? "Lepas sematan" : "Sematkan"}</button><button disabled={busy} onClick={() => change(sheet.item, { archived: !sheet.item.archived }, sheet.item.archived ? "Materi dipulihkan." : "Materi diarsipkan.")}>{sheet.item.archived ? <ArchiveRestore size={20} /> : <Archive size={20} />}{sheet.item.archived ? "Pulihkan materi" : "Arsipkan"}</button><button disabled={busy} onClick={() => open("move", sheet.item)}><FolderInput size={20} />Pindahkan mapel</button><button className="danger-text" onClick={() => open("delete", sheet.item)}><Trash2 size={20} />Hapus materi</button></div><Feedback error>{sheetError}</Feedback></Sheet>}
     {sheet?.type === "move" && <Sheet title="Pindahkan materi" busy={busy} onClose={onClose}><form onSubmit={event => { event.preventDefault(); change(sheet.item, { folderId: new FormData(event.currentTarget).get("folderId") }, "Materi dipindahkan."); }}><label className="field">Mapel<select name="folderId" defaultValue={sheet.item.folderId || ""} disabled={busy}><option value="">{NO_SUBJECT_LABEL}</option>{folders.map(folder => <option key={folder.id} value={folder.id}>{folder.name}</option>)}</select></label><Feedback error>{sheetError}</Feedback><button className="primary full section" disabled={busy}>Pindahkan<ArrowRight size={18} /></button></form></Sheet>}
-    {sheet?.type === "delete" && <Sheet title="Hapus materi?" busy={busy} onClose={onClose}><p><strong>{sheet.item.title}</strong> akan dihapus dari akun Anda.</p><Feedback error>{sheetError}</Feedback><div className="button-pair"><button className="secondary" disabled={busy} onClick={onClose}>Batal</button><button className="danger-button" disabled={busy} onClick={() => remove(sheet.item)}>{busy ? "Menghapus…" : "Hapus materi"}</button></div></Sheet>}
+    {sheet?.type === "delete" && <Sheet title="Hapus materi?" confirmation busy={busy} onClose={onClose}>
+      <ActionConfirmation mobile title="Hapus materi ini?" confirmLabel="Hapus materi" busy={busy} error={sheetError}
+        onCancel={onClose} onConfirm={() => remove(sheet.item)}>
+        <p><strong>{sheet.item.title}</strong> akan dihapus dari akun Anda.</p>
+      </ActionConfirmation>
+    </Sheet>}
   </>;
 }
