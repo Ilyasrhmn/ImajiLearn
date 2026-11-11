@@ -4,7 +4,7 @@ import ExamConfiguration from "./exam-configuration";
 import ExamDocumentViewer from "./exam-document-viewer";
 import Modal, { closeModal } from "./modal";
 import Notice from "./notice";
-import { Mascot } from "./mascot";
+import ActionConfirmation from "./action-confirmation";
 import { listMaterials, listFolders } from "../lib/materials.mjs";
 import { readProfile } from "../lib/teacher-profile.mjs";
 import { requestAccount } from "../lib/account-client.mjs";
@@ -18,6 +18,7 @@ export default function ExamStudio({ teacherId, Frame, onNavigationBlock, compac
   const [opened, setOpened] = useState(null), [deleteId, setDeleteId] = useState(null), [saved, setSaved] = useState(true), [notice, setNotice] = useState(null);
   const [processing, setProcessing] = useState(false);
   const [savingError, setSavingError] = useState("");
+  const [deleteError, setDeleteError] = useState("");
   const draft = useRef(null), persistedVersion = useRef(0), timer = useRef(null), saving = useRef(false), operation = useRef(false), retry = useRef(null);
   const dismissNotice = useCallback(() => setNotice(null), []);
   useEffect(() => { onNavigationBlock?.(!saved || processing); return () => onNavigationBlock?.(false); }, [saved, processing, onNavigationBlock]);
@@ -125,19 +126,23 @@ export default function ExamStudio({ teacherId, Frame, onNavigationBlock, compac
   async function remove() {
     const item = exams.find(exam => exam.id === deleteId);
     if (!item || operation.current) return;
-    operation.current = true; setProcessing(true);
+    operation.current = true; setDeleteError(""); setProcessing(true);
     try {
       await studioRequest(teacherId, pathFor(item.id), { method: "DELETE", version: item.resourceVersion });
       setExams(current => current.filter(exam => exam.id !== item.id));
       setDeleteId(null); setNotice({ message: "Naskah dihapus", type: "delete" });
-    } catch (error) { report(error); }
+    } catch (error) { setDeleteError(error.message); }
     finally { operation.current = false; setProcessing(false); }
   }
   return <>
     <Frame teacherId={teacherId}>
-      {!ready ? <div className="materials-skeleton" role="status" aria-label="Memuat ujian"><span /><span /></div> : loadError ? <p role="alert">Naskah tidak dapat dimuat. Muat ulang untuk mencoba lagi.</p> : opened ? <>{savingError && <p role="alert">{savingError} <button type="button" className="text-button" onClick={flush}>Coba simpan lagi</button></p>}<ExamDocumentViewer key={opened.id} exam={opened} saved={saved} onChange={update} onBack={() => open(null)} onRemedial={() => add(pathFor(opened.id) + "/remedial")} /></> : <ExamConfiguration compact={compact} busy={processing} materials={materials} folders={folders} exams={exams} profile={profile} onCreate={config => add("/exams", config)} onOpen={open} onDelete={setDeleteId} onDuplicate={exam => add(pathFor(exam.id) + "/duplicate")} onRename={rename} />}
+      {!ready ? <div className="materials-skeleton" role="status" aria-label="Memuat ujian"><span /><span /></div> : loadError ? <p role="alert">Naskah tidak dapat dimuat. Muat ulang untuk mencoba lagi.</p> : opened ? <>{savingError && <p role="alert">{savingError} <button type="button" className="text-button" onClick={flush}>Coba simpan lagi</button></p>}<ExamDocumentViewer key={opened.id} exam={opened} saved={saved} onChange={update} onBack={() => open(null)} onRemedial={() => add(pathFor(opened.id) + "/remedial")} /></> : <ExamConfiguration compact={compact} busy={processing} materials={materials} folders={folders} exams={exams} profile={profile} onCreate={config => add("/exams", config)} onOpen={open} onDelete={id => { setDeleteError(""); setDeleteId(id); }} onDuplicate={exam => add(pathFor(exam.id) + "/duplicate")} onRename={rename} />}
     </Frame>
-    {deleteId && <Modal busy={processing} title="Hapus naskah" onClose={() => setDeleteId(null)}><div className="material-confirm"><Mascot kind="eraser" mood="think" /><h2>Hapus naskah ini?</h2><p>Soal, kisi-kisi, dan kunci jawabannya akan dihapus dari akun Anda.</p><div className="source-actions"><button className="source-secondary" onClick={() => closeModal(() => setDeleteId(null))}>Batal</button><button className="upload-button" onClick={remove}>Ya, hapus naskah</button></div></div></Modal>}
+    {deleteId && <Modal busy={processing} title="Hapus naskah" className="action-confirmation-dialog" onClose={() => setDeleteId(null)}>
+      <ActionConfirmation title="Hapus naskah ini?" confirmLabel="Hapus naskah" error={deleteError} busy={processing} onCancel={() => closeModal(() => setDeleteId(null))} onConfirm={remove}>
+        <p>Soal, kisi-kisi, dan kunci jawabannya akan dihapus dari akun Anda.</p>
+      </ActionConfirmation>
+    </Modal>}
     {notice && <Notice notice={notice} onDismiss={dismissNotice} />}
   </>;
 }

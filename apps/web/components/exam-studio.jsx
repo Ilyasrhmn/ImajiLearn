@@ -7,7 +7,7 @@ import ExamConfiguration from "./exam-configuration";
 import ExamDocumentViewer from "./exam-document-viewer";
 import Modal, { closeModal } from "./modal";
 import Notice from "./notice";
-import { Mascot } from "./mascot";
+import ActionConfirmation from "@imajilearn/shared/components/action-confirmation.jsx";
 import AccountAvatar from "./account-avatar";
 import LogoutButton from "./logout-button";
 import { listMaterials, listFolders } from "../lib/materials";
@@ -23,7 +23,9 @@ export default function ExamStudio({ teacherId }) {
   const [ready, setReady] = useState(false), [loadError, setLoadError] = useState(false), [profile, setProfile] = useState(() => readProfile(null));
   const [opened, setOpened] = useState(null), [deleteId, setDeleteId] = useState(null), [saved, setSaved] = useState(true), [notice, setNotice] = useState(null);
   const [savingError, setSavingError] = useState("");
+  const [deleteError, setDeleteError] = useState("");
   const [generation, setGeneration] = useState(null);
+  const [deleting, setDeleting] = useState(false);
   const draft = useRef(null), persistedVersion = useRef(0), timer = useRef(null), saving = useRef(false), operation = useRef(false), retry = useRef(null);
   const generationRequest = useRef(null);
   const dismissNotice = useCallback(() => setNotice(null), []);
@@ -174,21 +176,25 @@ export default function ExamStudio({ teacherId }) {
   async function remove() {
     const item = exams.find(exam => exam.id === deleteId);
     if (!item || operation.current) return;
-    operation.current = true;
+    operation.current = true; setDeleteError(""); setDeleting(true);
     try {
       await studioRequest(teacherId, pathFor(item.id), { method: "DELETE", version: item.resourceVersion });
       setExams(current => current.filter(exam => exam.id !== item.id));
       setDeleteId(null); setNotice({ message: "Naskah dihapus", type: "delete" });
-    } catch (error) { report(error); }
-    finally { operation.current = false; }
+    } catch (error) { setDeleteError(error.message); }
+    finally { operation.current = false; setDeleting(false); }
   }
   return <><a className="skip-link" href="#main">Lewati ke isi</a><header className="workspace-header"><div className="header-inner"><Link className="brand" href="/dashboard" aria-label="ImajiLearn, dashboard"><Image src="/brand/imajilearn-mark.svg" width={52} height={52} alt="" /><Image src="/brand/imajilearn-wordmark.svg" width={153} height={33} alt="" className="brand-wordmark" /></Link><div className="account-actions"><AccountAvatar teacherId={teacherId} /><LogoutButton /></div></div></header>
     <main id="main" className="workspace-shell exam-main"><nav className="studio-sections" aria-label="Navigasi studio"><Link href="/dashboard"><BookOpen size={20} />Materi</Link><Link href="/lkpd"><Scissors size={20} />LKPD</Link><Link href="/ujian" aria-current="page"><ClipboardPenLine size={20} />Soal &amp; ujian</Link><a href="/jadwal"><CalendarDays size={20} />Jadwal</a></nav>
       {!ready ? <div className="materials-skeleton" role="status" aria-label="Memuat ujian"><span /><span /></div> : loadError ? <p role="alert">Naskah tidak dapat dimuat. Muat ulang untuk mencoba lagi.</p> : opened ? <>{savingError && <p role="alert">{savingError} <button type="button" className="text-button" onClick={flush}>Coba simpan lagi</button></p>}<ExamDocumentViewer key={opened.id} exam={opened} saved={saved}
         generation={generation} onGenerate={generateQuestions} onStop={() => generationRequest.current?.abort()}
-        onChange={update} onBack={() => open(null)} onRemedial={() => add(pathFor(opened.id) + "/remedial")} /></> : <ExamConfiguration materials={materials} folders={folders} exams={exams} profile={profile} onCreate={config => add("/exams", config)} onOpen={open} onDelete={setDeleteId} onDuplicate={exam => add(pathFor(exam.id) + "/duplicate")} onRename={rename} />}
+        onChange={update} onBack={() => open(null)} onRemedial={() => add(pathFor(opened.id) + "/remedial")} /></> : <ExamConfiguration materials={materials} folders={folders} exams={exams} profile={profile} onCreate={config => add("/exams", config)} onOpen={open} onDelete={id => { setDeleteError(""); setDeleteId(id); }} onDuplicate={exam => add(pathFor(exam.id) + "/duplicate")} onRename={rename} />}
     </main>
-    {deleteId && <Modal title="Hapus naskah" onClose={() => setDeleteId(null)}><div className="material-confirm"><Mascot kind="eraser" mood="think" /><h2>Hapus naskah ini?</h2><p>Soal, kisi-kisi, dan kunci jawabannya akan dihapus dari akun Anda.</p><div className="source-actions"><button className="source-secondary" onClick={() => closeModal(() => setDeleteId(null))}>Batal</button><button className="upload-button" onClick={remove}>Ya, hapus naskah</button></div></div></Modal>}
+    {deleteId && <Modal title="Hapus naskah" className="action-confirmation-dialog" dismissible={!deleting} onClose={() => setDeleteId(null)}>
+      <ActionConfirmation title="Hapus naskah ini?" confirmLabel="Hapus naskah" busy={deleting} error={deleteError} onCancel={() => closeModal(() => setDeleteId(null))} onConfirm={remove}>
+        <p>Soal, kisi-kisi, dan kunci jawabannya akan dihapus dari akun Anda.</p>
+      </ActionConfirmation>
+    </Modal>}
     {notice && <Notice notice={notice} onDismiss={dismissNotice} />}
   </>;
 }
