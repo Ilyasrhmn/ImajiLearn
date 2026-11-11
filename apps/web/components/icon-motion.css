@@ -52,8 +52,9 @@
       --icon-part-motion: translateY(-1px) rotate(-14deg);
       transform-origin: 3px 6px;
     }
-    .lucide-folder-cog > :not(:first-child) {
-      --icon-part-motion: rotate(60deg);
+    :is(.lucide-folder-cog, .lucide-log-out) { --icon-hover-motion: none; }
+    .lucide-folder-cog > path:not(:first-child) {
+      --icon-part-motion: rotate(180deg);
       transform-origin: 18px 18px;
     }
     .lucide-scissors > :is(:nth-child(1), :nth-child(2), :nth-child(5)) {
@@ -100,7 +101,7 @@
       > circle {
       --icon-part-motion: translateX(1.5px);
     }
-    .lucide-log-out > :not(:first-child) {
+    .lucide-log-out > path:nth-child(-n + 2) {
       --icon-part-motion: translateX(2px);
     }
     [data-icon-part="entry"] {
