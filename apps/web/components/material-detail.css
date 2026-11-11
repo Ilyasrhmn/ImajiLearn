@@ -288,6 +288,15 @@ body:has(.material-projector.is-active) .material-navigation { visibility: hidde
   margin-bottom: 12px;
 }
 
+@media (max-width: 760px), (hover: none) and (pointer: coarse) {
+  .material-projector:not(.is-active) > .material-projector-toolbar,
+  .immersive-reading:not(.classroom-mode) > .lesson-toolbar {
+    display: none;
+  }
+
+  .material-output-page .immersive-reading > .reading-content { padding-top: 0; }
+}
+
 @media (prefers-reduced-motion: no-preference) {
   .material-tabs a {
     transition: background-color 160ms ease, border-color 160ms ease;
