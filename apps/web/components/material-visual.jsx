@@ -1,144 +1,173 @@
 "use client";
 
-import { useId, useState } from "react";
-import { ArrowLeft } from "lucide-react";
-import { earthLayers } from "../lib/visual-templates.mjs";
-import FlowObject from "./flow-scene";
+import { useMemo, useRef, useState } from "react";
+import { ArrowLeft, ArrowRight, ChevronDown, Layers3, RotateCcw, RotateCw } from "lucide-react";
+import { CubeModel, EarthModel } from "./visual-models";
+import PhotosynthesisFigure from "./visual-photosynthesis";
+import VisualScene from "./visual-scene";
+import GeometryFallback from "./visual-geometry";
+import { AssemblyFigure } from "./visual-solids";
+import VisualDisclosure from "./visual-disclosure";
+import { clotParticles, clotStages, orbitBodies, resolveVisualModel } from "../lib/visual-templates.mjs";
 import "./material-visual.css";
 
-function ellipsePath(radius) {
-  const x = radius * .52;
-  const y = radius * .82;
-  return `M 0 ${-y} A ${x} ${y} 0 1 1 0 ${y} A ${x} ${y} 0 1 1 0 ${-y} Z`;
-}
-
-function ModelSpread({ label, spread, onChange }) {
-  return <label className="visual-spread">
-    <span>{label}</span>
-    <input type="range" min={0} max={100} value={spread}
-      aria-valuetext={spread + "%"} onChange={event => onChange(Number(event.target.value))} />
-  </label>;
-}
-
-function GlobeArtwork({ id }) {
-  return <defs>
-    <radialGradient id={id + "-ocean"} cx="32%" cy="25%" r="77%">
-      <stop stopColor="#aac9cb" />
-      <stop offset=".57" stopColor="#719da5" />
-      <stop offset="1" stopColor="#3d6974" />
-    </radialGradient>
-    <clipPath id={id + "-round"}><circle cx="235" cy="185" r="141" /></clipPath>
-    <clipPath id={id + "-left"}><rect x="94" y="44" width="141" height="282" /></clipPath>
-    <clipPath id={id + "-right"}><rect x="235" y="44" width="141" height="282" /></clipPath>
-    <g id={id + "-globe"}>
-      <circle cx="235" cy="185" r="141" fill={`url(#${id}-ocean)`} stroke="#315460" strokeWidth="2" />
-      <g clipPath={`url(#${id}-round)`}>
-        <path fill="#96b68c" stroke="#567a6c" strokeWidth="1.5"
-          d="m104 128 26-30 41-18 35 8 17 18-8 16-22 4-8 16-23 2-3 19 12 15-8 14-18-16-11-24-24-5zm76 56 22-5 29 23 5 19-14 14-9 27-23 30-12-8 5-25-10-20 4-18-11-16zm60-76 25-25 28 3 16 12 38-2 26 17 17 25-21 18-23-6-15 16-20-3-15 14-19-5-17-18-20-6-12-20zm16 61 30 4 19 18-8 22-16 8-9 25-18-9-9-21-16-20 10-18zm68 65 29-12 22 13 9 19-21 16-31-5-14-13z" />
-        <path d="M110 133q118-56 252 0M97 186q138-59 277 0M109 243q132-41 249 4M235 45q-112 141 0 281m0-281q112 141 0 281"
-          fill="none" stroke="#e4efdb" strokeOpacity=".32" strokeWidth="1" />
-      </g>
-    </g>
-  </defs>;
-}
-
-function EarthVisual({ details }) {
-  const [spread, setSpread] = useState(0);
-  const [active, setActive] = useState(earthLayers[0]);
-  const id = useId();
-  const opened = Math.min(1, spread / 46);
-  const separated = Math.max(0, (spread - 46) / 54);
+function PhotosynthesisLesson({ visual }) {
+  const [active, setActive] = useState(0);
+  const { steps } = visual;
+  const step = steps[active];
+  const count = `${active + 1} / ${steps.length}`;
   return <>
-    <svg className="visual-earth" viewBox="0 0 720 370" aria-hidden="true">
-      <GlobeArtwork id={id} />
-      <g transform={`translate(${125 * (1 - opened)} 0)`}>
-        <ellipse cx="264" cy="337" rx="180" ry="14" fill="#a8b9a1" opacity=".36" />
-        <use href={"#" + id + "-globe"} clipPath={`url(#${id}-left)`} />
-        {separated > 0 && <path d={`M235 185H${235 + earthLayers.at(-1).offset * separated}`}
-          fill="none" stroke="#7e9381" strokeDasharray="5 6" />}
-        {earthLayers.map(layer => {
-          const shape = ellipsePath(layer.radius) + (layer.inner ? ellipsePath(layer.inner) : "");
-          return <g key={layer.id} className="visual-earth-layer" data-layer={layer.id}
-            transform={`translate(${235 + layer.offset * separated} 185)`}
-            pointerEvents={opened === 0 ? "none" : undefined}
-            onClick={() => setActive(layer)}>
-            <path d={shape} fill={layer.side} fillRule="evenodd" transform="translate(-9 0)" />
-            <path d={shape} fill={layer.fill} fillRule="evenodd"
-              stroke={active.id === layer.id ? "#243e43" : layer.side} strokeWidth="1.6" />
+    <VisualScene key={active} visual={visual} step={step} fallback={<PhotosynthesisFigure step={step} />} />
+    <nav className="visual-lesson-nav" aria-label="Langkah fotosintesis">
+      <button type="button" className="visual-quiet-button" disabled={active === 0} aria-label="Sebelumnya" onClick={() => setActive(active - 1)}>
+        <ArrowLeft size={19} aria-hidden="true" /><span>Sebelumnya</span>
+      </button>
+      <VisualDisclosure className="visual-step-picker" dismissOnChoose label={<>
+        <span className="visual-sr-only">Pilih langkah. Langkah {active + 1} dari {steps.length}.</span>
+        <span aria-hidden="true">{count}</span><ChevronDown size={16} aria-hidden="true" />
+      </>}>
+        <ol className="visual-step-list" aria-label="Semua langkah">
+          {steps.map(({ label }, index) => <li key={index}>
+            <button className="visual-quiet-button" type="button" aria-current={index === active ? "step" : undefined}
+              onClick={() => setActive(index)}><span>{index + 1}</span>{label}</button>
+          </li>)}
+        </ol>
+      </VisualDisclosure>
+      <button type="button" className="visual-quiet-button" disabled={active === steps.length - 1} aria-label="Berikutnya"
+        onClick={() => setActive(active + 1)}><span>Berikutnya</span><ArrowRight size={19} aria-hidden="true" /></button>
+    </nav>
+  </>;
+}
+
+function AssemblyVisual({ parts }) {
+  const [angle, setAngle] = useState(52);
+  const [spread, setSpread] = useState(0);
+  const [selected, setSelected] = useState(parts[0].id);
+  const drag = useRef(null);
+  const selectedPart = parts.find(part => part.id === selected);
+  return <>
+    <figure className="visual-specimen">
+      <div className="visual-stage">
+        <svg className="visual-plate visual-orbit" viewBox="0 0 720 380" role="img"
+          aria-label={parts.map(part => part.label).join(", ")}
+          onPointerDown={event => {
+            if (event.isPrimary && event.button === 0) drag.current = { id: event.pointerId, x: event.clientX, angle };
+          }}
+          onPointerMove={event => {
+            if (drag.current?.id !== event.pointerId) return;
+            const delta = event.clientX - drag.current.x;
+            if (Math.abs(delta) < 5 && !event.currentTarget.hasPointerCapture(event.pointerId)) return;
+            event.currentTarget.setPointerCapture(event.pointerId);
+            setAngle(drag.current.angle + delta * .55);
+          }}
+          onPointerUp={() => { drag.current = null; }}
+          onPointerCancel={() => { drag.current = null; }}
+          onPointerLeave={event => { if (!event.currentTarget.hasPointerCapture(event.pointerId)) drag.current = null; }}>
+          <AssemblyFigure parts={parts} angle={angle} spread={spread / 100} selected={selected} onSelect={setSelected} />
+        </svg>
+      </div>
+      <div className="visual-tools">
+        <div className="visual-turn" role="group" aria-label="Putar model">
+          <button className="source-secondary" type="button" onClick={() => setAngle(value => value - 18)} aria-label="Putar kiri"><RotateCcw size={19} aria-hidden="true" /></button>
+          <button className="source-secondary" type="button" onClick={() => setAngle(value => value + 18)} aria-label="Putar kanan"><RotateCw size={19} aria-hidden="true" /></button>
+        </div>
+        <label className="visual-range"><Layers3 size={18} aria-hidden="true" />Pisahkan bagian
+          <input type="range" min="0" max="100" value={spread} onChange={event => setSpread(Number(event.target.value))}
+            aria-valuetext={spread === 0 ? "Dirakit" : spread === 100 ? "Terurai" : `${spread}%`} />
+        </label>
+      </div>
+    </figure>
+    <div className="visual-layer-buttons visual-scene-steps" role="group" aria-label="Bagian model">
+      {parts.map(part => <button key={part.id} className="source-secondary" type="button" aria-pressed={part.id === selected}
+        onClick={() => setSelected(part.id)}>{part.label}</button>)}
+    </div>
+    <div className="visual-scene-note" role="status"><p>{selectedPart.detail}</p></div>
+  </>;
+}
+function SolarFallback({ visual }) {
+  const [active, setActive] = useState(0);
+  const [selected, setSelected] = useState(null);
+  const step = visual.orbitSteps[active];
+  const next = visual.orbitSteps[active + 1];
+  const bodies = orbitBodies(step.center);
+  return <figure className="visual-specimen visual-photo-specimen">
+        <div className="visual-stage">
+          <svg className="visual-plate" viewBox="0 0 600 320" role="group" aria-label="Model orbit">
+            {bodies.filter(body => body.radius).map(body => <ellipse key={body.label}
+              cx="300" cy="160" rx={body.radius * 91} ry={body.radius * 51} fill="none" stroke="#829580" />)}
+            {bodies.map(({ label, color, size, radius, angle }) => {
+              const x = 300 + radius * 91 * Math.cos(angle);
+              const y = 160 + radius * 51 * Math.sin(angle);
+              return <g key={label} data-part="" role="button" tabIndex={0} aria-label={label}
+                aria-pressed={selected === label}
+                onClick={() => setSelected(label)}
+                onKeyDown={event => {
+                  if (!["Enter", " "].includes(event.key)) return;
+                  event.preventDefault();
+                  setSelected(label);
+                }}>
+                <circle cx={x} cy={y} r={size * 61} fill={color} stroke="#345047" />
+                <text x={x} y={y - size * 61 - 8} textAnchor="middle" fill="#213b42" fontSize="17" fontWeight="700">{label}</text>
+              </g>;
+            })}
+          </svg>
+          <div className="visual-solar-fallback-nav">
+            {active > 0 && <button type="button" className="visual-quiet-button" onClick={() => { setSelected(null); setActive(active - 1); }}>Sebelumnya</button>}
+            {next && <button type="button" className="visual-quiet-button" onClick={() => { setSelected(null); setActive(active + 1); }}>{next.label} ↗</button>}
+          </div>
+        </div>
+        <figcaption className="visual-caption" role="status"><div className="visual-caption-copy">
+          <strong>{selected ?? step.label}</strong>
+          <p>{selected && selected !== bodies[0].label
+            ? `${selected} mengelilingi ${bodies[0].label}${step.center === "earth" ? " dalam model historis ini" : ""}.`
+            : step.detail}</p>
+        </div></figcaption>
+      </figure>;
+}
+
+function ClotFallback() {
+  const [active, setActive] = useState(0);
+  return <figure className="visual-specimen visual-photo-specimen">
+    <div className="visual-stage">
+      <svg className="visual-plate" viewBox="0 0 600 320" role="group" aria-label="Pembuluh darah">
+        <path d="M75 111Q130 60 506 100Q562 152 519 227Q213 265 82 207Z" fill="#bd6966" stroke="#8f4c52" strokeWidth="3" />
+        <path d="M88 119Q212 85 510 112L521 171Q303 220 92 184Z" fill="#e7a299" />
+        <ellipse cx="305" cy="173" rx="71" ry="26" fill="#743d46" />
+        {clotParticles(active).map(([x,y,z], index) =>
+          <ellipse key={index} cx={305 + x * 84} cy={168 + z * 39 - y * 16} rx="11" ry="5" fill="#f0bf67" stroke="#986845" />)}
+        {active === 2 && Array.from({ length: 12 }, (_, index) => {
+          const y = 144 + index * 3;
+          return <path key={index} d={`M240 ${y} Q302 ${177 - index * 3} 374 ${176 - index * 3}`} fill="none" stroke="#ffdfb7" strokeWidth="2" />;
+        })}
+        {clotStages.slice(0, Math.min(3, active + 2)).map(({ label }, index) => {
+          const [x, y, anchorX, anchorY] = [[415, 68, 450, 112], [134, 238, 265, 174], [415, 238, 332, 156]][index];
+          return <g key={label}>
+            <path d={`M${x + 75} ${y + 18}L${anchorX} ${anchorY}`} stroke="#694a44" fill="none" />
+            <circle cx={anchorX} cy={anchorY} r="5" fill="#fff9ef" stroke="#694a44" />
+            <foreignObject x={x} y={y} width="150" height="47">
+              <button type="button" className="visual-quiet-button" aria-pressed={index === active} onClick={() => setActive(index)}>{label}</button>
+            </foreignObject>
           </g>;
         })}
-        {spread > 0 && separated < .35 && <g transform={`translate(${160 * opened} 0)`}
-          opacity={1 - separated / .35} pointerEvents="none">
-          <use href={"#" + id + "-globe"} clipPath={`url(#${id}-right)`} />
-        </g>}
-        {opened < 1 && <use href={"#" + id + "-globe"} opacity={1 - opened} pointerEvents="none" />}
-      </g>
-    </svg>
-    <ModelSpread label="Buka penampang" spread={spread} onChange={setSpread} />
-    <div className="visual-layer-buttons" role="group" aria-label="Lapisan Bumi">
-      {earthLayers.map(layer => <button key={layer.id} type="button" className="source-secondary"
-        aria-pressed={active.id === layer.id} onClick={() => setActive(layer)}>{layer.label}</button>)}
+      </svg>
     </div>
-    <div className="visual-detail" role="status">
-      <h3>{active.label}</h3>
-      <p>{details[active.id] ?? "Bagian ini belum dijelaskan di materi."}</p>
-    </div>
-  </>;
+    <figcaption className="visual-caption" role="status"><div className="visual-caption-copy">
+      <strong>{clotStages[active].label}</strong><p>{clotStages[active].detail}</p>
+    </div></figcaption>
+  </figure>;
 }
 
-function FlowVisual({ steps }) {
-  const [active, setActive] = useState(0);
-  const [spread, setSpread] = useState(0);
-  const parts = steps.map((step, index) => {
-    const progress = index / (steps.length - 1);
-    return {
-      step,
-      x: 143 + 432 * progress,
-      y: 192 - 34 * progress + (index % 2 ? -22 : 18),
-      lift: spread * (index % 2 ? .72 : .55),
-      shift: spread * (progress - .5) * .55,
-    };
-  });
-  return <>
-    <svg className="visual-diorama" viewBox="0 0 720 300" aria-hidden="true">
-      <path d="M38 177 455 86 681 182v18L264 292 38 195Z" fill="#a6b69e" stroke="#738575" />
-      <path d="M38 177 455 86 681 182 264 274Z" fill="#dce5cc" stroke="#738575" />
-      <path d="M70 180 454 96 650 182 264 263Z" fill="#e8ecd9" stroke="#b8c5a9" />
-      {parts.slice(1).map(({ x, y, step }, index) => {
-        const previous = parts[index];
-        const middle = (x + previous.x) / 2;
-        return <path key={step.label} className={index === active - 1 ? "visual-route-active" : undefined}
-          d={`M${previous.x} ${previous.y} Q${middle} ${previous.y} ${middle} ${(y + previous.y) / 2} T${x} ${y}`}
-          fill="none" stroke={index === active - 1 ? "#b64f38" : "#8ba18b"} strokeWidth="3" strokeDasharray="5 5" />;
-      })}
-      {parts.map(({ step, x, y, lift, shift }, index) => <g key={step.label}>
-        <ellipse cx={x} cy={y} rx={46} ry={16} fill={active === index ? "#eed2ae" : "#bdccb0"}
-          stroke={active === index ? "#b64f38" : "#879e87"} />
-        {spread > 0 && <path d={`M${x} ${y} ${x + shift} ${y - lift}`}
-          fill="none" stroke="#879e87" strokeDasharray="4 4" />}
-        <g className="visual-model-part" data-active={active === index}
-          transform={`translate(${x + shift - 64} ${y - lift - 76})`} onClick={() => setActive(index)}>
-          <rect x="20" y="14" width="92" height="70" fill="transparent" />
-          <FlowObject step={step} />
-        </g>
-      </g>)}
-    </svg>
-    <ModelSpread label="Pisahkan bagian" spread={spread} onChange={setSpread} />
-    <div className="visual-layer-buttons" role="group" aria-label="Bagian alur">
-      {steps.map((step, index) => <button key={step.label} type="button" className="source-secondary"
-        aria-pressed={active === index} onClick={() => setActive(index)}>{step.label}</button>)}
-    </div>
-    <div className="visual-detail" role="status">
-      <h3>{steps[active].label}</h3>
-      <p>{steps[active].detail}</p>
-    </div>
-  </>;
-}
-
-export default function MaterialVisual({ visual, onBack }) {
+export default function MaterialVisual({ visual: savedVisual }) {
+  const visual = useMemo(() => resolveVisualModel(savedVisual), [savedVisual]);
+  if (!visual) return null;
   return <article className="format-detail material-reading material-visual">
-    <button type="button" className="source-secondary" onClick={onBack}><ArrowLeft size={18} aria-hidden="true" />Kembali</button>
     <h2 tabIndex={-1} data-output-heading>{visual.title}</h2>
-    {visual.kind === "earth" ? <EarthVisual details={visual.details} /> : <FlowVisual steps={visual.steps} />}
+    {visual.kind === "geometry" && <VisualScene visual={visual} fallback={<GeometryFallback visual={visual} />} />}
+    {visual.kind === "earth" && <VisualScene visual={visual} fallback={<EarthModel details={visual.details} />} />}
+    {visual.kind === "blood_clot" && <VisualScene visual={visual} fallback={<ClotFallback />} />}
+    {visual.kind === "solar_system" && <VisualScene visual={visual} fallback={<SolarFallback visual={visual} />} />}
+    {visual.kind === "assembly" && <VisualScene visual={visual} fallback={<AssemblyVisual parts={visual.parts} />} />}
+    {visual.kind === "cube_net" && <VisualScene visual={visual} fallback={<CubeModel detail={visual.detail} />} />}
+    {visual.kind === "photosynthesis" && <PhotosynthesisLesson visual={visual} />}
   </article>;
 }

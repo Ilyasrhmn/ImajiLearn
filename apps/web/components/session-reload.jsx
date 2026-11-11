@@ -2,20 +2,8 @@
 import { useEffect } from "react";
 import { completeGoogleSession } from "../lib/google-session.mjs";
 
-const sessionChangeKey = "imajilearn-session-change";
-
-export function announceSessionChange() {
-  try {
-    localStorage.setItem(sessionChangeKey, `${Date.now()}:${Math.random()}`);
-  } catch {
-    // Full navigation still revalidates this tab when browser storage is unavailable.
-  }
-}
-
-export function navigateAfterSessionChange(path) {
-  announceSessionChange();
-  window.location.replace(path);
-}
+import { announceSessionChange, sessionChangeKey } from "@imajilearn/shared/lib/session.mjs";
+export { announceSessionChange, navigateAfterSessionChange } from "@imajilearn/shared/lib/session.mjs";
 
 export default function SessionReload() {
   useEffect(() => {

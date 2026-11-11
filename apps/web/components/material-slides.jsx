@@ -2,45 +2,27 @@
 
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
-import { ArrowLeft, ChevronLeft, ChevronRight, Maximize2, Minimize2, Volume2, VolumeX } from "lucide-react";
+import { ChevronLeft, ChevronRight, Maximize2, Minimize2, Volume2, VolumeX } from "lucide-react";
 import { studioRequest } from "../lib/studio-api.mjs";
 import "./material-slides.css";
 
-export default function MaterialSlides({ deck, teacherId, illustrationsPath, revision, onBack }) {
+export default function MaterialSlides({ deck, teacherId, illustrationsPath, revision }) {
   const [index, setIndex] = useState(0);
   const [speaking, setSpeaking] = useState(false);
   const [error, setError] = useState("");
-  const [imageIndexes, setImageIndexes] = useState([]);
+  const [visuals, setVisuals] = useState(() => Object.fromEntries((deck.illustrations ?? []).map((status, index) => [index, status])));
   const [imageError, setImageError] = useState("");
-  const [attempt, setAttempt] = useState(0);
+  const [replacing, setReplacing] = useState(false);
+  const [imageVersions, setImageVersions] = useState({});
   const [zoomed, setZoomed] = useState(false);
   const currentSpeech = useRef(null);
   const slide = deck.slides[index];
-  const count = deck.slides.length;
   const illustrationQuery = "?revision=" + encodeURIComponent(revision);
 
-  useEffect(() => {
-    const controller = new AbortController();
-    const { signal } = controller;
-    const path = illustrationsPath + illustrationQuery;
-    async function prepareImages() {
-      try {
-        const { data: existing } = await studioRequest(teacherId, path, { signal });
-        if (signal.aborted) return;
-        setImageIndexes(existing);
-        const ready = new Set(existing);
-        for (let next = 0; next < count && !signal.aborted; next++) {
-          if (ready.has(next)) continue;
-          await studioRequest(teacherId, path, { method: "POST", body: { index: next }, signal });
-          if (!signal.aborted) setImageIndexes(current => [...current, next]);
-        }
-      } catch (error) {
-        if (!signal.aborted) setImageError(error.message);
-      }
-    }
-    prepareImages();
-    return () => controller.abort();
-  }, [teacherId, illustrationsPath, illustrationQuery, count, attempt]);
+  const visual = visuals[index];
+  const imagePath = illustrationsPath + "/" + index + illustrationQuery;
+  const statusPath = imagePath + "&view=status";
+  const imageUrl = "/api/v1" + imagePath + "&imageVersion=" + (imageVersions[index] ?? 0);
 
   useEffect(() => () => {
     if (!currentSpeech.current) return;
@@ -60,6 +42,7 @@ export default function MaterialSlides({ deck, teacherId, illustrationsPath, rev
     stop();
     setError("");
     setZoomed(false);
+    setImageError("");
     setIndex(current => Math.min(deck.slides.length - 1, Math.max(0, current + step)));
   }
 
@@ -89,35 +72,42 @@ export default function MaterialSlides({ deck, teacherId, illustrationsPath, rev
     catch { finish("Suara belum bisa diputar. Coba lagi."); }
   }
 
+  async function replaceImage() {
+    if (replacing) return;
+    setReplacing(true);
+    setImageError("");
+    try {
+      await studioRequest(teacherId, illustrationsPath + illustrationQuery, {
+        method: "POST", body: { index, replace: true },
+      });
+      const { data } = await studioRequest(teacherId, statusPath);
+      setVisuals(current => ({ ...current, [index]: data }));
+      setImageVersions(current => ({ ...current, [index]: (current[index] ?? 0) + 1 }));
+    } catch (failure) {
+      setImageError(failure.message);
+    } finally {
+      setReplacing(false);
+    }
+  }
+
   return <article className="format-detail material-reading material-slides">
-    <button type="button" className="source-secondary" onClick={() => { stop(); onBack(); }}>
-      <ArrowLeft size={18} aria-hidden="true" />Kembali
-    </button>
     <h2 tabIndex={-1} data-output-heading>{deck.title}</h2>
-    <section className={`material-slide${zoomed ? " material-slide-zoomed" : ""}`} key={index}
+    <section className={`material-slide${zoomed ? " material-slide-zoomed" : ""}${visual?.skipped ? " material-slide-text-only" : ""}`} key={index}
       aria-label={`Slide ${index + 1} dari ${deck.slides.length}`}>
       <div className="material-slide-text">
         <h3>{slide.title}</h3>
         <ul>{slide.points.map(point => <li key={point}>{point}</li>)}</ul>
       </div>
-      {imageIndexes.includes(index) ? (
+      {visual?.ready ? (
         <button className="material-slide-image" type="button" aria-expanded={zoomed}
           aria-label={zoomed ? "Kecilkan ilustrasi" : "Perbesar ilustrasi"} onClick={() => setZoomed(current => !current)}>
-          <Image src={"/api/v1" + illustrationsPath + "/" + index + illustrationQuery}
+          <Image loading="eager" src={imageUrl}
             alt={"Ilustrasi " + slide.title} width={1024} height={1024} unoptimized />
           <span className="material-slide-image-control" aria-hidden="true">
             {zoomed ? <Minimize2 size={18} /> : <Maximize2 size={18} />}
           </span>
         </button>
-      ) : (
-        <div className="material-slide-image-placeholder">
-          {imageError ? <>
-            <p role="alert">{imageError}</p>
-            <button type="button" className="source-secondary"
-              onClick={() => { setImageError(""); setAttempt(current => current + 1); }}>Coba lagi</button>
-          </> : <p role="status">Membuat gambar {Math.min(imageIndexes.length + 1, count)} / {count}…</p>}
-        </div>
-      )}
+      ) : null}
     </section>
     <div className="material-slide-controls">
       <div className="material-slide-pagination">
@@ -132,6 +122,12 @@ export default function MaterialSlides({ deck, teacherId, illustrationsPath, rev
         {speaking ? "Hentikan suara" : "Bacakan slide"}
       </button>
     </div>
+    {visual?.ready && <div className="material-slide-regenerate">
+      <button type="button" className="source-secondary" onClick={replaceImage} disabled={replacing}>
+        {replacing ? "Membuat ilustrasi…" : "Buat ulang ilustrasi"}
+      </button>
+      {imageError && <p className="source-error" role="alert">{imageError}</p>}
+    </div>}
     {error && <p className="source-error" role="alert">{error}</p>}
   </article>;
 }

@@ -36,15 +36,15 @@ test("start is same-origin, throttled, browser-bound and uses nonce/state/PKCE w
 });
 
 test("verified identity creates a passwordless account and local session; stable sub preserves profile and rotates old session",async()=>{
-  const old=await account("rotate-google"),flow=await begin();token=await signed(flow.url.searchParams.get("nonce"));const r=await handlers.callback(callback(flow,"",`${flow.cookie}; ${old.cookie}`));assert.equal(location(r),"/dashboard?google=signed_in");assert.match(r.headers.get("set-cookie"),/HttpOnly/);
+  const old=await account("rotate-google"),flow=await begin();token=await signed(flow.url.searchParams.get("nonce"));const r=await handlers.callback(callback(flow,"",`${flow.cookie}; ${old.cookie}`));assert.equal(location(r),"/beranda?google=signed_in");assert.match(r.headers.get("set-cookie"),/HttpOnly/);
   const user=await storage.db.teacher.findUnique({where:{email:"new-google@example.test"},include:{googleIdentity:true}});assert.equal(user.passwordHash,null);assert.equal(user.googleIdentity.sub,"new-sub");assert.equal(user.school,"");assert.equal(await storage.db.session.count({where:{tokenHash:digest(old.cookie.split("=")[1])}}),0);
-  const flow2=await begin();token=await signed(flow2.url.searchParams.get("nonce"),{email:"changed@example.test",name:"Changed"});assert.equal(location(await handlers.callback(callback(flow2))),"/dashboard?google=signed_in");assert.equal((await storage.db.teacher.findUnique({where:{id:user.id}})).email,"new-google@example.test");assert.equal(await storage.db.teacher.count({where:{email:"changed@example.test"}}),0);
+  const flow2=await begin();token=await signed(flow2.url.searchParams.get("nonce"),{email:"changed@example.test",name:"Changed"});assert.equal(location(await handlers.callback(callback(flow2))),"/beranda?google=signed_in");assert.equal((await storage.db.teacher.findUnique({where:{id:user.id}})).email,"new-google@example.test");assert.equal(await storage.db.teacher.count({where:{email:"changed@example.test"}}),0);
   assert.equal(await storage.db.googleOAuthFlow.count({where:{tokenHash:digest(flow.cookie.split("=")[1])}}),0);
 });
 
 test("invalid binding, ambiguous callback, cancellation and replay cannot exchange or create accounts",async()=>{
   for(const kind of ["no-cookie","duplicate-cookie","wrong-state","duplicate-state","duplicate-code","cancel","expired"]){const flow=await begin();let request=callback(flow);if(kind==="no-cookie")request=callback(flow,"","");if(kind==="duplicate-cookie")request=callback(flow,"",`${flow.cookie}; ${flow.cookie}`);if(kind==="wrong-state")request=req("GET","auth/google/callback?state=wrong&code=code",undefined,{cookie:flow.cookie});if(kind==="duplicate-state")request=callback(flow,`state=${flow.url.searchParams.get("state")}&code=code`);if(kind==="duplicate-code")request=callback(flow,"code=a&code=b");if(kind==="cancel")request=callback(flow,"error=access_denied");if(kind==="expired")await storage.db.googleOAuthFlow.update({where:{tokenHash:digest(flow.cookie.split("=")[1])},data:{expiresAt:new Date(0)}});const count=exchangeCount,r=await handlers.callback(request);assert.match(location(r),/^\/masuk\?google=(expired|failed|cancelled)$/);assert.match(r.headers.get("set-cookie"),/Max-Age=0/);assert.equal(exchangeCount,count,kind);}
-  const flow=await begin();token=await signed(flow.url.searchParams.get("nonce"),{sub:"replay-sub",email:"replay@example.test"});const count=exchangeCount;assert.equal(location(await handlers.callback(callback(flow))),"/dashboard?google=signed_in");assert.equal(location(await handlers.callback(callback(flow))),"/masuk?google=expired");assert.equal(exchangeCount,count+1);
+  const flow=await begin();token=await signed(flow.url.searchParams.get("nonce"),{sub:"replay-sub",email:"replay@example.test"});const count=exchangeCount;assert.equal(location(await handlers.callback(callback(flow))),"/beranda?google=signed_in");assert.equal(location(await handlers.callback(callback(flow))),"/masuk?google=expired");assert.equal(exchangeCount,count+1);
 });
 
 test("signature and required Google claims reject forged, expired, unverified or mismatched tokens",async()=>{
@@ -77,7 +77,7 @@ test("expired flow cleanup is bounded and secure origin uses host-only flow cook
   const secure=createGoogleHandlers(storage.db,{...config,origin:"https://imajilearn.example"},{provider:{}});const r=await secure.start(req("POST","auth/google",undefined,{headers:{origin:"https://imajilearn.example",host:"attacker.test"}}));assert.equal(r.status,200);assert.match(r.headers.get("set-cookie"),/^__Host-imajilearn_google_flow=.*; Path=\/; HttpOnly; SameSite=Lax; Max-Age=600; Secure$/);assert.equal(new URL((await r.json()).data.url).searchParams.get("redirect_uri"),"https://imajilearn.example/api/v1/auth/google/callback");
 });
 
-test("PostgreSQL: parallel callbacks consume a browser flow exactly once",{skip:!process.env.TEST_DATABASE_URL},async()=>{const flow=await begin();token=await signed(flow.url.searchParams.get("nonce"),{sub:"race-sub",email:"race@example.test"});const count=exchangeCount;const responses=await Promise.all([1,2].map(()=>handlers.callback(callback(flow))));assert.deepEqual(responses.map(location).sort(),["/dashboard?google=signed_in","/masuk?google=expired"].sort());assert.equal(exchangeCount,count+1);assert.equal(await storage.db.googleIdentity.count({where:{sub:"race-sub"}}),1);});
+test("PostgreSQL: parallel callbacks consume a browser flow exactly once",{skip:!process.env.TEST_DATABASE_URL},async()=>{const flow=await begin();token=await signed(flow.url.searchParams.get("nonce"),{sub:"race-sub",email:"race@example.test"});const count=exchangeCount;const responses=await Promise.all([1,2].map(()=>handlers.callback(callback(flow))));assert.deepEqual(responses.map(location).sort(),["/beranda?google=signed_in","/masuk?google=expired"].sort());assert.equal(exchangeCount,count+1);assert.equal(await storage.db.googleIdentity.count({where:{sub:"race-sub"}}),1);});
 
 async function blockedQuery(fragment) {
   const deadline=Date.now()+8000;
@@ -124,8 +124,8 @@ test("PostgreSQL: competing browser flows cannot attach the same identity twice 
   const raceProvider={async exchange({nonceHash}){const index=flows.findIndex(flow=>digest(flow.url.searchParams.get("nonce"))===nonceHash);return createGoogleProvider(config,{keys:publicKey,fetch:async()=>Response.json({id_token:tokens[index]})}).exchange({code:"code",verifier:"v".repeat(43),nonceHash});}};
   const racing=createGoogleHandlers(storage.db,config,{provider:raceProvider});
   const results=await Promise.all(flows.map(flow=>racing.callback(callback(flow))));
-  assert.ok(results.some(result=>location(result)==="/dashboard?google=signed_in"));
-  assert.ok(results.every(result=>["/dashboard?google=signed_in","/masuk?google=conflict","/masuk?google=email_exists"].includes(location(result))));
+  assert.ok(results.some(result=>location(result)==="/beranda?google=signed_in"));
+  assert.ok(results.every(result=>["/beranda?google=signed_in","/masuk?google=conflict","/masuk?google=email_exists"].includes(location(result))));
   assert.equal(await storage.db.teacher.count({where:{email:"parallel-new@example.test"}}),1);assert.equal(await storage.db.googleIdentity.count({where:{sub:"parallel-new-sub"}}),1);
 });
 

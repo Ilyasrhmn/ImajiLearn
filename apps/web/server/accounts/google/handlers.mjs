@@ -111,7 +111,7 @@ export function createGoogleHandlers(db, config, { provider = createGoogleProvid
       }
       const response = redirect(intent === "link" ? "linked" : "signed_in");
       if (intent === "login") {
-        response.headers.set("location", "/dashboard?google=signed_in");
+        response.headers.set("location", "/beranda?google=signed_in");
         response.headers.append("set-cookie", session.cookie);
       }
       return response;

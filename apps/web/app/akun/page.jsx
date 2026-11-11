@@ -6,5 +6,5 @@ export const metadata = { title: "Pengaturan akun" };
 export default async function Page({ searchParams }) {
   const teacher = await requirePageTeacher();
   const params = await searchParams;
-  return <><SessionReload /><AccountSettings key={teacher.id} teacherId={teacher.id} googleNotice={googleCallbackNotice(params?.google, "account")} /></>;
+  return <><SessionReload /><AccountSettings key={teacher.id} teacherId={teacher.id} name={teacher.name} googleNotice={googleCallbackNotice(params?.google, "account")} /></>;
 }

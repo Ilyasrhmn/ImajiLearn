@@ -32,7 +32,7 @@ function OptionalEditor({ document, onSave, onCancel }) {
   </form>;
 }
 
-export default function LkpdViewer({ document, saved, onChange, onBack }) {
+export default function LkpdViewer({ document, saved, onChange, onBack, onNavigationBlock }) {
   const [view, setView] = useState("student"), [editing, setEditing] = useState(false), [printing, setPrinting] = useState(false);
   const [fit, setFit] = useState(.8), [zoom, setZoom] = useState(null);
   const preview = useRef(null), mounted = useRef(true);
@@ -56,9 +56,10 @@ export default function LkpdViewer({ document, saved, onChange, onBack }) {
     } catch { if (mounted.current) studioAlert({ title: "Cetakan belum siap", message: "Gambar belum dapat dimuat. Coba lagi.", warning: true, kind: "pen" }); }
     finally { if (mounted.current) setPrinting(false); }
   }
+  useEffect(() => { onNavigationBlock?.(editing || !saved); return () => onNavigationBlock?.(false); }, [editing, saved, onNavigationBlock]);
   const scale = zoom ?? fit;
   return <div className="lkpd-workspace">
-    <div className="lkpd-viewer-back"><button className="text-button" onClick={onBack}><ArrowLeft size={19} aria-hidden="true" />Semua LKPD</button><span role="status">{saved ? "Tersimpan di perangkat ini" : "Belum tersimpan"}</span></div>
+    <div className="lkpd-viewer-back"><button className="text-button" disabled={Boolean(onNavigationBlock) && (editing || !saved)} onClick={onBack}><ArrowLeft size={19} aria-hidden="true" />Semua LKPD</button><span role="status">{saved ? "Tersimpan di perangkat ini" : "Belum tersimpan"}</span></div>
     <div className="lkpd-result-heading"><h1>{document.content.title}</h1><button className="button" onClick={print} disabled={printing || editing}><Printer size={20} aria-hidden="true" />{printing ? "Menyiapkan…" : "Cetak / PDF"}</button></div>
     <div className="lkpd-result-controls">
       <div className="lkpd-view-tabs" role="tablist" aria-label="Lembar LKPD">{[{ id: "student", label: "Lembar anak", Icon: FileText }, { id: "teacher", label: "Panduan guru", Icon: Check }].map((item, index) => <button key={item.id} id={`lkpd-tab-${item.id}`} role="tab" tabIndex={view === item.id ? 0 : -1} aria-selected={view === item.id} aria-controls="lkpd-document" onClick={() => startTransition(() => setView(item.id))} onKeyDown={event => {
@@ -68,7 +69,7 @@ export default function LkpdViewer({ document, saved, onChange, onBack }) {
       }}><item.Icon size={18} aria-hidden="true" />{item.label}</button>)}</div>
       <div className="lkpd-display-actions"><label className="sr-only" htmlFor="lkpd-print-theme">Warna cetak</label><ThemedSelect id="lkpd-print-theme" value={document.theme} onChange={event => onChange({ ...document, theme: event.target.value })}><option value="ink">Hemat tinta</option><option value="color">Berwarna</option></ThemedSelect><button className="icon-button" aria-label="Edit LKPD" title="Edit LKPD" aria-expanded={editing} onClick={() => setEditing(!editing)}><PencilLine size={21} aria-hidden="true" /></button></div>
     </div>
-    <div className="lkpd-editor-reveal" data-open={editing} inert={!editing} aria-hidden={!editing}><div><OptionalEditor key={`${document.id}-${editing}`} document={document} onSave={next => { onChange(next); setEditing(false); }} onCancel={() => setEditing(false)} /></div></div>
+    <div className="lkpd-editor-reveal" data-open={editing} inert={!editing} aria-hidden={!editing}><div><OptionalEditor key={`${document.id}-${editing}`} document={document} onSave={next => { if (onChange(next) !== false) setEditing(false); }} onCancel={() => setEditing(false)} /></div></div>
     <div className="lkpd-zoom-tools" role="group" aria-label="Ukuran pratinjau"><button className="icon-button" aria-label="Perkecil pratinjau" title="Perkecil" disabled={scale <= .25} onClick={() => setZoom(Math.max(.25, scale - .1))}><Minus size={17} aria-hidden="true" /></button><button className="text-button" onClick={() => setZoom(null)} title="Sesuaikan layar"><Scan size={17} aria-hidden="true" />{Math.round(scale * 100)}%</button><button className="icon-button" aria-label="Perbesar pratinjau" title="Perbesar" disabled={scale >= 1.5} onClick={() => setZoom(Math.min(1.5, scale + .1))}><Plus size={17} aria-hidden="true" /></button></div>
     <div ref={preview} className="lkpd-preview"><ViewTransition update="panel-swap" default="none"><section id="lkpd-document" role="tabpanel" tabIndex={0} aria-labelledby={`lkpd-tab-${view}`} className="lkpd-preview-scale" style={{ "--lkpd-scale": scale }}><LkpdPages document={document} view={view} /></section></ViewTransition></div>
     {document.templateId === "cube" || document.templateId === "fold" ? <p className="lkpd-print-size">Cetak ukuran sebenarnya (100%). Cocokkan garis ukur sebelum memotong.</p> : null}
