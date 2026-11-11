@@ -15,6 +15,7 @@ import { readProfile } from "../lib/teacher-profile.mjs";
 import { requestAccount } from "../lib/account-client.mjs";
 import { studioRequest } from "../lib/studio-api.mjs";
 import { createId } from "../lib/id.mjs";
+import { isBlankExamQuestion } from "../lib/exams.mjs";
 import "./exams.css";
 
 export default function ExamStudio({ teacherId }) {
@@ -22,7 +23,9 @@ export default function ExamStudio({ teacherId }) {
   const [ready, setReady] = useState(false), [loadError, setLoadError] = useState(false), [profile, setProfile] = useState(() => readProfile(null));
   const [opened, setOpened] = useState(null), [deleteId, setDeleteId] = useState(null), [saved, setSaved] = useState(true), [notice, setNotice] = useState(null);
   const [savingError, setSavingError] = useState("");
+  const [generation, setGeneration] = useState(null);
   const draft = useRef(null), persistedVersion = useRef(0), timer = useRef(null), saving = useRef(false), operation = useRef(false), retry = useRef(null);
+  const generationRequest = useRef(null);
   const dismissNotice = useCallback(() => setNotice(null), []);
   useEffect(() => {
     let active = true;
@@ -42,6 +45,7 @@ export default function ExamStudio({ teacherId }) {
     return () => {
       active = false;
       controller.abort();
+      generationRequest.current?.abort();
       clearTimeout(timer.current);
       window.removeEventListener("lkpd-notice", receive);
       window.removeEventListener("beforeunload", warn);
@@ -111,10 +115,52 @@ export default function ExamStudio({ teacherId }) {
     return true;
   }
   function update(exam) {
+    if (generationRequest.current) return;
     draft.current = exam;
     setOpened(exam); setSaved(false); setSavingError("");
     clearTimeout(timer.current);
     timer.current = setTimeout(flush, 400);
+  }
+  async function generateQuestions() {
+    if (!opened || operation.current || draft.current || saving.current) return;
+    const total = opened.questions.filter(isBlankExamQuestion).length;
+    if (!total) return;
+    const controller = new AbortController();
+    generationRequest.current = controller;
+    operation.current = true;
+    setGeneration({ filled: 0, total });
+    const path = pathFor(opened.id);
+    let remaining = total;
+    try {
+      while (remaining && !controller.signal.aborted) {
+        const { data } = await studioRequest(teacherId, path + "/generate", {
+          method: "POST", version: persistedVersion.current, signal: controller.signal,
+        });
+        persistedVersion.current = data.resourceVersion;
+        remember(data);
+        setOpened(data);
+        const next = data.questions.filter(isBlankExamQuestion).length;
+        if (next >= remaining) break;
+        remaining = next;
+        setGeneration({ filled: total - remaining, total });
+      }
+    } catch (error) {
+      if (controller.signal.aborted || error.status === 412) {
+        try {
+          const { data } = await studioRequest(teacherId, path);
+          persistedVersion.current = data.resourceVersion;
+          remember(data);
+          setOpened(data);
+        } catch (refreshError) {
+          if (!controller.signal.aborted) report(refreshError);
+        }
+      }
+      if (!controller.signal.aborted) report(error);
+    } finally {
+      generationRequest.current = null;
+      operation.current = false;
+      setGeneration(null);
+    }
   }
   async function rename(id, title) {
     if (operation.current) return;
@@ -138,7 +184,9 @@ export default function ExamStudio({ teacherId }) {
   }
   return <><a className="skip-link" href="#main">Lewati ke isi</a><header className="workspace-header"><div className="header-inner"><Link className="brand" href="/dashboard" aria-label="ImajiLearn, dashboard"><Image src="/brand/imajilearn-mark.svg" width={52} height={52} alt="" /><Image src="/brand/imajilearn-wordmark.svg" width={153} height={33} alt="" className="brand-wordmark" /></Link><div className="account-actions"><AccountAvatar teacherId={teacherId} /><LogoutButton /></div></div></header>
     <main id="main" className="workspace-shell exam-main"><nav className="studio-sections" aria-label="Navigasi studio"><Link href="/dashboard"><BookOpen size={20} />Materi</Link><Link href="/lkpd"><Scissors size={20} />LKPD</Link><Link href="/ujian" aria-current="page"><ClipboardPenLine size={20} />Soal &amp; ujian</Link><a href="/jadwal"><CalendarDays size={20} />Jadwal</a></nav>
-      {!ready ? <div className="materials-skeleton" role="status" aria-label="Memuat ujian"><span /><span /></div> : loadError ? <p role="alert">Naskah tidak dapat dimuat. Muat ulang untuk mencoba lagi.</p> : opened ? <>{savingError && <p role="alert">{savingError} <button type="button" className="text-button" onClick={flush}>Coba simpan lagi</button></p>}<ExamDocumentViewer key={opened.id} exam={opened} saved={saved} onChange={update} onBack={() => open(null)} onRemedial={() => add(pathFor(opened.id) + "/remedial")} /></> : <ExamConfiguration materials={materials} folders={folders} exams={exams} profile={profile} onCreate={config => add("/exams", config)} onOpen={open} onDelete={setDeleteId} onDuplicate={exam => add(pathFor(exam.id) + "/duplicate")} onRename={rename} />}
+      {!ready ? <div className="materials-skeleton" role="status" aria-label="Memuat ujian"><span /><span /></div> : loadError ? <p role="alert">Naskah tidak dapat dimuat. Muat ulang untuk mencoba lagi.</p> : opened ? <>{savingError && <p role="alert">{savingError} <button type="button" className="text-button" onClick={flush}>Coba simpan lagi</button></p>}<ExamDocumentViewer key={opened.id} exam={opened} saved={saved}
+        generation={generation} onGenerate={generateQuestions} onStop={() => generationRequest.current?.abort()}
+        onChange={update} onBack={() => open(null)} onRemedial={() => add(pathFor(opened.id) + "/remedial")} /></> : <ExamConfiguration materials={materials} folders={folders} exams={exams} profile={profile} onCreate={config => add("/exams", config)} onOpen={open} onDelete={setDeleteId} onDuplicate={exam => add(pathFor(exam.id) + "/duplicate")} onRename={rename} />}
     </main>
     {deleteId && <Modal title="Hapus naskah" onClose={() => setDeleteId(null)}><div className="material-confirm"><Mascot kind="eraser" mood="think" /><h2>Hapus naskah ini?</h2><p>Soal, kisi-kisi, dan kunci jawabannya akan dihapus dari akun Anda.</p><div className="source-actions"><button className="source-secondary" onClick={() => closeModal(() => setDeleteId(null))}>Batal</button><button className="upload-button" onClick={remove}>Ya, hapus naskah</button></div></div></Modal>}
     {notice && <Notice notice={notice} onDismiss={dismissNotice} />}

@@ -122,6 +122,9 @@ export default function Dashboard({ teacherId }) {
     {notice && <Notice notice={notice} onDismiss={dismissNotice} insideDialog={managing} />}
     {deleting && <Modal title="Hapus materi" onClose={() => !busy && setDeleting(null)}><div className="material-confirm"><Mascot kind="eraser" mood="think" /><h2>Hapus materi ini?</h2><p><strong>{deleting.title}</strong> akan dihapus dari akun Anda.</p>{deleteError && <p className="source-error" role="alert">{deleteError}</p>}<div className="source-actions"><button type="button" className="source-secondary" disabled={busy} onClick={() => closeModal(() => setDeleting(null))}>Batal</button><button type="button" className="upload-button" disabled={busy} onClick={remove}>{busy ? "Menghapus..." : "Ya, hapus materi"}</button></div></div></Modal>}
     {uploading && <UploadMaterial teacherId={teacherId} folders={folders} initialFolder={folderId} onClose={() => setUploading(false)} onSaved={material => { setMaterials(items => [material, ...items]); setStorageError(false); setArchive(false); openFolder(material.folderId || ""); setUploading(false); setNotice({ message: "Materi tersimpan", type: "success" }); }} />}
-    {selected && <MaterialDetail teacherId={teacherId} material={selected} onClose={() => setSelected(null)} onSaved={updated => { setMaterials(items => items.map(item => item.id === updated.id ? updated : item)); setSelected(null); setNotice({ message: "Pilihan disimpan", type: "success" }); }} />}
+    {selected && <MaterialDetail teacherId={teacherId} material={selected} onClose={() => setSelected(null)} onSaved={updated => {
+      setMaterials(items => items.map(item => item.id === updated.id ? updated : item));
+      setSelected(current => current?.id === updated.id ? updated : current);
+    }} />}
   </>;
 }
