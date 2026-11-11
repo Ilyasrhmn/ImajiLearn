@@ -27,6 +27,26 @@ test("visual generation keeps Earth and flow outputs private, validated, and reu
       kind: "flow", title: "Pertumbuhan",
       steps: [{ label: "Benih", detail: "Benih berkecambah." }, { label: "Tunas", detail: "Tunas tumbuh." }],
     };
+    const plantText = "Daun menangkap cahaya matahari. Akar menyerap air yang bergerak ke daun.";
+    const plant = await materials.create(owner.id, { title: "Fotosintesis", text: plantText }, randomUUID());
+    const plantContent = {
+      kind: "photosynthesis", title: "Fotosintesis", steps: [
+        { label: "Cahaya", detail: "Daun menangkap cahaya matahari.", evidence: "Daun menangkap cahaya matahari.", focus: "light" },
+        { label: "Air", detail: "Air bergerak ke daun.", evidence: "Akar menyerap air yang bergerak ke daun.", focus: "water" },
+      ],
+    };
+    const invalidPlant = { ...plantContent, steps: [{ ...plantContent.steps[0], focus: "unknown" }, plantContent.steps[1]] };
+    await assert.rejects(createMaterialVisual(storage.db, async () => ({ content: invalidPlant })).generate(owner.id, plant.id), { code: "INVALID_VISUAL" });
+    assert.deepEqual(await createMaterialVisual(storage.db, async () => ({ content: plantContent })).generate(owner.id, plant.id), plantContent);
+    for (const [content, sourceText] of [
+      [{ kind: "cube_net", title: "Jaring-jaring kubus", evidence: "Enam persegi membentuk jaring-jaring kubus.", detail: "Enam persegi bertemu saat dilipat." }, "Enam persegi membentuk jaring-jaring kubus."],
+      [{ kind: "main_idea", title: "Kalimat utama", sentences: ["Kucing merawat anaknya.", "Ia menyusui anaknya."], answerIndex: 0, detail: "Kalimat kedua memberi contoh perawatan." }, "Kucing merawat anaknya. Ia menyusui anaknya."],
+    ]) {
+      const material = await materials.create(owner.id, { title: content.title, text: sourceText }, randomUUID());
+      const invalid = content.kind === "cube_net" ? { ...content, evidence: "Tidak ada di sumber." } : { ...content, sentences: content.sentences.toReversed() };
+      await assert.rejects(createMaterialVisual(storage.db, async () => ({ content: invalid })).generate(owner.id, material.id), { code: "INVALID_VISUAL" });
+      assert.deepEqual(await createMaterialVisual(storage.db, async () => ({ content })).generate(owner.id, material.id), content);
+    }
     const started = Promise.withResolvers(), finish = Promise.withResolvers();
     let calls = 0;
     const visual = createMaterialVisual(storage.db, async (feature, { messages }) => {

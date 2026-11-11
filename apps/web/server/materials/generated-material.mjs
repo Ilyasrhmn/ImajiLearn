@@ -48,7 +48,7 @@ export function createGeneratedMaterial(db, generateJson, { delegate, feature, i
           { role: "system", content: instructions },
           { role: "user", content: JSON.stringify({ title: job.source.title, text: job.source.text }) },
         ] });
-        const content = validate(result.content);
+        const content = validate(result.content, job.source);
         await db.$transaction(async tx => {
           const latest = await getOwnedMaterial(tx, userId, job.source.id);
           if (!latest || latest.archived || latest.revision !== job.source.revision) throw sourceChanged();
