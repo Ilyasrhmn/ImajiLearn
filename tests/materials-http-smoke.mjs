@@ -20,6 +20,19 @@ const created = await send("POST", "materials", body, a, { "idempotency-key": ke
 assert.equal(created.status, 201); assert.equal(created.headers.get("etag"), '"1"');
 const material = (await created.json()).data;
 assert.equal(material.text, body.text); assert.match(material.revision, /^[a-f\d]{64}$/);
+const materialPage = `${base}/materi/${material.id}`;
+const anonymous = await fetch(materialPage, { redirect: "manual" });
+assert.equal(anonymous.status, 307);
+assert.equal(anonymous.headers.get("location"), "/masuk");
+assert.equal((await fetch(materialPage, { headers: { cookie: b } })).status, 404);
+assert.equal((await fetch(`${materialPage}/reading`, { headers: { cookie: b } })).status, 404);
+assert.equal((await fetch(`${materialPage}/unknown`, { headers: { cookie: a } })).status, 404);
+const detailPage = await fetch(materialPage, { headers: { cookie: a } });
+assert.equal(detailPage.status, 200);
+assert.match(await detailPage.text(), /HTTP manual material/);
+for (const segment of ["reading", "visual", "slides", "song"]) {
+  assert.equal((await fetch(`${materialPage}/${segment}`, { headers: { cookie: a } })).status, 200);
+}
 const replay = await send("POST", "materials", body, a, { "idempotency-key": key });
 assert.equal(replay.status, 201); assert.deepEqual((await replay.json()).data, material);
 assert.equal((await send("GET", `materials/${material.id}`)).status, 401);

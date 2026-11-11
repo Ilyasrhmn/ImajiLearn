@@ -62,13 +62,12 @@ export default function UploadMaterial({ teacherId, onClose, onSaved, folders, i
       <div className="source-field source-folder-field"><label htmlFor="upload-folder">Mata pelajaran (opsional)</label><ThemedSelect id="upload-folder" value={folderId} onChange={event => setFolderId(event.target.value)}><option value="">Tanpa mata pelajaran</option>{folders.map(folder => <option key={folder.id} value={folder.id}>{folder.name}</option>)}</ThemedSelect></div>
       <div className="source-upload" onDragOver={e => e.preventDefault()} onDrop={e => { e.preventDefault(); choose(e.dataTransfer.files[0]); }}>
         {file ? <FileText size={30} /> : <Upload size={30} />}
-        <div><strong>{file?.name || "Unggah bahan ajar"}</strong><p>{file ? "Siap disimpan" : "PDF atau TXT, maksimal 10 MB"}</p></div>
+        <div>{file ? <strong>{file.name}</strong> : <p>PDF atau TXT, maksimal 10 MB</p>}</div>
         <button className="source-secondary" type="button" onClick={() => input.current?.click()}>{file ? "Ganti file" : "Pilih file"}</button>
         <input ref={input} className="source-file-input" type="file" accept=".pdf,.txt" aria-label="Pilih file materi" onChange={e => { choose(e.target.files[0]); e.target.value = ""; }} />
       </div>
       <label className="source-field">Judul materi<input value={title} onChange={e => setTitle(e.target.value)} maxLength={120} placeholder="Judul pelajaran Anda" /></label>
       <label className="source-field">Teks materi <span>(opsional jika memakai PDF)</span><textarea rows={3} value={text} onChange={e => setText(e.target.value)} maxLength={40000} placeholder="Atau tempelkan materi di sini…" /></label>
-      <p className="source-storage">Materi disimpan di browser ini.</p>
       {error && <p className="source-error" role="alert">{error}</p>}
       <div className="source-actions"><button type="button" className="source-secondary" onClick={() => closeModal(onClose)} disabled={saving}>Batal</button><button className="upload-button" type="submit" disabled={saving || reading}>{saving ? "Menyimpan…" : reading ? "Membaca file…" : "Simpan materi"}</button></div>
     </form>
