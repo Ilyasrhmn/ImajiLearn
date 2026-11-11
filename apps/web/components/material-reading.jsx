@@ -34,15 +34,17 @@ function ReadingIllustration({ teacherId, path, title }) {
   }, [teacherId, path]);
 
   async function generate() {
-    if (generating.current || loading || image) return;
+    if (generating.current || loading) return;
     const signal = request.current.signal;
     generating.current = true;
     setBusy(true);
     setError("");
     try {
-      const blob = await studioRequest(teacherId, path, { method: "POST", binary: true, signal });
+      const blob = await studioRequest(teacherId, image ? path + "?replace=1" : path, { method: "POST", binary: true, signal });
       if (signal.aborted) return;
-      objectUrl.current = URL.createObjectURL(blob);
+      const nextUrl = URL.createObjectURL(blob);
+      if (objectUrl.current) URL.revokeObjectURL(objectUrl.current);
+      objectUrl.current = nextUrl;
       setImage(objectUrl.current);
     } catch (error) {
       if (!signal.aborted) setError(error.message);
@@ -53,11 +55,11 @@ function ReadingIllustration({ teacherId, path, title }) {
   }
 
   return <div className="reading-illustration">
-    {image ? <Image src={image} alt={"Ilustrasi " + title} width={1024} height={1024} unoptimized /> :
-      <button className="source-secondary" type="button" onClick={generate} disabled={loading || busy}>
-        <ImagePlus size={18} aria-hidden="true" />
-        {busy ? "Membuat ilustrasi…" : "Buat ilustrasi"}
-      </button>}
+    {image && <Image src={image} alt={"Ilustrasi " + title} width={1024} height={1024} unoptimized />}
+    <button className="source-secondary" type="button" onClick={generate} disabled={loading || busy}>
+      <ImagePlus size={18} aria-hidden="true" />
+      {busy ? "Membuat ilustrasi…" : image ? "Buat ulang ilustrasi" : "Buat ilustrasi"}
+    </button>
     {error && <p className="source-error" role="alert">{error}</p>}
   </div>;
 }
@@ -80,11 +82,16 @@ export default function MaterialReading({ reading, teacherId, illustrationPath, 
   return <article className="format-detail material-reading">
     <button type="button" className="source-secondary" onClick={onBack}><ArrowLeft size={18} aria-hidden="true" />Kembali</button>
     <h2 tabIndex={-1} data-output-heading>{reading.title}</h2>
-    <ReadingIllustration teacherId={teacherId} path={illustrationPath} title={reading.title} />
     {reading.sections.map((section, index) => (
       <section key={index}>
         <h3>{section.heading}</h3>
-        {section.paragraphs.map((paragraph, number) => <p key={number}>{paragraph}</p>)}
+        {section.paragraphs.map((paragraph, number) => (
+          <div key={number}>
+            <p>{paragraph}</p>
+            {index === (reading.illustration?.sectionIndex ?? 0) && number === (reading.illustration?.paragraphIndex ?? 0) &&
+              <ReadingIllustration key={illustrationPath} teacherId={teacherId} path={illustrationPath} title={section.heading} />}
+          </div>
+        ))}
       </section>
     ))}
     <section aria-label="Kuis">
