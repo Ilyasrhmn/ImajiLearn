@@ -1,0 +1,30 @@
+.exam-source-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.exam-source-filter { flex: 0 1 166px; min-width: 0; }
+.exam-source-filter .themed-select-trigger { min-height: 50px; }
+.exam-source-search { display: block; position: relative; flex: 1 1 175px; min-width: 0; }
+.exam-source-search svg {
+  position: absolute;
+  inset-inline-start: 14px;
+  top: 50%;
+  translate: 0 -50%;
+  pointer-events: none;
+}
+.exam-source-search input {
+  display: block;
+  width: 100%;
+  min-height: 50px;
+  padding: 10px 14px;
+  padding-inline-start: 44px;
+  border: 1px solid #8c9b94;
+  border-radius: 12px;
+  background: #fff;
+  color: var(--ink);
+  font: inherit;
+  font-size: 16px;
+}
