@@ -2,21 +2,35 @@
 import ThemedSelect from "./themed-select";
 import { useEffect, useState } from "react";
 import { ArrowRight, Check, FileText, Search } from "lucide-react";
+import ExamSectionPicker from "./exam-section-picker";
 import ExamLibrary from "./exam-library";
 import { NO_SUBJECT_LABEL } from "../lib/materials.mjs";
 import { Mascot } from "./mascot";
 import { EXAM_TYPES, QUESTION_FORMS, initialExamConfig, validateExamConfig, DIFFICULTIES } from "../lib/exams.mjs";
 import "./exam-source-tools.css";
 
-export default function ExamConfiguration({ showHeading = true, compact = false, busy = false, materials, folders, exams, profile, onCreate, onOpen, onDelete, onRename, onDuplicate }) {
+function sourcePages(source) {
+  if (!source?.parentId) return "Seluruh materi";
+  if (!source.sectionPages?.length) return `Hlm. ${source.pageStart} - ${source.pageEnd}`;
+  const ranges = source.sectionPages.reduce((parts, page) => {
+    if (parts.at(-1)?.[1] === page - 1) parts.at(-1)[1] = page;
+    else parts.push([page, page]);
+    return parts;
+  }, []);
+  return "Hlm. " + ranges.map(([first, last]) => first === last ? first : `${first} - ${last}`).join(", ");
+}
+
+export default function ExamConfiguration({ showHeading = true, compact = false, busy = false, materials, folders, exams, profile, onCreate, onOpen, onDelete, onRename, onDuplicate, ActionMenu, teacherId }) {
   const [config, setConfig] = useState(() => ({ ...initialExamConfig(), grade: profile.grade || "4", subject: null }));
   const [creating, setCreating] = useState(() => !exams.length);
   const [folder,setFolder]=useState("all");
   const [search, setSearch] = useState("");
+  const [parts, setParts] = useState({}), [choosing, setChoosing] = useState(null);
+  const sourceId = material => parts[material.id]?.id ?? material.id;
   const [error, setError] = useState("");
   useEffect(() => { if (error) document.getElementById("exam-config-error")?.focus(); }, [error]);
-  const sources = materials.filter(m => !m.archived && !m.isSample);
-  const selected = sources.filter(material => config.materialIds.includes(material.id));
+  const sources = materials.filter(m => !m.archived && !m.isSample && !m.parentId);
+  const selected = sources.filter(material => config.materialIds.includes(sourceId(material)));
   const selectedFolderId = selected[0]?.folderId;
   const sharedFolder = selectedFolderId && selected.length === config.materialIds.length
     && selected.every(material => material.folderId === selectedFolderId)
@@ -24,10 +38,21 @@ export default function ExamConfiguration({ showHeading = true, compact = false,
     : null;
   const subject = config.subject ?? sharedFolder?.name ?? "";
   const shown = sources.filter(m => (folder === "all" || (folder === "unfiled" ? !m.folderId : m.folderId === folder)) && m.title.toLocaleLowerCase("id").includes(search.toLocaleLowerCase("id")));
-  const allShownSelected = shown.length > 0 && shown.every(material => config.materialIds.includes(material.id));
-  function toggleShown() { const visibleIds = shown.map(material => material.id); change("materialIds", allShownSelected ? config.materialIds.filter(id => !visibleIds.includes(id)) : [...new Set([...config.materialIds, ...visibleIds])]); }
+  const allShownSelected = shown.length > 0 && shown.every(material => config.materialIds.includes(sourceId(material)));
+  function toggleShown() { const visibleIds = shown.map(sourceId); change("materialIds", allShownSelected ? config.materialIds.filter(id => !visibleIds.includes(id)) : [...new Set([...config.materialIds, ...visibleIds])]); }
   const change = (key, value) => { setConfig(previous => ({ ...previous, [key]: value })); setError(""); };
-  function toggle(id) { change("materialIds", config.materialIds.includes(id) ? config.materialIds.filter(value => value !== id) : [...config.materialIds, id]); }
+  function toggle(material) {
+    const id = sourceId(material);
+    if (config.materialIds.includes(id)) { change("materialIds", config.materialIds.filter(value => value !== id)); return; }
+    if (material.file?.mime === "application/pdf") { setChoosing(material); return; }
+    if (material.extractionStatus !== "ready") { setError("Teks materi belum terbaca. Pilih materi lain atau tulis ringkasan."); return; }
+    change("materialIds", [...config.materialIds, id]);
+  }
+  function choosePart(source) {
+    const oldId = sourceId(choosing);
+    setParts(previous => ({ ...previous, [choosing.id]:source }));
+    change("materialIds", [...new Set([...config.materialIds.filter(id => id !== oldId), source.id])]);
+  }
   function submit(event) {
     event.preventDefault();
     const draft = { ...config, subject };
@@ -40,7 +65,7 @@ export default function ExamConfiguration({ showHeading = true, compact = false,
     {compact && exams.length > 0 && <button className="button mobile-exam-switch" type="button" onClick={() => setCreating(value => !value)}>{creating ? "Naskah tersimpan" : "Buat naskah"}</button>}
     {(!compact || creating) && <form className="exam-config" onSubmit={submit}>
       <section className="exam-sources" aria-labelledby="exam-sources-title">
-        <div className="exam-section-heading"><h2 id="exam-sources-title">Materi</h2>{sources.length > 1 && <button type="button" className="text-button" disabled={!shown.length} onClick={toggleShown}>{allShownSelected ? "Batalkan semua" : "Pilih semua"}</button>}</div>
+        <div className="exam-section-heading"><h2 id="exam-sources-title">Materi</h2>{sources.length > 1 && shown.every(material => material.extractionStatus === "ready") && <button type="button" className="text-button" disabled={!shown.length} onClick={toggleShown}>{allShownSelected ? "Batalkan semua" : "Pilih semua"}</button>}</div>
         <div className="exam-source-tools">
           <div className="exam-source-filter"><ThemedSelect aria-label="Filter mapel materi ujian" value={folder} onChange={event => setFolder(event.target.value)}><option value="all">Semua mapel</option><option value="unfiled">{NO_SUBJECT_LABEL}</option>{folders.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</ThemedSelect></div>
           {sources.length > 5 && <label className="exam-source-search">
@@ -48,10 +73,10 @@ export default function ExamConfiguration({ showHeading = true, compact = false,
             <input type="search" aria-label="Cari nama materi" placeholder="Cari nama materi" value={search} onChange={event => setSearch(event.target.value)} />
           </label>}
         </div>
-        {sources.length ? <div className="exam-source-list">{shown.length ? shown.map(material => <label className="exam-source" key={material.id}>
-          <input type="checkbox" checked={config.materialIds.includes(material.id)} onChange={() => toggle(material.id)} />
+        {sources.length ? <div className="exam-source-list">{shown.length ? shown.map(material => <div className="exam-source-entry" key={material.id}><label className="exam-source">
+          <input type="checkbox" checked={config.materialIds.includes(sourceId(material))} onChange={() => toggle(material)} />
           <FileText size={23} aria-hidden="true" /><span>{material.title}</span><Check className="exam-source-check" size={18} aria-hidden="true" />
-        </label>) : <p className="exam-empty-search">Materi tidak ditemukan.</p>}</div> : <div className="exam-empty-sources"><FileText size={28} aria-hidden="true" /><p>Belum ada materi. Tulis ringkasannya di bawah.</p></div>}
+        </label>{config.materialIds.includes(sourceId(material)) && material.file?.mime === "application/pdf" && <button type="button" className="exam-source-scope" onClick={() => setChoosing(material)}>{sourcePages(parts[material.id])} · Ubah bagian</button>}</div>) : <p className="exam-empty-search">Materi tidak ditemukan.</p>}</div> : <div className="exam-empty-sources"><FileText size={28} aria-hidden="true" /><p>Belum ada materi. Tulis ringkasannya di bawah.</p></div>}
         <div className="exam-field exam-summary"><label htmlFor="exam-summary">Ringkasan materi</label><textarea id="exam-summary" rows={6} maxLength={20000} placeholder="Tulis materi yang akan diujikan…" value={config.summary} onChange={event => change("summary", event.target.value)} /></div>
       </section>
       <section className="exam-options" aria-labelledby="exam-options-title">
@@ -69,6 +94,7 @@ export default function ExamConfiguration({ showHeading = true, compact = false,
         <button className="button exam-create" disabled={busy}>{busy ? "Menyiapkan…" : "Siapkan naskah"}<ArrowRight size={20} aria-hidden="true" /></button>
       </section>
     </form>}
-    {exams.length > 0 && (!compact || !creating) && <ExamLibrary exams={exams} onOpen={onOpen} onDelete={onDelete} onRename={onRename} onDuplicate={onDuplicate} />}
+    {choosing && <ExamSectionPicker teacherId={teacherId} material={choosing} selected={parts[choosing.id]} onChoose={choosePart} onClose={() => setChoosing(null)} />}
+    {exams.length > 0 && (!compact || !creating) && <ExamLibrary ActionMenu={ActionMenu} compact={compact} exams={exams} onOpen={onOpen} onDelete={onDelete} onRename={onRename} onDuplicate={onDuplicate} />}
   </>;
 }
