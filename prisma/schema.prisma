@@ -17,7 +17,6 @@ model Teacher {
   createdAt    DateTime @default(now()) @db.Timestamptz(3)
   sessions     Session[]
   exams        ExamDocument[]
-  worksheetLibrary WorksheetLibrary?
   materials    Material[]
   folders      Folder[]
   scheduleTerms ScheduleTerm[]
@@ -60,43 +59,6 @@ model ExamDocument {
   generationLeaseUntil DateTime? @db.Timestamptz(3)
 
   @@index([userId, id])
-}
-
-model WorksheetLibrary {
-  ownerId   String @id @db.Uuid
-  lockVersion BigInt @default(0)
-  teacher   Teacher @relation(fields: [ownerId], references: [id], onDelete: Restrict)
-  documents WorksheetDocument[]
-}
-
-model WorksheetDocument {
-  id               String @id @db.Uuid
-  ownerId          String @db.Uuid
-  library          WorksheetLibrary @relation(fields: [ownerId], references: [ownerId], onDelete: Restrict)
-  sourceMaterialId String? @db.Uuid
-  sourceOwnerId    String? @db.Uuid
-  material         Material? @relation(fields: [sourceMaterialId, sourceOwnerId], references: [id, userId], onDelete: SetNull, onUpdate: Cascade)
-  sourceId         String @db.Uuid
-  sourceTitle      String @db.VarChar(120)
-  sourceRevision   String
-  schemaVersion    Int @default(1)
-  resourceVersion  Int @default(1)
-  templateId       String @db.VarChar(8)
-  templateVersion  Int @default(1)
-  assetVersion     Int @default(1)
-  grade            String @db.VarChar(1)
-  language         String @db.VarChar(2)
-  theme            String @db.VarChar(5)
-  content          Json @db.JsonB
-  displayOrder     Json @db.JsonB
-  cacheKey         String @db.VarChar(64)
-  createdAt        DateTime @db.Timestamptz(3)
-  updatedAt        DateTime @db.Timestamptz(3)
-
-  @@unique([ownerId, cacheKey])
-  @@index([ownerId, updatedAt(sort: Desc), id(sort: Desc)])
-  @@index([ownerId, sourceMaterialId])
-  @@index([sourceMaterialId, sourceOwnerId])
 }
 
 model Session {
@@ -142,7 +104,6 @@ model Material {
   slideDecks      MaterialSlideDeck[]
   songs           MaterialSong[]
   file            MaterialFile?
-  worksheetDocuments WorksheetDocument[]
   parentId        String?  @db.Uuid
   pageStart       Int?
   pageEnd         Int?
@@ -191,6 +152,7 @@ model MaterialReading {
 }
 
 model MaterialReadingIllustration {
+  providerTaskId String? @db.VarChar(128)
   materialId   String @db.Uuid
   revision     String @db.Char(64)
   sectionIndex Int
@@ -233,7 +195,22 @@ model MaterialSlideDeck {
   @@id([materialId, revision])
 }
 
+model MaterialSongVersion {
+  materialId String @db.Uuid
+  revision String @db.Char(64)
+  audioId String @db.VarChar(128)
+  ordinal Int
+  audio Bytes?
+  cues Json @default("[]") @db.JsonB
+  alignmentAttempted Boolean @default(false)
+  song MaterialSong @relation(fields: [materialId, revision], references: [materialId, revision], onDelete: Cascade)
+
+  @@id([materialId, revision, audioId])
+  @@unique([materialId, revision, ordinal])
+}
+
 model MaterialSong {
+  versions MaterialSongVersion[]
   materialId String @db.Uuid
   revision   String @db.Char(64)
   status     String @default("writing") @db.VarChar(16)
@@ -251,6 +228,7 @@ model MaterialSong {
 }
 
 model MaterialSlideIllustration {
+  providerTaskId String? @db.VarChar(128)
   materialId String    @db.Uuid
   revision   String    @db.Char(64)
   slideIndex Int

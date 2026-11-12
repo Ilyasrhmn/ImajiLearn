@@ -186,27 +186,15 @@ test("failed material persistence rolls the idempotency reservation back for a c
   assert.equal((await create(body, a, key)).status, 201);
 });
 
-test("material migration preserves existing teachers and worksheets", async () => {
+test("material migration preserves existing teachers", async () => {
   const upgrade = await testDatabase();
   try {
     const materialIndex = upgrade.migrations.findIndex(name => name.includes("owned_materials"));
     assert.ok(materialIndex > 0);
     for (const migration of upgrade.migrations.slice(0, materialIndex)) await upgrade.migrate(migration);
     const teacher = await upgrade.db.teacher.create({ data: { name: "Upgrade", email: "material-upgrade@example.test", passwordHash: "synthetic-hash" } });
-    await upgrade.db.worksheetLibrary.create({ data: { ownerId: teacher.id } });
-    const content = { templateId: "fold", title: "Existing worksheet", instructions: ["Buka kartu."],
-      items: ["a", "b", "c", "d"].map(id => ({ id, front: id, back: "Penjelasan", assetId: null })),
-      pairs: [], order: [], groups: [], teacher: { preparation: ["Siapkan kertas."], notes: "" } };
-    const select = { id: true, ownerId: true, sourceId: true, sourceTitle: true, sourceRevision: true,
-      templateId: true, content: true, displayOrder: true, cacheKey: true, createdAt: true, updatedAt: true };
-    const worksheet = await upgrade.db.worksheetDocument.create({ data: {
-      id: randomUUID(), ownerId: teacher.id, sourceId: randomUUID(), sourceTitle: "Historical source", sourceRevision: "full-existing-revision",
-      templateId: "fold", grade: "4", language: "id", theme: "ink", content, displayOrder: ["a", "b", "c", "d"],
-      cacheKey: "a".repeat(64), createdAt: new Date("2026-11-08T00:00:00Z"), updatedAt: new Date("2026-11-08T00:00:00Z"),
-    }, select });
     for (const migration of upgrade.migrations.slice(materialIndex)) await upgrade.migrate(migration);
     assert.deepEqual(await upgrade.db.teacher.findUnique({ where: { id: teacher.id } }), teacher);
-    assert.deepEqual(await upgrade.db.worksheetDocument.findUnique({ where: { id: worksheet.id }, select }), worksheet);
     assert.equal(await upgrade.db.material.count(), 0);
   } finally { await upgrade.close(); }
 });
