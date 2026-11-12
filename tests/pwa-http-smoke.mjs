@@ -34,8 +34,10 @@ try {
   // production routing/session behavior, not browser TLS or installation.
   const appOrigin = production ? "https://pwa-smoke.example.test" : origin;
   const env = { ...process.env, NODE_ENV: production ? "production" : "development", APP_ORIGIN: appOrigin,
-    IMAJILEARN_TEST_BUILD: production ? "pwa-production" : "",
-    PWA_INTERNAL_ORIGIN: `http://127.0.0.1:${pwaPort}`, DATABASE_URL: storage.connectionUrl() };
+    IMAJILEARN_TEST_BUILD: production ? "pwa-production" : "pwa-http",
+    PWA_INTERNAL_ORIGIN: `http://127.0.0.1:${pwaPort}`, DATABASE_URL: storage.connectionUrl(),
+    PWA_BACKEND_ORIGIN: origin, PWA_BACKEND_PUBLIC_ORIGIN: appOrigin,
+    PWA_PUBLIC_ORIGIN: production ? "https://pwa-direct.example.test" : `http://127.0.0.1:${pwaPort}` };
   if (production) {
     for (const app of ["pwa", "web"]) await runNode(["node_modules/next/dist/bin/next", "build", `apps/${app}`], { env });
   }
@@ -44,6 +46,31 @@ try {
   await ready(`${env.PWA_INTERNAL_ORIGIN}/app`, pwa);
   web = startNode(["node_modules/next/dist/bin/next", command, "apps/web", "--hostname", "127.0.0.1", "--port", String(webPort)], { env });
   await ready(`${origin}/app`, web);
+  const directRoot = await fetch(env.PWA_INTERNAL_ORIGIN, { redirect: "manual" });
+  assert.equal(directRoot.status, 307);
+  assert.equal(directRoot.headers.get("location"), "/app");
+  const direct = (path, { method = "GET", cookie, body, requestOrigin = env.PWA_PUBLIC_ORIGIN } = {}) => fetch(`${env.PWA_INTERNAL_ORIGIN}/app/api/v1${path}`, {
+    method, headers: { origin: requestOrigin, ...(cookie ? { cookie } : {}), ...(body ? { "content-type": "application/json" } : {}) },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  assert.equal((await direct("/auth/session")).status, 401);
+  const directRegistration = await direct("/auth/register", { method: "POST", body: {
+    name: "Direct PWA teacher", email: `direct-${randomUUID()}@example.test`, password: "Synthetic password" } });
+  assert.equal(directRegistration.status, 201);
+  const directCookie = directRegistration.headers.get("set-cookie").split(";")[0];
+  const directUser = (await directRegistration.json()).data.user;
+  assert.equal((await direct("/auth/session", { cookie: directCookie })).status, 200);
+  assert.equal((await direct("/materials", { cookie: directCookie })).status, 200);
+  assert.equal((await direct("/me", { method: "PATCH", cookie: directCookie, body: { name: "Updated PWA teacher" } })).status, 200);
+  assert.equal((await direct("/me", { method: "PATCH", cookie: directCookie, requestOrigin: "https://foreign.example", body: { name: "Denied" } })).status, 403);
+  assert.equal((await direct("/auth/logout", { method: "POST", cookie: directCookie })).status, 204);
+  assert.equal((await direct("/auth/session", { cookie: directCookie })).status, 401);
+  const directLogin = await direct("/auth/login", { method: "POST", body: {
+    email: directUser.email, password: "Synthetic password" } });
+  assert.equal(directLogin.status, 200);
+  const loginCookie = directLogin.headers.get("set-cookie").split(";")[0];
+  assert.equal((await direct("/me", { cookie: loginCookie })).status, 200);
+  assert.equal((await direct("/auth/logout", { method: "POST", cookie: loginCookie })).status, 204);
   const page = await fetch(`${origin}/app`);
   assert.equal(page.status, 200);
   const html = await page.text();

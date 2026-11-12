@@ -1,4 +1,5 @@
 "use client";
+import { apiPath } from "@imajilearn/shared/lib/session.mjs";
 
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
@@ -23,7 +24,7 @@ function SourceBlock({ block, page }) {
     return <List>{block.items.map((item, i) => <li key={i} value={item.value}><SourceRuns runs={item.runs} /></li>)}</List>;
   }
   if (block.kind === "formula" || block.kind === "image") {
-    const image = <Image src={block.src} alt={block.kind === "formula" ? `Rumus asli dari halaman ${page}: ${block.lines.join(". ")}` : `Gambar asli dari halaman ${page}`}
+    const image = <Image src={block.src.startsWith("/api/v1/") ? apiPath(block.src.slice(7)) : block.src} alt={block.kind === "formula" ? `Rumus asli dari halaman ${page}: ${block.lines.join(". ")}` : `Gambar asli dari halaman ${page}`}
       width={block.width} height={block.height} unoptimized />;
     return block.kind === "formula" ? <figure className="material-source-formula">{image}</figure> : image;
   }

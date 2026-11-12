@@ -1,4 +1,5 @@
 "use client";
+import { apiPath } from "@imajilearn/shared/lib/session.mjs";
 
 import { useEffect, useId, useRef, useState } from "react";
 import { FileText, Music2, Pause, Play, RefreshCw, Repeat2, RotateCcw, Volume2, VolumeX } from "lucide-react";
@@ -157,7 +158,7 @@ export default function MaterialSong({ song: initialSong, teacherId, songPath, r
   const ready = song?.status === "ready";
   return <MaterialProjector enabled={ready}><article className="format-detail material-song">
     <h2 tabIndex={-1} data-output-heading>{song?.title ?? "Lagu belajar"}</h2>
-    {ready ? <Karaoke song={song} audioUrl={`/api/v1${songPath}/audio?revision=${encodeURIComponent(revision)}`} />
+    {ready ? <Karaoke song={song} audioUrl={apiPath(`${songPath}/audio?revision=${encodeURIComponent(revision)}`)} />
       : pending(song) ? <div className="song-progress" role="status"><Music2 size={32} aria-hidden="true" /><h3>{progress[song.status]}</h3></div>
       : <div className="song-progress"><h3>Lagu belum siap</h3><p role="status">{song?.error ?? "Kembali ke materi untuk membuat lagu."}</p>
         {song?.status === "failed" && <button className="upload-button" type="button" disabled={busy} onClick={retry}><RefreshCw size={18} aria-hidden="true" />{busy ? "Menyiapkan lagu…" : "Coba buat lagi"}</button>}
