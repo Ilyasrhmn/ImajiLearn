@@ -11,14 +11,17 @@ for (let attempt = 0; attempt < 100; attempt++) {
   await setTimeout(100);
 }
 assert.ok(ready, "Auth routes did not start within 10 seconds");
+for (const path of ["/lkpd", "/api/v1/worksheets"]) {
+  assert.equal((await fetch(base + path, { redirect: "manual" })).status, 404, path);
+}
 function send(method, path, body, cookie, headers = {}) {
   return fetch(`${base}/api/v1/auth/${path}`, { method,
     headers: { ...(method === "GET" ? {} : { origin, "content-type": "application/json" }), ...(cookie ? { cookie } : {}), ...headers },
     ...(body === undefined ? {} : { body: JSON.stringify(body) }),
   });
 }
-const privatePages = ["/beranda", "/buat-media", "/dashboard", "/akun", "/jadwal", "/ujian", "/lkpd"];
-const privateRedirects = { "/dashboard": "/buat-media#materi", "/lkpd": "/buat-media" };
+const privatePages = ["/beranda", "/buat-media", "/dashboard", "/akun", "/jadwal", "/ujian"];
+const privateRedirects = { "/dashboard": "/buat-media#materi" };
 async function expectPrivateRedirect(path, cookie) {
   const response = await fetch(`${base}${path}`, {
     redirect: "manual", headers: cookie ? { cookie } : {},

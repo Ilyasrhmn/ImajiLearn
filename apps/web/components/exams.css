@@ -1,6 +1,5 @@
 .exam-main { padding-block: 28px 88px; }
 .exam-studio > .media-studio-header > div > svg { color: #8c62ad; }
-.exam-focus-target:focus { outline: none; }
 .exam-heading { display: flex; align-items: center; justify-content: space-between; gap: 24px; margin: 12px 0 36px; }
 .exam-heading h1, .exam-viewer-title h1 { font-size: clamp(30px, 3.2vw, 44px); }
 .exam-heading > svg { width: 86px; height: 112px; }
@@ -47,7 +46,6 @@
 .exam-tabs button[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--primary); }
 .exam-tabs button:hover { background: #f2ede1; }
 .exam-paper { background: #fff; border: 1px solid var(--line); border-radius: 24px; padding: clamp(24px, 4.5vw, 64px); max-width: 980px; margin-inline: auto; min-width: 0; color: var(--ink); }
-.exam-paper-blueprint { max-width: none; }
 .exam-editor-fields { min-width: 0; margin: 0; padding: 0; border: 0; }
 .exam-paper-header { border-bottom: 2px solid var(--ink); padding-bottom: 24px; margin-bottom: 28px; }
 .exam-paper-header > .exam-edit { text-align: center; }
@@ -101,9 +99,6 @@
 .exam-grade-guide h3 { font-size: 23px; }
 .exam-grade-guide p { margin-block: 16px 24px; }
 .exam-grade-guide table { max-width: 400px; }
-.exam-skeleton-columns { display: grid; grid-template-columns: 1fr .8fr; gap: 72px; margin-top: 40px; }
-.exam-skeleton-columns > .skeleton-card { height: 370px; }
-@media (prefers-reduced-motion: no-preference) { .exam-workspace, .exam-config { animation: soft-in 220ms ease-out; } }
 @media (max-width: 900px) {
   .exam-config { column-gap: 30px; grid-template-columns: minmax(0, 1fr) minmax(300px, .9fr); }
   .exam-options { padding-left: 28px; }
@@ -141,7 +136,6 @@
   .exam-saved-open { padding: 18px 12px; gap: 12px; }
   .exam-saved-item { padding-right: 8px; }
   .exam-saved-open > span > strong { font-size: 16px; }
-  .exam-skeleton-columns { grid-template-columns: 1fr; gap: 32px; }
 }
 @media (prefers-reduced-motion: reduce) {
   .exam-main * { animation: none !important; transition: none !important; }
@@ -153,9 +147,8 @@
  :root:has(.exam-main)::view-transition { display: none !important; }
  @scope (body:has(.exam-main)) {
   :scope { background: white !important; color: black !important; height: auto !important; overflow: visible !important; }
-  :scope > .skip-link, .site-header, .exam-editor-heading, .exam-viewer-title, .exam-print-actions, .exam-tabs, .studio-alert-container, dialog { display: none !important; }
-  .route-surface, .exam-focus-target, .exam-workspace { animation: none !important; transform: none !important; overflow: visible !important; }
-  .exam-main.section-shell { width: 100%; max-width: none; margin: 0; padding: 0; }
+  :scope > .skip-link, .exam-editor-heading, .exam-viewer-title, .exam-print-actions, .exam-tabs, dialog { display: none !important; }
+  .exam-workspace { animation: none !important; transform: none !important; overflow: visible !important; }
   .exam-paper { page: exam; padding: 15mm 0 0; border: 0; border-radius: 0; width: 100%; max-width: none; box-shadow: none; color: black; font: 12pt/1.5 Arial, sans-serif; }
   .exam-paper { -webkit-box-decoration-break: clone; box-decoration-break: clone; }
   .exam-edit textarea, .exam-edit :is(select, .themed-select-trigger), .exam-edit input, .exam-cognitive { display: none !important; }

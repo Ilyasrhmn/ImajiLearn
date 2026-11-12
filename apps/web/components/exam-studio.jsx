@@ -31,7 +31,7 @@ export default function ExamStudio({ teacherId }) {
   useEffect(() => {
     let active = true;
     const receive = event => setNotice(event.detail);
-    window.addEventListener("lkpd-notice", receive);
+    window.addEventListener("studio-notice", receive);
     const controller = new AbortController();
     const signal = controller.signal;
     Promise.all([listMaterials(teacherId), listFolders(teacherId), studioRequest(teacherId, "/exams", { signal }),
@@ -48,7 +48,7 @@ export default function ExamStudio({ teacherId }) {
       controller.abort();
       generationRequest.current?.abort();
       clearTimeout(timer.current);
-      window.removeEventListener("lkpd-notice", receive);
+      window.removeEventListener("studio-notice", receive);
       window.removeEventListener("beforeunload", warn);
     };
   }, [teacherId]);

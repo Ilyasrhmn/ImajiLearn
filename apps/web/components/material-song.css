@@ -112,8 +112,6 @@
 .song-progress > svg { color: #435b50; margin-bottom: 16px; }
 .song-progress .upload-button { margin-top: 20px; }
 .song-error { margin-top: 20px; padding: 16px; border: 1px solid #c49d92; border-radius: 10px; color: #863c31; line-height: 1.5; }
-.song-attribution { margin: 24px 0 0; font-size: 14px; }
-.song-attribution a { color: #435b50; text-underline-offset: 3px; }
 
 @media (prefers-reduced-motion: no-preference) {
   .karaoke-line { transition: color 180ms ease; }
@@ -143,4 +141,16 @@
 .material-projector.is-active .karaoke-lyric-window { min-height: 0; }
 .material-projector.is-active .karaoke-line { font-size: clamp(23px, min(5vw, 8dvh), 56px); }
 .material-projector.is-active .karaoke-all-lyrics { display: none; }
-.material-projector.is-active .song-attribution { margin-top: 8px; }
+
+.song-versions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.song-versions button[aria-pressed="true"] {
+  color: var(--karaoke-accent);
+  border-color: var(--karaoke-accent);
+  background: #f9e8dc;
+}

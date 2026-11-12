@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
+import { syntheticPdf } from "./support/pdf.mjs";
 
 const base = process.env.TEST_BASE_URL, origin = process.env.TEST_APP_ORIGIN;
 if (!base || !origin) throw new Error("Set TEST_BASE_URL and TEST_APP_ORIGIN for an isolated test deployment.");
@@ -15,12 +16,30 @@ async function account() {
   return response.headers.get("set-cookie").split(";")[0];
 }
 const a = await account(), b = await account();
+const pdfUpload = new FormData();
+pdfUpload.set("title", "PDF preview ownership");
+pdfUpload.set("file", new Blob([syntheticPdf({ figure: true })], { type: "application/pdf" }), "source.pdf");
+const uploaded = await fetch(`${base}/api/v1/materials`, { method: "POST", body: pdfUpload,
+  headers: { origin, cookie: a, "idempotency-key": randomUUID() } });
+assert.equal(uploaded.status, 201);
+const pdfId = (await uploaded.json()).data.id;
+const pdfPath = `materials/${pdfId}/source?page=1`;
+assert.equal((await send("GET", pdfPath)).status, 401);
+assert.equal((await send("GET", pdfPath, undefined, b)).status, 404);
+const pdfPreview = await send("GET", pdfPath, undefined, a);
+assert.equal(pdfPreview.status, 200);
+assert.equal(pdfPreview.headers.get("cache-control"), "no-store");
+const preview = (await pdfPreview.json()).data;
+assert.equal(preview.page, 1);
+assert.match(preview.preview, /^data:image\/jpeg;base64,/);
+assert.equal((await send("GET", `materials/${pdfId}/source?page=2`, undefined, a)).status, 404);
 const key = randomUUID(), body = { title: "HTTP manual material", text: "  Teks 🙂\nDipertahankan.  " };
 const created = await send("POST", "materials", body, a, { "idempotency-key": key });
 assert.equal(created.status, 201); assert.equal(created.headers.get("etag"), '"1"');
 const material = (await created.json()).data;
 assert.equal(material.text, body.text); assert.match(material.revision, /^[a-f\d]{64}$/);
 const materialPage = `${base}/materi/${material.id}`;
+assert.equal((await send("GET", `materials/${material.id}/slides/illustrations`, undefined, a)).status, 405);
 const anonymous = await fetch(materialPage, { redirect: "manual" });
 assert.equal(anonymous.status, 307);
 assert.equal(anonymous.headers.get("location"), "/masuk");
@@ -31,8 +50,16 @@ const detailPage = await fetch(materialPage, { headers: { cookie: a } });
 assert.equal(detailPage.status, 200);
 assert.match(await detailPage.text(), /HTTP manual material/);
 for (const segment of ["reading", "visual", "slides", "song"]) {
-  assert.equal((await fetch(`${materialPage}/${segment}`, { headers: { cookie: a } })).status, 200);
+  const tabPage = await fetch(`${materialPage}/${segment}`, { headers: { cookie: a }, redirect: "manual" });
+  assert.equal(tabPage.status, 200);
+  assert.equal(tabPage.headers.get("location"), null);
+  const html = await tabPage.text();
+  assert.match(html, /Media materi/);
+  assert.doesNotMatch(html, /NEXT_REDIRECT/);
 }
+const readingStudio = await fetch(`${base}/bacaan`, { headers: { cookie: a }, redirect: "manual" });
+assert.equal(readingStudio.status, 200);
+assert.match(await readingStudio.text(), /Bacaan bergambar/);
 const replay = await send("POST", "materials", body, a, { "idempotency-key": key });
 assert.equal(replay.status, 201); assert.deepEqual((await replay.json()).data, material);
 assert.equal((await send("GET", `materials/${material.id}`)).status, 401);

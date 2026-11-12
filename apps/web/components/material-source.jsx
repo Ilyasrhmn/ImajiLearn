@@ -1,5 +1,4 @@
 "use client";
-import { apiPath } from "@imajilearn/shared/lib/session.mjs";
 
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
@@ -14,7 +13,7 @@ function SourceRuns({ runs }) {
   });
 }
 
-function SourceBlock({ block, page }) {
+function SourceBlock({ block }) {
   if (block.kind === "heading") {
     const Heading = `h${block.level}`;
     return <Heading>{block.text}</Heading>;
@@ -22,11 +21,6 @@ function SourceBlock({ block, page }) {
   if (block.kind === "list" || block.kind === "ordered-list") {
     const List = block.kind === "ordered-list" ? "ol" : "ul";
     return <List>{block.items.map((item, i) => <li key={i} value={item.value}><SourceRuns runs={item.runs} /></li>)}</List>;
-  }
-  if (block.kind === "formula" || block.kind === "image") {
-    const image = <Image src={block.src.startsWith("/api/v1/") ? apiPath(block.src.slice(7)) : block.src} alt={block.kind === "formula" ? `Rumus asli dari halaman ${page}: ${block.lines.join(". ")}` : `Gambar asli dari halaman ${page}`}
-      width={block.width} height={block.height} unoptimized />;
-    return block.kind === "formula" ? <figure className="material-source-formula">{image}</figure> : image;
   }
   return <p className={block.kind === "caption" ? "material-source-caption" : undefined}><SourceRuns runs={block.runs} /></p>;
 }
@@ -94,16 +88,17 @@ export default function MaterialSource({ teacherId, sourcePath, material, firstP
     };
   }, [onVisiblePage, pages]);
 
-  if (!pdf || (failed && !pages.length)) {
+  if (!pdf) {
     return material.text ? <div className="material-source-text">
-      {formatSourceText(material.text, pdf).map((block, index) => <SourceBlock key={index} block={block} />)}
+      {formatSourceText(material.text).map((block, index) => <SourceBlock key={index} block={block} />)}
     </div>
       : <p role="status">Teks sumber tidak tersedia.</p>;
   }
 
   return <div className="material-source-text" ref={documentBody}>
     {pages.map(page => <div className="material-source-page" data-source-page={page.page} key={page.page}>
-      {page.blocks.map((block, index) => <SourceBlock key={index} block={block} page={page.page} />)}
+      <Image className="material-pdf-preview" src={page.preview} alt={`Halaman ${page.page} dari ${material.file.name}`}
+        width={page.width} height={page.height} unoptimized />
     </div>)}
     {failed ? <button type="button" className="source-secondary" onClick={() => {
       setFailed(false);

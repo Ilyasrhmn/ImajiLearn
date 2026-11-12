@@ -121,6 +121,7 @@ function Karaoke({ song, audioUrl }) {
 
 export default function MaterialSong({ song: initialSong, teacherId, songPath, revision }) {
   const [song, setSong] = useState(initialSong);
+  const [versionId, setVersionId] = useState(null);
   const [error, setError] = useState("");
   const [attempt, setAttempt] = useState(0);
   const [busy, setBusy] = useState(false);
@@ -156,14 +157,22 @@ export default function MaterialSong({ song: initialSong, teacherId, songPath, r
   }
 
   const ready = song?.status === "ready";
+  const versions = song?.versions ?? [];
+  const selected = versions.find(version => version.id === versionId) ?? versions[0];
+  const audioUrl = apiPath(`${songPath}/audio?revision=${encodeURIComponent(revision)}${selected ? `&version=${encodeURIComponent(selected.id)}` : ""}`);
   return <MaterialProjector enabled={ready}><article className="format-detail material-song">
     <h2 tabIndex={-1} data-output-heading>{song?.title ?? "Lagu belajar"}</h2>
-    {ready ? <Karaoke song={song} audioUrl={apiPath(`${songPath}/audio?revision=${encodeURIComponent(revision)}`)} />
+    {ready && versions.length > 1 && <div className="song-versions" role="group" aria-label="Versi lagu">
+      {versions.map(version => <button key={version.id} type="button" className="source-secondary"
+        aria-pressed={selected?.id === version.id} onClick={() => setVersionId(version.id)}>
+        <Music2 size={18} aria-hidden="true" />Versi {version.number}
+      </button>)}
+    </div>}
+    {ready ? <Karaoke key={selected?.id ?? "original"} song={selected ? { ...song, cues: selected.cues } : song} audioUrl={audioUrl} />
       : pending(song) ? <div className="song-progress" role="status"><Music2 size={32} aria-hidden="true" /><h3>{progress[song.status]}</h3></div>
       : <div className="song-progress"><h3>Lagu belum siap</h3><p role="status">{song?.error ?? "Kembali ke materi untuk membuat lagu."}</p>
         {song?.status === "failed" && <button className="upload-button" type="button" disabled={busy} onClick={retry}><RefreshCw size={18} aria-hidden="true" />{busy ? "Menyiapkan lagu…" : "Coba buat lagi"}</button>}
       </div>}
     {error && <div className="song-error" role="alert"><p>{error}</p><button className="source-secondary" type="button" onClick={() => { setError(""); setAttempt(value => value + 1); }}>Periksa lagi</button></div>}
-    <p className="song-attribution"><a href="https://treblo.com" target="_blank" rel="noopener noreferrer">Powered by Treblo</a></p>
   </article></MaterialProjector>;
 }
