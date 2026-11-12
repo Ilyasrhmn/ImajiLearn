@@ -17,9 +17,11 @@ test("history groups saved media by source and feature without regenerating or e
     const [owner, other] = await Promise.all(["owner", "other"].map(name =>
       db.teacher.create({ data: { name, email: name + "@history.test" } })));
     const materials = createMaterialService(db);
+    const folder = await db.folder.create({ data: { userId: owner.id, name: "IPAS", nameKey: "ipas" } });
     const source = await materials.create(owner.id, { title: "Tumbuhan", text: "Daun menangkap cahaya. Air masuk dari akar." }, randomUUID());
     const unrelated = await materials.create(owner.id, { title: "Matematika", text: "Sisi kubus." }, randomUUID());
     const otherSource = await materials.create(other.id, { title: "Materi guru lain", text: "Isi pribadi." }, randomUUID());
+    await db.material.update({ where: { id: source.id }, data: { folderId: folder.id } });
     const makePart = (first, last, pages = []) => db.material.create({ data: {
       userId: owner.id, parentId: source.id, title: "Pilihan halaman", text: source.text,
       revision: digest(JSON.stringify([first, last, pages])), pageStart: first, pageEnd: last, sectionPages: pages,
@@ -46,6 +48,20 @@ test("history groups saved media by source and feature without regenerating or e
     const incomplete = rows.items.find(row => row.materialId === second.id);
     assert.equal(incomplete.status, "incomplete");
     assert.equal(incomplete.generatedAt, null);
+    const studioHistory = await materialMediaHistory(db, owner.id, null, new URLSearchParams({ feature: "reading" }));
+    assert.equal(studioHistory.items.length, 3);
+    assert.ok(studioHistory.items.some(row => row.materialId === unrelated.id));
+    assert.ok(studioHistory.items.every(row => row.materialId !== otherSource.id));
+    assert.equal(studioHistory.items.find(row => row.materialId === first.id).sourceTitle, "Tumbuhan");
+    assert.equal(studioHistory.items.find(row => row.materialId === first.id).folderName, "IPAS");
+    assert.equal(studioHistory.items.find(row => row.materialId === unrelated.id).folderName, null);
+    assert.equal((await materialMediaHistory(db, owner.id, null, new URLSearchParams({ feature: "slides" }))).items.length, 0);
+    await db.material.update({ where: { id: source.id }, data: { archived: true } });
+    const activeHistory = await materialMediaHistory(db, owner.id, null, new URLSearchParams({ feature: "reading" }));
+    assert.deepEqual(activeHistory.items.map(row => row.materialId), [unrelated.id]);
+    await db.material.update({ where: { id: source.id }, data: { archived: false } });
+    const otherHistory = await materialMediaHistory(db, other.id, null, new URLSearchParams({ feature: "reading" }));
+    assert.deepEqual(otherHistory.items.map(row => row.materialId), [otherSource.id]);
     assert.deepEqual(await materialMediaHistory(db, owner.id, second.id, new URLSearchParams({ feature: "reading" })), rows);
     assert.equal((await history("slides")).items.length, 0);
     const before = calls;
