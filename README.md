@@ -48,7 +48,7 @@ npm run build
 
 ## Fondasi database backend
 
-Gunakan Node.js 24 (minimum 22.12) dan PostgreSQL 17 atau lebih baru dengan
+Gunakan Node.js 22.13 atau lebih baru dan PostgreSQL 17 atau lebih baru dengan
 database ber-encoding UTF8 agar nama/password Unicode dapat disimpan. Salin
 `.env.example` ke `.env` di root lalu isi koneksi database pengembangan Anda.
 Jangan gunakan database produksi untuk pengembangan atau tes.
@@ -327,3 +327,4 @@ Origin and `X-Teacher-Id`. Both return `{data:{url}}` and a temporary browser-bi
 cookie; navigate to that Google URL. Callback verification and the resulting
 session are server-side. Errors are fixed safe UI messages; no provider tokens
 or secrets are returned to the application frontend.
+

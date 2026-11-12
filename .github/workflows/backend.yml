@@ -2,9 +2,9 @@ name: Web and PWA verification
 
 on:
   push:
-    branches: [backend, pwa]
+    branches: [main, frontend, backend, ai-integration, pwa]
   pull_request:
-    branches: [backend, pwa]
+    branches: [main, frontend, backend, ai-integration, pwa]
   workflow_dispatch:
 
 permissions:
@@ -47,3 +47,4 @@ jobs:
       - run: npm run test:http
       - run: npm run test:pwa:http
       - run: npm run test:pwa:production
+
