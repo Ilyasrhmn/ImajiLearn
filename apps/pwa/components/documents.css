@@ -37,9 +37,6 @@
   .mobile-document .exam-tabs button { padding:12px 9px;gap:5px;white-space:nowrap;font-size:14px; }
   .mobile-document .exam-paper { padding:18px 14px;border-radius:14px; }
   .mobile-document .exam-paper h2 { font-size:20px; }
-  .mobile-document .exam-paper-blueprint { overflow:auto; }
-  .mobile-document .exam-paper-blueprint table { min-width:720px; }
-  .mobile-document .exam-header-fields { grid-template-columns:minmax(0,1fr); }
   .mobile-document .exam-key-fields { grid-template-columns:minmax(0,1fr); }
   .mobile-document .exam-paper :is(input,textarea,select) { font-size:16px;min-width:0; }
   .mobile-document .field-error { color:#963d2d; }

@@ -96,12 +96,14 @@ try {
   const worker = await fetch(`${origin}/app/sw.js`);
   assert.match(worker.headers.get("cache-control"), /no-store/);
   assert.equal(worker.headers.get("service-worker-allowed"), "/app/");
-  for (const path of ["/app/daftar", "/app/beranda", "/app/materi", "/app/akun", "/app/lkpd", "/app/ujian", "/app/jadwal"]) {
+  assert.equal((await fetch(`${origin}/app/lkpd`, { redirect: "manual" })).status, 404);
+  assert.equal((await fetch(`${origin}/lkpd/pancasila/star.svg`)).status, 404);
+  for (const path of ["/app/daftar", "/app/beranda", "/app/materi", "/app/akun", "/app/ujian", "/app/jadwal"]) {
     const screen = await fetch(`${origin}${path}`);
     assert.equal(screen.status, 200, path);
     assert.doesNotMatch(await screen.text(), /PWA synthetic teacher/);
   }
-  for (const path of ["/brand/imajilearn-mark.svg", "/brand/imajilearn-wordmark.svg", "/lkpd/pancasila/star.svg"]) {
+  for (const path of ["/brand/imajilearn-mark.svg", "/brand/imajilearn-wordmark.svg"]) {
     const assetResponse = await fetch(`${origin}${path}`);
     assert.equal(assetResponse.status, 200);
     assert.match(await assetResponse.text(), /<svg/);
