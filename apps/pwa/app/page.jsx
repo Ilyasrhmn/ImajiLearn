@@ -1,2 +1,7 @@
-import { redirect } from "next/navigation";
-export default function Page() { redirect("/beranda"); }
+export default function Home() {
+  return (
+    <main>
+      <h1>ImajiLearn PWA</h1>
+    </main>
+  );
+}

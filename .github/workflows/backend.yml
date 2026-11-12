@@ -1,10 +1,10 @@
-name: Web and PWA verification
+name: Backend verification
 
 on:
   push:
-    branches: [backend, pwa]
+    branches: [backend]
   pull_request:
-    branches: [backend, pwa]
+    branches: [backend]
   workflow_dispatch:
 
 permissions:
@@ -13,7 +13,7 @@ permissions:
 jobs:
   verify:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 15
     services:
       postgres:
         image: postgres:17
@@ -45,5 +45,3 @@ jobs:
       - run: npm run lint
       - run: npm run build
       - run: npm run test:http
-      - run: npm run test:pwa:http
-      - run: npm run test:pwa:production

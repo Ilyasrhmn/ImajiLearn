@@ -17,7 +17,8 @@ function send(method, path, body, cookie, headers = {}) {
     ...(body === undefined ? {} : { body: JSON.stringify(body) }),
   });
 }
-const privatePages = ["/dashboard", "/akun", "/jadwal", "/ujian", "/lkpd"];
+const privatePages = ["/beranda", "/buat-media", "/dashboard", "/akun", "/jadwal", "/ujian", "/lkpd"];
+const privateRedirects = { "/dashboard": "/buat-media#materi", "/lkpd": "/buat-media" };
 async function expectPrivateRedirect(path, cookie) {
   const response = await fetch(`${base}${path}`, {
     redirect: "manual", headers: cookie ? { cookie } : {},
@@ -45,7 +46,8 @@ assert.equal(current.status, 200); assert.equal(current.headers.get("cache-contr
 assert.equal((await current.json()).data.user.email, body.email);
 for (const path of privatePages) {
   const response = await fetch(`${base}${path}`, { redirect: "manual", headers: { cookie } });
-  assert.equal(response.status, 200, path);
+  assert.equal(response.status, privateRedirects[path] ? 307 : 200, path);
+  if (privateRedirects[path]) assert.equal(response.headers.get("location"), privateRedirects[path], path);
   assert.match(response.headers.get("cache-control"), /\bno-store\b/, path);
 }
 await expectPrivateRedirect("/dashboard", original);

@@ -1,0 +1,16 @@
+@font-face{font-family:"Google Sans";font-style:normal;font-weight:500;font-display:swap;src:url("/fonts/google-sans/google-sans-medium-latin.woff2") format("woff2")}
+.google-action{display:flex;align-items:center;gap:10px;box-sizing:border-box;min-height:44px;width:100%;padding:11px 12px;border:1px solid #747775;border-radius:4px;background:#fff;color:#1f1f1f;font-family:"Google Sans",Arial,sans-serif;font-size:14px;font-weight:500;line-height:20px;letter-spacing:.25px;text-align:center;cursor:pointer;position:relative;isolation:isolate;transition:box-shadow .218s,border-color .218s}
+.google-action::before{content:"";position:absolute;inset:0;z-index:-1;border-radius:inherit;background:#303030;opacity:0;transition:opacity .218s;pointer-events:none}
+.google-action-icon{display:block;width:20px;height:20px;flex:0 0 20px}
+.google-action-label{flex:1;min-width:0;overflow-wrap:anywhere}
+.google-action:hover:not(:disabled){box-shadow:0 1px 2px 0 rgba(60,64,67,.3),0 1px 3px 1px rgba(60,64,67,.15)}
+.google-action:hover:not(:disabled)::before{opacity:.08}
+.google-action:active:not(:disabled)::before,.google-action:focus-visible:not(:disabled)::before{opacity:.12}
+.google-action:focus-visible{outline:3px solid #1f1f1f;outline-offset:3px}
+.google-action:disabled{cursor:default;border-color:#1f1f1f1f}
+.google-action:disabled .google-action-icon,.google-action:disabled .google-action-label{opacity:.65}
+.google-action[aria-busy=true]{cursor:wait}
+.google-action[aria-busy=true] .google-action-label{opacity:1}
+.google-error{color:#a33726;font-size:16px;line-height:1.5;margin:14px 0 0}
+@media(prefers-reduced-motion:reduce){.google-action,.google-action::before{transition:none}}
+@media(forced-colors:active){.google-action:disabled{border-color:GrayText;color:GrayText}.google-action:focus-visible{outline-color:Highlight}}

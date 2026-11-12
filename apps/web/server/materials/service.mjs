@@ -43,6 +43,7 @@ function listQuery(params) {
 function dto(row) {
   const file = row.file ? { id: row.file.materialId, name: row.file.name, mime: row.file.mime, size: row.file.size } : null;
   return { id: row.id, title: row.title, folderId: row.folderId, file, text: row.text,
+    ...(row.parentId ? { parentId: row.parentId, pageStart: row.pageStart, pageEnd: row.pageEnd, sectionPages: row.sectionPages } : {}),
     extractionStatus: row.extractionStatus, extractionError: row.extractionError, revision: row.revision, pinned: row.pinned, archived: row.archived,
     resourceVersion: row.resourceVersion, createdAt: row.createdAt.toISOString(), updatedAt: row.updatedAt.toISOString() };
 }
@@ -65,7 +66,7 @@ export function createMaterialService(db) {
       const scope = folderId || (unfiled || (archived === false && !q) ? null : undefined);
       const search = { contains: q.replace(/[\\%_]/g, "\\$&"), mode: "insensitive" };
       const rows = await db.material.findMany({
-        where: { userId, archived, folderId: scope, AND: [
+        where: { userId, parentId: null, archived, folderId: scope, AND: [
           ...(q ? [{ OR: [{ title: search }, { file: { is: { name: search } } }] }] : []),
           ...(after ? [after] : []),
         ] },
@@ -142,9 +143,13 @@ export function createMaterialService(db) {
       const folderId = body.folderId === null ? null : canonicalFolderId(body.folderId);
       if (Object.hasOwn(body, "folderId") && body.folderId !== null && !folderId) throw new ContractError("Folder tidak valid.");
       return withOwnedMaterial(userId, id, async (tx, row) => {
+        if (row.parentId) throw notFound();
         if (row.resourceVersion !== version) throw new ApiError(412, "RESOURCE_CHANGED", "Data sudah berubah. Muat ulang sebelum menyimpan.");
         if (row.resourceVersion >= 2147483647) throw new ApiError(409, "VERSION_EXHAUSTED", "Versi materi sudah mencapai batas.");
         if (folderId) await requireOwnedFolder(tx, userId, folderId);
+        if (Object.hasOwn(body, "archived") && !row.parentId) {
+          await tx.material.updateMany({ where: { parentId: row.id, userId }, data: { archived: body.archived } });
+        }
         return dto(await tx.material.update({ where: { id: row.id }, data: {
           ...(Object.hasOwn(body, "archived") ? { archived: body.archived } : {}),
           ...(Object.hasOwn(body, "pinned") ? { pinned: body.pinned } : {}),
@@ -155,6 +160,7 @@ export function createMaterialService(db) {
     },
     async remove(userId, id, version) {
       await withOwnedMaterial(userId, id, async (tx, row) => {
+        if (row.parentId) throw notFound();
         if (row.resourceVersion !== version) throw new ApiError(412, "RESOURCE_CHANGED", "Data sudah berubah. Muat ulang sebelum menghapus.");
         await tx.material.delete({ where: { id: row.id } });
         // Keep the idempotency reservation so a late create retry cannot recreate deleted data.

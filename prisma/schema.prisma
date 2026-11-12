@@ -56,6 +56,8 @@ model ExamDocument {
   document        Json     @db.JsonB
   sourceSnapshots Json     @db.JsonB
   resourceVersion Int     @default(1)
+  generationLeaseId String? @db.Uuid
+  generationLeaseUntil DateTime? @db.Timestamptz(3)
 
   @@index([userId, id])
 }
@@ -135,12 +137,132 @@ model Material {
   teacher         Teacher  @relation(fields: [userId], references: [id], onDelete: Restrict)
   folder          Folder?  @relation(fields: [folderId, userId], references: [id, userId], onDelete: Restrict)
   mediaPreference MediaPreference?
+  readings        MaterialReading[]
+  visuals         MaterialVisual[]
+  slideDecks      MaterialSlideDeck[]
+  songs           MaterialSong[]
   file            MaterialFile?
   worksheetDocuments WorksheetDocument[]
+  parentId        String?  @db.Uuid
+  pageStart       Int?
+  pageEnd         Int?
+  sectionPages    Int[] @default([])
+  parent          Material? @relation("MaterialSections", fields: [parentId, userId], references: [id, userId], onDelete: Cascade)
+  sections        Material[] @relation("MaterialSections")
+  mediaDrafts     MediaDraft[] @relation("MediaDraftRoot")
+  selectedDrafts  MediaDraft[] @relation("MediaDraftSelection")
 
+  @@unique([parentId, revision])
   @@unique([id, userId])
   @@index([userId, updatedAt, id])
   @@index([folderId, userId])
+}
+
+model MediaDraft {
+  rootId      String @db.Uuid
+  feature     String @default("reading") @db.VarChar(8)
+  userId      String @db.Uuid
+  selectionId String @db.Uuid
+  updatedAt   DateTime @updatedAt @db.Timestamptz(3)
+  root        Material @relation("MediaDraftRoot", fields: [rootId, userId], references: [id, userId], onDelete: Cascade)
+  selection   Material @relation("MediaDraftSelection", fields: [selectionId, userId], references: [id, userId], onDelete: Cascade)
+
+  @@id([rootId, feature])
+  @@index([rootId, userId])
+  @@index([userId, feature, updatedAt(sort: Desc), rootId])
+  @@index([selectionId, userId])
+}
+
+model MaterialReading {
+  materialId String   @db.Uuid
+  revision   String   @db.Char(64)
+  content    Json?    @db.JsonB
+  generatedAt DateTime? @db.Timestamptz(3)
+  leaseId    String?  @db.Uuid
+  leaseUntil DateTime? @db.Timestamptz(3)
+  illustration Bytes?
+  illustrationLeaseId String? @db.Uuid
+  illustrationLeaseUntil DateTime? @db.Timestamptz(3)
+  material   Material @relation(fields: [materialId], references: [id], onDelete: Cascade)
+
+  illustrations MaterialReadingIllustration[]
+
+  @@id([materialId, revision])
+}
+
+model MaterialReadingIllustration {
+  materialId   String @db.Uuid
+  revision     String @db.Char(64)
+  sectionIndex Int
+  sourcePage   Int?
+  sourceBytes  Bytes?
+  visualSkipped Boolean @default(false)
+  bytes        Bytes?
+  leaseId      String? @db.Uuid
+  leaseUntil   DateTime? @db.Timestamptz(3)
+  reading      MaterialReading @relation(fields: [materialId, revision], references: [materialId, revision], onDelete: Cascade)
+
+  @@id([materialId, revision, sectionIndex])
+}
+
+model MaterialVisual {
+  illustration Bytes?
+  illustrationLeaseId String? @db.Uuid
+  illustrationLeaseUntil DateTime? @db.Timestamptz(3)
+  materialId String   @db.Uuid
+  revision   String   @db.Char(64)
+  content    Json?    @db.JsonB
+  generatedAt DateTime? @db.Timestamptz(3)
+  leaseId    String?  @db.Uuid
+  leaseUntil DateTime? @db.Timestamptz(3)
+  material   Material @relation(fields: [materialId], references: [id], onDelete: Cascade)
+
+  @@id([materialId, revision])
+}
+
+model MaterialSlideDeck {
+  materialId String    @db.Uuid
+  revision   String    @db.Char(64)
+  content    Json?     @db.JsonB
+  generatedAt DateTime? @db.Timestamptz(3)
+  leaseId    String?   @db.Uuid
+  leaseUntil DateTime? @db.Timestamptz(3)
+  material   Material  @relation(fields: [materialId], references: [id], onDelete: Cascade)
+  illustrations MaterialSlideIllustration[]
+
+  @@id([materialId, revision])
+}
+
+model MaterialSong {
+  materialId String @db.Uuid
+  revision   String @db.Char(64)
+  status     String @default("writing") @db.VarChar(16)
+  content    Json? @db.JsonB
+  taskId     String? @db.VarChar(128)
+  attemptId  String @db.Uuid
+  leaseUntil DateTime? @db.Timestamptz(3)
+  errorCode  String? @db.VarChar(40)
+  audio      Bytes?
+  createdAt  DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt  DateTime @updatedAt @db.Timestamptz(3)
+  material   Material @relation(fields: [materialId], references: [id], onDelete: Cascade)
+
+  @@id([materialId, revision])
+}
+
+model MaterialSlideIllustration {
+  materialId String    @db.Uuid
+  revision   String    @db.Char(64)
+  slideIndex Int
+  sourcePage   Int?
+  sourceBytes  Bytes?
+  visualSkipped Boolean @default(false)
+  bytes      Bytes?
+  leaseId    String?   @db.Uuid
+  leaseUntil DateTime? @db.Timestamptz(3)
+  deck       MaterialSlideDeck @relation(fields: [materialId, revision], references: [materialId, revision], onDelete: Cascade)
+
+  @@id([materialId, revision, slideIndex])
 }
 
 model MaterialFile {

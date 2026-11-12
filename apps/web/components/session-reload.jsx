@@ -1,11 +1,13 @@
 "use client";
 import { useEffect } from "react";
+import { completeGoogleSession } from "../lib/google-session.mjs";
 
-import { sessionChangeKey } from "@imajilearn/shared/lib/session.mjs";
+import { announceSessionChange, sessionChangeKey } from "@imajilearn/shared/lib/session.mjs";
 export { announceSessionChange, navigateAfterSessionChange } from "@imajilearn/shared/lib/session.mjs";
 
 export default function SessionReload() {
   useEffect(() => {
+    completeGoogleSession(window.location, window.history, announceSessionChange);
     function onStorage(event) {
       if (event.key === sessionChangeKey) window.location.reload();
     }
