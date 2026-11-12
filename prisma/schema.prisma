@@ -149,11 +149,28 @@ model Material {
   sectionPages    Int[] @default([])
   parent          Material? @relation("MaterialSections", fields: [parentId, userId], references: [id, userId], onDelete: Cascade)
   sections        Material[] @relation("MaterialSections")
+  mediaDrafts     MediaDraft[] @relation("MediaDraftRoot")
+  selectedDrafts  MediaDraft[] @relation("MediaDraftSelection")
 
   @@unique([parentId, revision])
   @@unique([id, userId])
   @@index([userId, updatedAt, id])
   @@index([folderId, userId])
+}
+
+model MediaDraft {
+  rootId      String @db.Uuid
+  feature     String @default("reading") @db.VarChar(8)
+  userId      String @db.Uuid
+  selectionId String @db.Uuid
+  updatedAt   DateTime @updatedAt @db.Timestamptz(3)
+  root        Material @relation("MediaDraftRoot", fields: [rootId, userId], references: [id, userId], onDelete: Cascade)
+  selection   Material @relation("MediaDraftSelection", fields: [selectionId, userId], references: [id, userId], onDelete: Cascade)
+
+  @@id([rootId, feature])
+  @@index([rootId, userId])
+  @@index([userId, feature, updatedAt(sort: Desc), rootId])
+  @@index([selectionId, userId])
 }
 
 model MaterialReading {

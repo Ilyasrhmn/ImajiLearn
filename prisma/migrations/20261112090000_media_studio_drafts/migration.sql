@@ -1,0 +1,12 @@
+ALTER TABLE "ReadingDraft" RENAME TO "MediaDraft";
+ALTER TABLE "MediaDraft" ADD COLUMN "feature" VARCHAR(8) NOT NULL DEFAULT 'reading';
+ALTER TABLE "MediaDraft" DROP CONSTRAINT "ReadingDraft_pkey";
+ALTER TABLE "MediaDraft" ADD CONSTRAINT "MediaDraft_pkey" PRIMARY KEY ("rootId", "feature");
+ALTER TABLE "MediaDraft" ADD CONSTRAINT "MediaDraft_feature_check" CHECK ("feature" IN ('reading', 'slides', 'song', 'mindmap'));
+ALTER TABLE "MediaDraft" RENAME CONSTRAINT "ReadingDraft_rootId_userId_fkey" TO "MediaDraft_rootId_userId_fkey";
+ALTER TABLE "MediaDraft" RENAME CONSTRAINT "ReadingDraft_selectionId_userId_fkey" TO "MediaDraft_selectionId_userId_fkey";
+DROP INDEX "ReadingDraft_rootId_userId_key";
+DROP INDEX "ReadingDraft_userId_updatedAt_rootId_idx";
+ALTER INDEX "ReadingDraft_selectionId_userId_idx" RENAME TO "MediaDraft_selectionId_userId_idx";
+CREATE INDEX "MediaDraft_rootId_userId_idx" ON "MediaDraft"("rootId", "userId");
+CREATE INDEX "MediaDraft_userId_feature_updatedAt_rootId_idx" ON "MediaDraft"("userId", "feature", "updatedAt" DESC, "rootId");
