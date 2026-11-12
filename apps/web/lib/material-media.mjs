@@ -21,9 +21,13 @@ export async function rememberMaterialMedia(teacherId, materialId, media) {
   }
 }
 
-export async function generateMaterialMedia(teacherId, path, libraryId, media) {
-  const { data } = await studioRequest(teacherId, path, { method: "POST" });
-  await preloadLessonImages(path, data);
+export async function generateMaterialMedia(teacherId, path, libraryId, media, { signal, onProgress } = {}) {
+  let data;
+  do {
+    ({ data } = await studioRequest(teacherId, path, { method: "POST", signal }));
+    if (data?.status === "preparing") onProgress?.(data);
+  } while (data?.status === "preparing");
+  await preloadLessonImages(path, data, signal);
   if (media && data && !["failed", "uncertain"].includes(data.status)) {
     // The library summary can catch up independently of the saved output.
     void rememberMaterialMedia(teacherId, libraryId, [media]);

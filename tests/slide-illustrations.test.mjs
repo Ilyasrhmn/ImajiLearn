@@ -43,7 +43,7 @@ test("slide images use scene descriptions and keep successful images across retr
       } };
     });
     const args = [owner.id, source.id, source.revision];
-    assert.deepEqual(await images.list(...args), []);
+    assert.equal(await images.get(...args, 0), null);
     await assert.rejects(images.get(other.id, source.id, source.revision, 0), { status: 404 });
     await assert.rejects(images.generate(...args, 3), { status: 404 });
     const first = images.generate(...args, 0);
@@ -53,9 +53,11 @@ test("slide images use scene descriptions and keep successful images across retr
     } finally { release.resolve(bytes[0]); }
     await first;
     await assert.rejects(images.generate(...args, 1), /synthetic failure/);
-    assert.deepEqual(await images.list(...args), [0]);
+    assert.deepEqual(await images.get(...args, 0), bytes[0]);
+    assert.equal(await images.get(...args, 1), null);
     await images.generate(...args, 1);
-    assert.deepEqual(await images.list(...args), [0, 1]);
+    assert.deepEqual(await images.get(...args, 0), bytes[0]);
+    assert.deepEqual(await images.get(...args, 1), bytes[1]);
     assert.deepEqual(await images.get(...args, 0), bytes[0]);
     assert.deepEqual(await images.get(...args, 1), bytes[1]);
     await images.generate(...args, 0);
@@ -65,7 +67,8 @@ test("slide images use scene descriptions and keep successful images across retr
     await images.generate(...args, 2);
     await images.generate(...args, 2);
     assert.deepEqual(await images.get(...args, 2, "status"), { ready: false, skipped: true });
-    assert.deepEqual(await images.list(...args), [0, 1]);
+    assert.deepEqual(await images.get(...args, 0), bytes[0]);
+    assert.deepEqual(await images.get(...args, 1), bytes[1]);
     assert.equal(prompts.length, 4);
   } finally { await storage.close(); }
 });

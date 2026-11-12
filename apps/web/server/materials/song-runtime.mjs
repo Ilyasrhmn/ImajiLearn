@@ -1,6 +1,6 @@
 import { createSessionHandlers } from "../accounts/sessions.mjs";
 import { generateJson } from "../ai/index.mjs";
-import { createTrebloMusic } from "../ai/providers/treblo.mjs";
+import { createKieMusic } from "../ai/providers/kie-music.mjs";
 import { sessionConfig } from "../core/config.mjs";
 import { database } from "../core/database.mjs";
 import { endpoint } from "../core/http.mjs";
@@ -14,17 +14,19 @@ export function songRoute(action) {
     const { materialId } = await context.params;
     // Existing saved audio remains available even if the provider key is removed.
     let provider;
-    const musicProvider = () => provider ??= createTrebloMusic();
+    const musicProvider = () => provider ??= createKieMusic();
     const music = {
       validate: () => { musicProvider(); },
       describe: () => musicProvider().describe(),
       create: input => musicProvider().create(input),
-      retrieve: id => musicProvider().retrieve(id),
+      retrieve: (id, audioId) => musicProvider().retrieve(id, audioId),
+      align: (task, audio) => musicProvider().align(task, audio),
       download: url => musicProvider().download(url),
     };
     const service = createMaterialSongs(db, generateJson, music);
     if (action === "audio") {
-      const asset = await service.audio(teacher.id, materialId, new URL(request.url).searchParams.get("revision"));
+      const query = new URL(request.url).searchParams;
+      const asset = await service.audio(teacher.id, materialId, query.get("revision"), query.get("version"));
       return songAudioResponse(request, asset);
     }
     const data = await service[action](teacher.id, materialId);

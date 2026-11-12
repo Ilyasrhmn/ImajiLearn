@@ -1,12 +1,12 @@
 import { generateJson } from "@/server/ai/index.mjs";
 import { createSessionHandlers } from "@/server/accounts/sessions.mjs";
-import { generateIllustration } from "@/server/ai/providers/cloudflare-image.mjs";
+import { generateIllustration } from "@/server/ai/providers/kie-image.mjs";
 import { sessionConfig } from "@/server/core/config.mjs";
 import { database } from "@/server/core/database.mjs";
 import { endpoint } from "@/server/core/http.mjs";
 import { createReadingIllustration } from "@/server/materials/reading-illustration.mjs";
 
-import { parseLessonIndex } from "@/server/materials/lesson-illustration.mjs";
+import { illustrationMime, parseLessonIndex } from "@/server/materials/lesson-illustration.mjs";
 
 export const runtime = "nodejs";
 
@@ -28,7 +28,7 @@ const illustrationRoute = action => (request, context) => endpoint(async () => {
     : await service.generate(teacher.id, materialId, query.get("replace") === "1", index);
   if (mode === "status") return Response.json({ data: await service.get(teacher.id, materialId, index, mode) });
   if (!image) return new Response(null, { status: 204 });
-  return new Response(image, { headers: { "content-type": "image/jpeg", "x-content-type-options": "nosniff" } });
+  return new Response(image, { headers: { "content-type": illustrationMime(image), "x-content-type-options": "nosniff" } });
 }, process.env.APP_ORIGIN)(request);
 
 export const GET = illustrationRoute("get");

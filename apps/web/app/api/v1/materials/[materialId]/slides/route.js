@@ -5,9 +5,10 @@ import { database } from "@/server/core/database.mjs";
 import { endpoint } from "@/server/core/http.mjs";
 import { createMaterialSlides } from "@/server/materials/slides.mjs";
 import { createPreparedLesson } from "@/server/materials/prepared-lesson.mjs";
-import { generateIllustration } from "@/server/ai/providers/cloudflare-image.mjs";
+import { generateIllustration } from "@/server/ai/providers/kie-image.mjs";
 
 export const runtime = "nodejs";
+export const maxDuration = 300;
 
 const slidesRoute = action => (request, context) => endpoint(async () => {
   const config = sessionConfig();
@@ -15,7 +16,7 @@ const slidesRoute = action => (request, context) => endpoint(async () => {
   const teacher = await createSessionHandlers(db, config).requireTeacher(request);
   const { materialId } = await context.params;
   const data = await createPreparedLesson(db, createMaterialSlides(db, generateJson), "slides", generateIllustration, generateJson)[action](teacher.id, materialId);
-  return Response.json({ data });
+  return Response.json({ data }, { status: data?.status === "preparing" ? 202 : 200 });
 }, process.env.APP_ORIGIN)(request);
 
 export const GET = slidesRoute("get");

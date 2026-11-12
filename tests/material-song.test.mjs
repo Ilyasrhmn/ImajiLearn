@@ -178,22 +178,22 @@ test("song lifecycle persists and resumes paid tasks without duplicate generatio
     await t.test("each paid task retains its requested and actual model without exposing configuration", async () => {
       const material = await source();
       const service = createMaterialSongs(storage.db, writeLyrics, {
-        describe: () => ({ provider: "treblo", requestedModel: "v2", durationHint: null, musicPromptVersion: 2 }),
+        describe: () => ({ provider: "kie-suno", requestedModel: "V6", durationHint: null, musicPromptVersion: 2 }),
         create: async () => randomUUID(),
-        retrieve: async () => ({ status: "SUCCESS", model_version: "v2.2", alignment_status: "FAILURE", song_paths: ["test.mp3"] }),
+        retrieve: async () => ({ status: "SUCCESS", model_version: "chirp-v6", alignment_status: "FAILURE", song_paths: ["test.mp3"] }),
         download: async () => bytes,
       });
       await service.start(owner.id, material.id);
       const result = await service.get(owner.id, material.id);
       const row = await storage.db.materialSong.findUnique({ where: { materialId_revision: { materialId: material.id, revision: material.revision } } });
-      assert.equal(row.content.generation.requestedModel, "v2");
-      assert.equal(row.content.generation.actualModel, "v2.2");
+      assert.equal(row.content.generation.requestedModel, "V6");
+      assert.equal(row.content.generation.actualModel, "chirp-v6");
       assert.equal(result.generation, undefined);
     });
     await t.test("requested and observed musical styles remain bounded private diagnostics", async () => {
       const material = await source();
       const service = createMaterialSongs(storage.db, writeLyrics, {
-        describe: () => ({ provider: "treblo", requestedModel: "v3", durationHint: null, musicPromptVersion: 7,
+        describe: () => ({ provider: "kie-suno", requestedModel: "V6", durationHint: null, musicPromptVersion: 7,
           styleTags: ["children", "pop", "bass", "drums"], avoidedStyleTags: ["indian pop"] }),
         create: async () => randomUUID(),
         retrieve: async () => ({ status: "SUCCESS", model_version: "v3-preview", alignment_status: "FAILURE", song_paths: ["test.mp3"],
@@ -216,6 +216,39 @@ test("song lifecycle persists and resumes paid tasks without duplicate generatio
   } finally { await storage.close(); }
 });
 
+test("Suno alignment survives download retry without another paid alignment or generation", async () => {
+  const storage = await testDatabase();
+  try {
+    for (const migration of storage.migrations) await storage.migrate(migration);
+    const owner = await storage.db.teacher.create({ data: { name: "owner", email: "suno-owner@example.test" } });
+    const other = await storage.db.teacher.create({ data: { name: "other", email: "suno-other@example.test" } });
+    const material = await createMaterialService(storage.db).create(owner.id, { title: "Siklus air", text: "Air menguap dan membentuk awan." }, randomUUID());
+    let submissions = 0, alignments = 0, downloads = 0;
+    const words = plan.sections.flatMap(s => s.lines).flatMap(line => line.match(/[\p{L}\p{N}]+/gu));
+    const provider = {
+      describe: () => ({ provider: "kie-suno", requestedModel: "V6", musicPromptVersion: 8 }),
+      create: async () => { submissions++; return "1234567890abcdef1234567890abcdef"; },
+      retrieve: async (_id, audioId) => { assert.ok(audioId === undefined || audioId === "audio-1"); return { status: "SUCCESS", audioId: "audio-1", song_paths: ["test.mp3"] }; },
+      align: async () => { alignments++; return words.map((word, i) => ({ word, start: i, end: i + 1 })); },
+      download: async () => { if (++downloads === 1) throw new AIError("PROVIDER_UNAVAILABLE"); return bytes; },
+    };
+    const service = createMaterialSongs(storage.db, async () => ({ content: plan }), provider);
+    await service.start(owner.id, material.id);
+    await assert.rejects(service.get(other.id, material.id), { status: 404 });
+    await assert.rejects(service.get(owner.id, material.id), { code: "PROVIDER_UNAVAILABLE" });
+    const row = await storage.db.materialSong.findUnique({ where: { materialId_revision: { materialId: material.id, revision: material.revision } } });
+    assert.equal(row.content.alignmentAttempted, true);
+    assert.equal(row.content.cues.length, 6);
+    assert.equal((await service.get(owner.id, material.id)).status, "ready");
+    assert.equal((await service.start(owner.id, material.id)).status, "ready");
+    assert.equal(alignments, 1); assert.equal(submissions, 1); assert.equal(downloads, 2);
+    await assert.rejects(service.audio(other.id, material.id, material.revision), { status: 404 });
+    await storage.db.materialSong.updateMany({ where: { materialId: material.id }, data: { status: "generating", content: { ...plan, generation: { provider: "retired-provider" } } } });
+    assert.equal((await service.get(owner.id, material.id)).status, "failed");
+    assert.equal(submissions, 1);
+  } finally { await storage.close(); }
+});
+
 test("audio range responses allow seeking and reject invalid requests", async () => {
   const request = range => new Request("http://localhost/audio", { headers: range ? { range } : {} });
   const asset = { bytes, mime: "audio/mpeg" };
@@ -225,4 +258,45 @@ test("audio range responses allow seeking and reject invalid requests", async ()
   assert.equal(part.status, 206); assert.equal((await part.arrayBuffer()).byteLength, 3);
   assert.equal(songAudioResponse(request("bytes=-10"), asset).status, 206);
   for (const range of ["bytes=999-", "bytes=5-3", "bytes=1-2,4-5", "oops"]) assert.equal(songAudioResponse(request(range), asset).status, 416);
+});
+
+
+test("all Suno versions survive partial download failures with private independent audio and cues", async () => {
+  const storage = await testDatabase();
+  try {
+    for (const migration of storage.migrations) await storage.migrate(migration);
+    const owner = await storage.db.teacher.create({ data: { name: "owner", email: "versions-owner@example.test" } });
+    const other = await storage.db.teacher.create({ data: { name: "other", email: "versions-other@example.test" } });
+    const material = await createMaterialService(storage.db).create(owner.id, { title: "Siklus air", text: "Air menguap dan membentuk awan." }, randomUUID());
+    const words = plan.sections.flatMap(s => s.lines).flatMap(line => line.match(/[\p{L}\p{N}]+/gu));
+    const alignmentCalls = [], downloadCalls = []; let submits = 0, failSecond = true, polls = 0;
+    const provider = {
+      describe: () => ({ provider: "kie-suno", requestedModel: "V6" }),
+      create: async () => { submits++; return "1234567890abcdef1234567890abcdef"; },
+      retrieve: async () => { polls++; return { status: "SUCCESS", tracks: [{ audioId: "one", audioUrl: "one.mp3" }, { audioId: "two", audioUrl: "two.mp3" }] }; },
+      align: async (_task, id) => { alignmentCalls.push(id); const shift = id === "one" ? 1 : 5; return words.map((word, i) => ({ word, start: i + shift, end: i + shift + 0.5 })); },
+      download: async url => { downloadCalls.push(url); if (url === "two.mp3" && failSecond) { failSecond = false; throw new AIError("PROVIDER_UNAVAILABLE"); } return Buffer.concat([bytes, Buffer.from(url)]); },
+    };
+    const service = createMaterialSongs(storage.db, async () => ({ content: plan }), provider);
+    await service.start(owner.id, material.id);
+    await assert.rejects(service.get(owner.id, material.id), { code: "PROVIDER_UNAVAILABLE" });
+    const resumed = createMaterialSongs(storage.db, async () => { throw Error("do not regenerate lyrics"); }, provider);
+    const result = await resumed.get(owner.id, material.id);
+    assert.equal(result.status, "ready");
+    assert.deepEqual(result.versions.map(version => version.id), ["one", "two"]);
+    assert.equal(result.versions[0].cues[0].start, 1);
+    assert.equal(result.versions[1].cues[0].start, 5);
+    assert.deepEqual(alignmentCalls, ["one", "two"]);
+    assert.deepEqual(downloadCalls, ["one.mp3", "two.mp3", "two.mp3"]);
+    assert.equal(submits, 1);
+    assert.deepEqual((await resumed.audio(owner.id, material.id, material.revision)).bytes, Buffer.concat([bytes, Buffer.from("one.mp3")]));
+    assert.deepEqual((await resumed.audio(owner.id, material.id, material.revision, "two")).bytes, Buffer.concat([bytes, Buffer.from("two.mp3")]));
+    await assert.rejects(resumed.audio(other.id, material.id, material.revision, "two"), { status: 404 });
+    await assert.rejects(resumed.audio(owner.id, material.id, material.revision, "missing"), { status: 404 });
+    await resumed.get(owner.id, material.id); await resumed.start(owner.id, material.id);
+    assert.equal(submits, 1); assert.equal(polls, 2);
+    assert.deepEqual(alignmentCalls, ["one", "two"]);
+    const payload = JSON.stringify(result);
+    assert.doesNotMatch(payload, /one.mp3|two.mp3|1234567890abcdef/);
+  } finally { await storage.close(); }
 });

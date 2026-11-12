@@ -58,7 +58,7 @@ test("supports a versioned compatibility base path and per-feature request param
 });
 
 test("rejects unsupported features and protocols instead of silently using another provider", () => {
-  for (const feature of ["lkpd", "worksheet", "unknown", "READING"]) {
+  for (const feature of ["unknown", "READING"]) {
     assert.throws(() => readFeatureConfig(feature, env()), { code: "INVALID_AI_FEATURE" });
   }
   assert.throws(() => readFeatureConfig("reading", env("READING", { AI_READING_PROTOCOL: "anthropic" })), { code: "INVALID_AI_CONFIG" });
