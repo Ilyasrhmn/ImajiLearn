@@ -1,4 +1,4 @@
-import { navigateAfterSessionChange, sessionLoginPath } from "./session.mjs";
+import { apiPath, navigateAfterSessionChange, sessionLoginPath } from "./session.mjs";
 import { PROFILE_KEY } from "./teacher-profile.mjs";
 import { teacherStorageKey } from "./teacher-storage.mjs";
 
@@ -6,7 +6,7 @@ export async function requestAccount(teacherId, { method = "GET", body, signal, 
   const fallback = "Layanan akun belum dapat dihubungi. Coba lagi.";
   const headers = { "X-Teacher-Id": teacherId };
   if (body !== undefined) headers["Content-Type"] = "application/json";
-  const response = await fetch(password ? "/api/v1/me/password" : "/api/v1/me", {
+  const response = await fetch(apiPath(password ? "/me/password" : "/me"), {
     method, headers, signal, cache: "no-store",
     body: body === undefined ? undefined : JSON.stringify(body),
   }).catch(error => {

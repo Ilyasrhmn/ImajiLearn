@@ -1,0 +1,48 @@
+.pwa-home { display: grid; gap: 30px; }
+.pwa-welcome { position:relative; display:flex; align-items:center; padding:16px 104px 16px 18px; border:1px solid var(--line); border-radius:24px; background:#f3efdf; }
+.pwa-welcome > div { min-width: 0; flex: 1; }
+.pwa-welcome p { font-size:15px; color:var(--rust); font-weight:750; }
+.pwa-welcome h1 { font-size: 22px; line-height: 1.25; letter-spacing: -.4px; overflow-wrap: anywhere; margin: 3px 0 7px; }
+.pwa-welcome time { font-size: 12px; color: var(--muted); }
+.pwa-welcome > .mascot { position:absolute; right:14px; top:16px; width:78px; height:calc(100% - 32px); }
+.pwa-home h2 { margin: 0 0 14px; font-size: 23px; font-weight: 800; letter-spacing: -.4px; }
+.pwa-schedule-track { display: flex; gap: 12px; overflow-x: auto; scroll-snap-type: x mandatory; padding: 0 1px 8px; scrollbar-width: thin; }
+.pwa-schedule-card { position: relative; flex: 0 0 91%; min-width: 0; min-height: 128px; display: flex; flex-direction: column; justify-content: flex-end; padding: 16px 18px; border-radius: 20px; background: #dfe8d4; color: var(--ink); scroll-snap-align: start; overflow: hidden; }
+.pwa-schedule-card:nth-child(even) { background: #f8e6d9; }
+.pwa-schedule-card > .mascot { position: absolute; right: 16px; bottom: 14px; width: 42px; height: 66px; opacity: .8; pointer-events: none; }
+.pwa-schedule-card h3 { position: relative; font-size: 21px; max-width: calc(100% - 48px); line-height: 1.2; overflow-wrap: anywhere; margin: 28px 0 10px; }
+.pwa-class { position: absolute; right: 12px; top: 10px; display: inline-flex; align-items: center; gap: 6px; background: #fffaf0b8; padding: 4px 9px; border-radius: 20px; font-size: 11px; font-weight: 750; }
+.pwa-lesson-hours { display: flex; align-items: center; gap: 9px; font-size: 15px; font-weight: 750; }
+.pwa-schedule-empty { display: flex; gap: 18px; align-items: center; min-height: 140px; padding: 20px; border: 1px dashed #c4cec0; border-radius: 22px; }
+.pwa-schedule-empty .mascot { width: 55px; height: 86px; }
+.pwa-schedule-empty p { font-weight: 750; margin-bottom: 8px; }
+.pwa-schedule-empty a { color: var(--rust); font-size: 14px; font-weight: 750; }
+.pwa-shortcuts { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); column-gap: 14px; row-gap: 24px; padding: 2px 0; }
+.pwa-shortcuts > a { display: flex; align-items: center; flex-direction: column; gap: 10px; min-width: 0; text-align: center; font-size: 14px; font-weight: 650; }
+.pwa-shortcut-icon { width: 62px; height: 62px; border-radius: 20px; display: grid; place-items: center; transition: transform 180ms ease; }
+.pwa-shortcut-icon.sage { background: #e7f3df; color: #4a7b48; }
+.pwa-shortcut-icon.yellow { background: #fff1bc; color: #937423; }
+.pwa-shortcut-icon.pink { background: #fcebef; color: #b3657d; }
+.pwa-shortcut-icon.blue { background: #e7f0fc; color: #5279a2; }
+.pwa-shortcut-icon.lilac { background: #f3ebfa; color: #8661a1; }
+.pwa-shortcuts > a:active .pwa-shortcut-icon { transform: scale(.94); }
+.pwa-latest ul { list-style: none; padding: 0; margin: 0; display: grid; gap: 10px; }
+.pwa-latest li a { display: flex; align-items: center; gap: 12px; padding: 15px; border: 1px solid var(--line); border-radius: 18px; background: #fffdf8; }
+.pwa-latest strong { flex: 1; min-width: 0; overflow-wrap: anywhere; font-size: 15px; line-height: 1.4; }
+.pwa-latest-icon { display: grid; place-items: center; flex: none; width: 42px; height: 46px; border-radius: 12px; background: #f8e7dc; color: var(--rust); }
+.pwa-latest-empty { display: flex; align-items: center; gap: 18px; padding: 18px; border: 1px dashed var(--line); border-radius: 18px; font-weight: 750; }
+.pwa-latest-empty .mascot { width: 45px; height: 72px; }
+.bottom-nav { grid-template-columns: repeat(5,minmax(0,1fr)); border-top: 0; border-radius: 24px 24px 0 0; box-shadow: 0 -3px 20px #243e430b; padding-top: 10px; }
+.bottom-nav .nav-icon { width: 46px; height: 34px; }
+.bottom-nav .nav-home { position: relative; justify-content: flex-end; gap: 3px; color: var(--rust); }
+.bottom-nav .nav-home .nav-icon { width: 58px; height: 58px; border-radius: 20px; margin-top: -30px; background: #f4dfcf; color: var(--rust); box-shadow: 0 4px 10px #243e4312; }
+.bottom-nav .nav-home[aria-current=page] .nav-icon { background: var(--rust); color: #fff; }
+.bottom-nav .nav-home svg { width: 27px; height: 27px; }
+@media(max-width:360px) {
+  .pwa-welcome { padding:16px 92px 16px 14px; }
+    .pwa-welcome h1 { font-size: 20px; }
+  .pwa-welcome > .mascot { width:70px; right:10px; }
+  .pwa-shortcuts { column-gap: 6px; }
+  .pwa-schedule-card { padding: 16px; }
+}
+@media(prefers-reduced-motion:reduce) { .pwa-shortcut-icon { transition: none; } }

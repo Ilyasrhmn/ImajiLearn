@@ -6,7 +6,7 @@ import { examTitle, filterExams } from "../lib/exams.mjs";
 import Modal, { closeModal } from "./modal";
 import "./exam-source-tools.css";
 
-export default function ExamLibrary({ exams, onOpen, onDelete, onDuplicate, onRename }) {
+export default function ExamLibrary({ exams, onOpen, onDelete, onDuplicate, onRename, compact = false, ActionMenu }) {
   const [query, setQuery] = useState(""), [grade, setGrade] = useState(""), [subject, setSubject] = useState(""), [sort, setSort] = useState("newest");
   const [renaming, setRenaming] = useState(null), [title, setTitle] = useState("");
   const shown = filterExams(exams, { query, grade, subject, sort });
@@ -29,12 +29,13 @@ export default function ExamLibrary({ exams, onOpen, onDelete, onDuplicate, onRe
       <ThemedSelect aria-label="Urutkan naskah" value={sort} onChange={e => setSort(e.target.value)}><option value="newest">Terbaru</option><option value="oldest">Terlama</option><option value="name">Nama A–Z</option></ThemedSelect>
     </div>
     <div>{shown.map(exam => <article key={exam.id} className="exam-saved-item">
-      <button className="exam-saved-open" onClick={() => onOpen(exam.id)}><FileText size={25} aria-hidden="true" /><span><strong>{examTitle(exam)}</strong><span>Kelas {exam.config.grade} · {(exam.questions?.length ?? Object.values(exam.config.counts).reduce((sum, count) => sum + count, 0))} soal</span></span><ArrowRight size={20} aria-hidden="true" /></button>
-      <div className="exam-library-actions">
+      <button className="exam-saved-open" onClick={() => onOpen(exam.id)}><FileText size={25} aria-hidden="true" /><span><strong>{examTitle(exam)}</strong><span>Kelas {exam.config.grade} · {(exam.questions?.length ?? Object.values(exam.config.counts).reduce((sum, count) => sum + count, 0))} soal</span></span>{!compact && <ArrowRight size={20} aria-hidden="true" />}</button>
+      {compact && ActionMenu ? <ActionMenu title={examTitle(exam)} onEdit={() => { setRenaming(exam.id); setTitle(examTitle(exam)); setRenameError(""); }} onDuplicate={() => onDuplicate(exam)} onDelete={() => onDelete(exam.id)} /> : (<div className="exam-library-actions">
         <button className="icon-button" aria-label={`Ubah nama ${examTitle(exam)}`} title="Ubah nama" onClick={() => { setRenaming(exam.id); setTitle(examTitle(exam)); setRenameError(""); }}><PencilLine size={20} aria-hidden="true" /></button>
         <button className="icon-button" aria-label={`Duplikasi ${examTitle(exam)}`} title="Duplikasi" onClick={() => onDuplicate(exam)}><Copy size={20} aria-hidden="true" /></button>
         <button className="icon-button danger" aria-label={`Hapus ${examTitle(exam)}`} title="Hapus naskah" onClick={() => onDelete(exam.id)}><Trash2 size={20} aria-hidden="true" /></button>
-      </div>
+      </div>)}
+
     </article>)}{!shown.length && <p>Naskah tidak ditemukan.</p>}</div>
     {renaming && <Modal title="Ubah nama naskah" busy={renameBusy} onClose={() => setRenaming(null)}><form className="exam-rename" onSubmit={saveName}><h2>Ubah nama naskah</h2><label htmlFor="exam-name">Nama naskah</label><input id="exam-name" readOnly={renameBusy} autoFocus required maxLength={120} value={title} onChange={e => setTitle(e.target.value)} /><div className="draft-actions"><button type="button" disabled={renameBusy} className="button button-secondary" onClick={() => closeModal(() => setRenaming(null))}>Batal</button><button className="button" disabled={!title.trim() || renameBusy}>{renameBusy ? "Menyimpan…" : "Simpan"}</button></div>{renameError && <p role="alert" className="field-error">{renameError}</p>}</form></Modal>}
   </section>;

@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256"><title>ImajiLearn</title><g transform="translate(-6 0)" stroke="#243E43" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"><g transform="rotate(20 192 122)">
+      <path d="M176 57V173L192 199L208 173V57Z" fill="#F4CE70"/>
+      <path d="M176 57V38Q176 28 186 28H198Q208 28 208 38V57Z" fill="#B64F38"/>
+      <path d="M174 57H210V72H174Z" fill="#FFF1CF"/>
+      <path d="M176 173H208L192 199Z" fill="#FFF1CF"/>
+      <path d="M187 190L192 199L198 190Z" fill="#243E43" stroke="none"/>
+      <path d="M192 85V151" fill="none" opacity=".35"/>
+    </g><g transform="rotate(-8 114 143)">
+      <rect x="40" y="66" width="133" height="158" rx="16" fill="#6DA798"/>
+      
+      <path d="M64 66H157Q173 66 173 82V208Q173 224 157 224H64Z" fill="#FFF1CF"/>
+      <path d="M64 67V223" fill="none"/>
+      <path d="M126 67V107L138 99L150 107V67Z" fill="#B64F38"/>
+      <path d="M84 195H148M84 205H131" stroke="#243E43" opacity=".35" stroke-width="3"/>
+      <ellipse cx="96" cy="145" rx="9" ry="13" fill="#243E43" stroke="none"/><ellipse cx="136" cy="145" rx="9" ry="13" fill="#243E43" stroke="none"/>
+      <circle cx="84" cy="166" r="6" fill="#EC928E" stroke="none"/><circle cx="148" cy="166" r="6" fill="#EC928E" stroke="none"/>
+      <path d="M105 166Q116 181 128 166" fill="none" stroke-width="5"/>
+    </g></g></svg>

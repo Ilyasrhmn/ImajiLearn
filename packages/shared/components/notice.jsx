@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import { Mascot } from "./mascot";
+import "./notice.css";
 
 export default function Notice({ notice, onDismiss, insideDialog = false }) {
   const [paused, setPaused] = useState(false);
