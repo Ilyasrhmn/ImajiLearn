@@ -1,0 +1,49 @@
+.material-history-heading { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:16px; margin-bottom:20px; }
+.material-history-heading h2 { display:flex; align-items:center; gap:10px; margin:0; }
+.material-history-heading h2 svg { flex-shrink:0; }
+.material-history-heading .upload-button { margin:0; min-height:44px; }
+.material-history-list { margin:0; padding:0; list-style:none; }
+.material-history-copy { display:grid; min-width:0; }
+.material-history-copy strong { font-weight:750; overflow-wrap:anywhere; }
+.material-history-meta { color:var(--material-secondary,#657772); line-height:1.6; }
+.material-history-status { color:#873e29; }
+.material-history-action { display:inline-flex; align-items:center; gap:8px; flex-shrink:0; color:var(--rust); font-weight:750; }
+.material-media-history > .source-secondary { margin-top:18px; }
+.material-history-loading { display:grid; gap:14px; }
+.material-history-loading > div { min-height:134px; background:var(--material-gutter,#f2ede3); border-radius:22px; }
+.material-history-error p { color:#a53d2f; }
+.material-history-search { display:flex; align-items:center; gap:12px; margin-bottom:24px; padding:0 16px; border:1px solid #bdcdc2; border-radius:12px; background:#fff; }
+.material-history-search input { flex:1; width:100%; min-width:0; min-height:48px; border:0; outline:none; background:transparent; color:inherit; font:inherit; }
+.material-history-search:focus-within { outline:2px solid var(--rust); outline-offset:2px; }
+.material-history-search svg { flex-shrink:0; pointer-events:none; transform:none !important; animation:none !important; }
+.material-history-cards { display:grid; gap:14px; }
+.material-history-cards li { border:0; }
+.material-history-cards :is(a,button) { display:grid; grid-template-columns:80px minmax(0,1fr) auto; align-items:center; gap:22px; width:100%; min-height:134px; padding:22px; border:1px solid var(--line); border-radius:22px; background:#fff; color:inherit; font:inherit; text-align:left; cursor:pointer; transition:border-color 160ms ease,background-color 160ms ease; }
+.material-history-cards :is(a,button):hover { background:#fffdf8; border-color:#c1cfc5; }
+.material-history-cards button:disabled { cursor:wait; }
+.material-history-cards .material-file-icon { display:grid; place-items:center; width:80px; height:80px; border-radius:17px; background:#f8e7dc; color:var(--rust); }
+.material-history-cards .material-history-copy { gap:8px; }
+.material-history-cards strong { font-size:20px; line-height:1.4; }
+.material-history-origin { display:flex; align-items:center; flex-wrap:wrap; gap:5px 9px; color:var(--material-secondary,#657772); font-size:15px; line-height:1.5; }
+.material-history-origin > span:last-child { min-width:0; overflow-wrap:anywhere; }
+.material-history-folder { display:inline-flex; align-items:center; gap:7px; }
+.material-history-folder svg { color:#ad8032; fill:#fff0c7; }
+.material-history-origin svg { flex:none; }
+.material-history-cards .material-history-meta { display:flex; flex-wrap:wrap; gap:6px 18px; font-size:14px; }
+.material-history-cards .material-history-meta > :is(span,time) { display:inline-flex; align-items:center; gap:7px; }
+.material-history-cards .material-history-status { display:inline-flex; }
+.material-history-cards .material-history-status::before { content:""; width:6px; height:6px; border-radius:50%; background:currentColor; }
+.material-history-cards :is(a,button) { text-decoration:none; scroll-margin-top:140px; }
+@media(max-width:600px) {
+  .material-history-cards :is(a,button) { grid-template-columns:50px minmax(0,1fr); gap:12px; padding:16px; min-height:112px; border-radius:18px; }
+  .material-history-cards .material-file-icon { width:50px; height:62px; border-radius:12px; align-self:start; }
+  .material-history-cards .material-file-icon svg { width:25px; height:25px; }
+  .material-history-cards strong { font-size:17px; }
+  .material-history-cards .material-history-action { grid-column:2; justify-self:end; }
+  .material-history-origin { font-size:14px; }
+  .material-history-heading { gap:12px; }
+  .material-history-heading h2 { font-size:1.45rem; }
+  .material-history-heading .upload-button { padding:11px 14px; }
+  .material-history-action { font-size:.9rem; gap:5px; }
+}
+@media(prefers-reduced-motion:reduce) { .material-history-cards :is(a,button) { transition:none; } }

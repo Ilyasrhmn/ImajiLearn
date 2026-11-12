@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Download, History, LoaderCircle } from "lucide-react";
+import { AlertCircle, ArrowRight, Download, History, LoaderCircle, RefreshCw, SlidersHorizontal } from "lucide-react";
 import MaterialReading from "./material-reading";
 import MaterialVisual from "./material-visual";
 import MaterialSlides from "./material-slides";
@@ -37,6 +37,16 @@ export default function MaterialDetail({ teacherId, material, format, parent, li
   const [previewRanges, setPreviewRanges] = useState(null);
   const [visiblePage, setVisiblePage] = useState(material.pageStart ?? 1);
   const [history, setHistory] = useState(null);
+  const [historyQuery, setHistoryQuery] = useState("");
+  const [historyFilter, setHistoryFilter] = useState("");
+  useEffect(() => {
+    if (historyQuery.trim() === historyFilter) return;
+    const timer = setTimeout(() => {
+      setHistory(null);
+      setHistoryFilter(historyQuery.trim());
+    }, 250);
+    return () => clearTimeout(timer);
+  }, [historyQuery, historyFilter]);
   const [historyError, setHistoryError] = useState("");
   const [historyVersion, setHistoryVersion] = useState(0);
   const [historyLoading, setHistoryLoading] = useState(false);
@@ -124,7 +134,7 @@ export default function MaterialDetail({ teacherId, material, format, parent, li
     closeModal(afterDialog);
   }, [afterDialog]);
 
-  const historyPath = format ? `/materials/${encodeURIComponent(original.id)}/history?feature=${format.id}` : null;
+  const historyPath = format ? `/materials/${encodeURIComponent(original.id)}/history?feature=${format.id}&q=${encodeURIComponent(historyFilter)}` : null;
   useEffect(() => {
     if (!historyPath) return;
     const controller = new AbortController();
@@ -249,7 +259,7 @@ export default function MaterialDetail({ teacherId, material, format, parent, li
   const incomplete = search.get("resume") === "1" || history?.items.some(item => item.materialId === material.id && item.status !== "ready");
   const question = !sourceReady ? blockedTitle : loadError ? "Media tidak dapat dimuat"
     : incomplete ? `Lengkapi ${format.action}?` : prompts[format.id];
-  const title = generating ? `Membuat ${format.action}…${preparation ? ` ${preparation.completed}/${preparation.total}` : ""}` : question;
+  const title = generating ? (preparation?.waiting ? "Menunggu layanan AI\u2026" : `Membuat ${format.action}\u2026${preparation ? ` ${preparation.completed}/${preparation.total}` : ""}`) : question;
   const hasResult = sourceReady && output?.data && (!song || song.status === "ready") && !showDialog && !showHistory;
 
   async function loadMoreHistory() {
@@ -317,32 +327,44 @@ export default function MaterialDetail({ teacherId, material, format, parent, li
         illustrationsPath={sourcePath + "/slides/illustrations"} revision={material.revision} /></MaterialProjector>}
       {format.id === "song" && <MaterialSong song={output.data} teacherId={teacherId} songPath={sourcePath + "/song"} revision={material.revision} />}
     </> : <MaterialMediaHistory format={format} history={history} error={historyError} loading={historyLoading}
+      query={historyQuery} onSearch={setHistoryQuery}
       creating={busy || (sourceReady && !loadError && output === null)} archived={original.archived}
       onCreate={requestCreation} onOpen={openHistoryItem} onMore={loadMoreHistory}
       onRetry={() => setHistoryVersion(value => value + 1)} />}
     {showDialog && <Modal title={question} onClose={afterDialog} dismissible={!busy && !finishing}
       showClose={false} className="material-generate-dialog">
-      <div aria-hidden="true"><Mascot kind="book" className="material-generate-mascot" /></div>
-      <h2>{selecting ? "Pilih bagian" : generating ? <span role="status"><LoaderCircle size={20} aria-hidden="true" />{title}</span> : title}</h2>
-      {!sourceReady && material.extractionError === "SOURCE_TEXT_TOO_LONG" && !selecting && <p className="source-error">{sourceTextLimitMessage}</p>}
+      <div className="material-generate-heading">
+        <div aria-hidden="true"><Mascot kind="book" className="material-generate-mascot" /></div>
+        <div className="material-generate-copy">
+          <h2>{selecting ? "Pilih bagian" : generating ? <span role="status"><LoaderCircle size={20} aria-hidden="true" />{title}</span> : title}</h2>
+          <p className="material-generate-source">{original.title}</p>
+        </div>
+      </div>
       {selecting ? picker : picker && sourceReady && !generating && !loadError &&
-        <div className="material-generation-scope">{sectionLabel} <button type="button" className="source-section-manual"
-          onClick={() => setSelecting(true)}>Ganti bagian</button></div>}
-      {dialogError && !generating && <p role="alert" className="source-error">{dialogError}</p>}
-      <div className="source-actions">
-        {!busy && !finishing && <>
+        <div className="material-generation-scope">
+          <span>{sectionLabel}</span>
+          <button type="button" className="source-section-manual" onClick={() => setSelecting(true)}>
+            <SlidersHorizontal size={16} aria-hidden="true" />Ganti bagian
+          </button>
+        </div>}
+      {!sourceReady && material.extractionError === "SOURCE_TEXT_TOO_LONG" && !selecting &&
+        <p className="material-generate-error" role="alert"><AlertCircle size={18} aria-hidden="true" /><span>{sourceTextLimitMessage}</span></p>}
+      {dialogError && !generating && <p role="alert" className="material-generate-error">
+        <AlertCircle size={18} aria-hidden="true" /><span>{dialogError}</span>
+      </p>}
+      {!busy && !finishing && <div className="source-actions">
           <button type="button" className="source-secondary" onClick={() => closeModal(afterDialog)}>Nanti</button>
           {selecting ? <button type="button" className="source-secondary" onClick={() => setSelecting(false)}>Kembali</button>
             : !sourceReady && picker ? <button type="button" className="upload-button" onClick={() => setSelecting(true)}>Pilih bagian</button>
             : !sourceReady ? sourceLink(true)
-            : loadError ? <button type="button" className="upload-button" onClick={retryLoad}>Coba lagi</button>
+            : loadError ? <button type="button" className="upload-button" onClick={retryLoad}><RefreshCw size={17} aria-hidden="true" />Coba lagi</button>
             : songCheckError ? <button type="button" className="upload-button"
             onClick={() => { setSongCheckError(""); setSongCheck(value => value + 1); }}>Periksa lagi</button>
             : !songPending && song?.status !== "uncertain" && <button type="button" className="upload-button" onClick={() => generate()}>
+              {dialogError ? <RefreshCw size={17} aria-hidden="true" /> : <ArrowRight size={17} aria-hidden="true" />}
               {dialogError ? "Coba lagi" : output?.data && !songFailed ? `Buka ${format.action}` : incomplete ? "Lanjutkan" : `Buat ${format.action}`}
             </button>}
-        </>}
-      </div>
+      </div>}
     </Modal>}
   </div>;
 }
