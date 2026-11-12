@@ -15,7 +15,8 @@ export async function materialMediaHistory(db, userId, materialId, params, { all
   const feature = params.get("feature");
   const model = Object.hasOwn(models, feature) ? models[feature] : null;
   const offset = Number(params.get("offset") ?? 0);
-  if (!model || !Number.isInteger(offset) || offset < 0 || offset > 10000) {
+  const query = (params.get("q") ?? "").trim().toLocaleLowerCase("id-ID");
+  if (query.length > 200 || !model || !Number.isInteger(offset) || offset < 0 || offset > 10000) {
     throw new ApiError(422, "INVALID_MEDIA_HISTORY", "Riwayat media tidak valid.");
   }
   const studio = materialId === null;
@@ -27,11 +28,9 @@ export async function materialMediaHistory(db, userId, materialId, params, { all
     where: studio ? { userId, archived: false, OR: [{ parentId: null }, { parent: { archived: false } }] }
       : { userId, OR: [{ id: rootId }, { parentId: rootId }] },
     select: { id: true, title: true, revision: true, pageStart: true, pageEnd: true, sectionPages: true,
-      ...(studio ? {
-        file: { select: { name: true, mime: true } },
-        folder: { select: { name: true } },
-        parent: { select: { title: true, file: { select: { name: true, mime: true } }, folder: { select: { name: true } } } },
-      } : {}),
+      file: { select: { name: true, mime: true } },
+      folder: { select: { name: true } },
+      parent: { select: { title: true, file: { select: { name: true, mime: true } }, folder: { select: { name: true } } } },
     },
   });
   const sources = new Map(family.map(source => [source.id, source]));
@@ -42,9 +41,15 @@ export async function materialMediaHistory(db, userId, materialId, params, { all
     },
     orderBy: feature === "song" ? [{ updatedAt: "desc" }, { materialId: "desc" }]
       : [{ generatedAt: { sort: "desc", nulls: "last" } }, { material: { createdAt: "desc" } }, { materialId: "desc" }],
-    ...(all ? {} : { skip: offset, take: 21 }),
+    ...(all || query ? {} : { skip: offset, take: 21 }),
   });
-  const page = all ? rows : rows.slice(0, 20);
+  const matching = query ? rows.filter(row => {
+    const source = sources.get(row.materialId);
+    const root = source.parent ?? source;
+    return [row.content?.title, source.title, root.title, root.file?.name, root.folder?.name]
+      .some(value => typeof value === "string" && value.toLocaleLowerCase("id-ID").includes(query));
+  }) : rows;
+  const page = all ? matching : matching.slice(query ? offset : 0, query ? offset + 20 : 20);
   const images = model.images && page.length ? await db[model.images].findMany({
     where: { OR: page.map(row => ({ materialId: row.materialId, revision: row.revision })),
       AND: { OR: [{ bytes: { not: null } }, { sourceBytes: { not: null } }, { visualSkipped: true }] },
@@ -71,14 +76,12 @@ export async function materialMediaHistory(db, userId, materialId, params, { all
         materialId: source.id, title: sectionLabel(label), status,
         first: source.pageStart, last: source.pageEnd, pages: source.sectionPages,
         generatedAt: (feature === "song" && status === "ready" ? row.updatedAt : row.generatedAt)?.toISOString() ?? null,
-        ...(studio ? {
-          sourceTitle: source.parent?.title ?? source.title,
-          sourceName: (source.parent ?? source).file?.name ?? null,
-          sourceMime: (source.parent ?? source).file?.mime ?? null,
-          folderName: (source.parent ?? source).folder?.name ?? null,
-        } : {}),
+        sourceTitle: source.parent?.title ?? source.title,
+        sourceName: (source.parent ?? source).file?.name ?? null,
+        sourceMime: (source.parent ?? source).file?.mime ?? null,
+        folderName: (source.parent ?? source).folder?.name ?? null,
       };
     }),
-    nextOffset: !all && rows.length > 20 ? offset + 20 : null,
+    nextOffset: !all && matching.length > (query ? offset + 20 : 20) ? offset + 20 : null,
   };
 }
