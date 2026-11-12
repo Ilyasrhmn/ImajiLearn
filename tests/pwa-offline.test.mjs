@@ -5,9 +5,17 @@ import vm from "node:vm";
 import manifest from "../apps/pwa/app/manifest.js";
 import { currentTerm, nextLesson } from "../apps/pwa/lib/schedule.mjs";
 
-test("manifest confines the installed app to /app with existing-brand PNG icons", () => {
+test("manifest confines the installed app to /app with valid regular and maskable brand icons", async () => {
   const value = manifest(); assert.equal(value.scope, "/app/"); assert.equal(value.start_url, "/app/beranda");
-  assert.equal(value.display, "standalone"); assert.deepEqual(value.icons.map(icon => icon.sizes), ["192x192", "512x512"]);
+  assert.equal(value.display, "standalone");
+  assert.deepEqual(value.icons.filter(icon => icon.purpose === "any").map(icon => icon.sizes), ["192x192", "512x512"]);
+  assert.ok(value.icons.some(icon => icon.purpose === "maskable" && icon.sizes === "512x512"));
+  for (const icon of value.icons) {
+    assert.ok(icon.src.startsWith("/app/icons/"));
+    const png = await readFile(new URL(`../apps/pwa/public/${icon.src.slice(5)}`, import.meta.url));
+    assert.equal(png.subarray(0, 8).toString("hex"), "89504e470d0a1a0a");
+    assert.equal(`${png.readUInt32BE(16)}x${png.readUInt32BE(20)}`, icon.sizes);
+  }
 });
 test("offline worker never caches authenticated pages, API reads or writes", async () => {
   const listeners = {}, cached = [], fallback = new Response("offline");

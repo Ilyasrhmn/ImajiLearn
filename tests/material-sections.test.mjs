@@ -1,3 +1,4 @@
+import { createExamService } from "../apps/web/server/exams/service.mjs";
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import { test } from "node:test";
@@ -92,6 +93,18 @@ test("PDF sections isolate outputs and keep a single document in the library", a
     await assert.rejects(materialSections(db, owner.id, long.id, new URLSearchParams({ first: 1, last: 3 })), { code: "SOURCE_TEXT_TOO_LONG" });
     const selected = await materialSections(db, owner.id, long.id, new URLSearchParams({ first: 2, last: 2 }));
     assert.equal((await service.get(owner.id, selected.id)).extractionStatus, "ready");
+    const examService = createExamService(db);
+    const examConfig = { type:"daily", grade:"4", subject:"IPAS", counts:{ multipleChoice:1, shortAnswer:0, essay:0 } };
+    await assert.rejects(examService.create(owner, { ...examConfig, materialIds:[long.id] }, randomUUID()), { code:"MATERIAL_NOT_READY" });
+    const sectionExam = await examService.create(owner, { ...examConfig, materialIds:[selected.id] }, randomUUID());
+    assert.deepEqual(sectionExam.config.materialIds, [selected.id]);
+    const storedExam = await db.examDocument.findUnique({ where:{ id:sectionExam.id } });
+    assert.equal(storedExam.sourceSnapshots[0].id, selected.id);
+    assert.equal(storedExam.sourceSnapshots[0].pageStart, 2);
+    assert.equal(storedExam.sourceSnapshots[0].pageEnd, 2);
+    assert.ok(storedExam.sourceSnapshots[0].text.length > 0);
+    await assert.rejects(examService.create(other, { ...examConfig, materialIds:[selected.id] }, randomUUID()), { code:"MATERIAL_NOT_FOUND" });
+
     const veryDenseBytes = pdf(Array.from({ length: 12 }, () => ("Teks materi. ".repeat(19) + "\n").repeat(130)));
     const veryDense = await service.create(owner.id, { title: "PDF sangat padat" }, randomUUID(), {
       name: "padat.pdf", mime: "application/pdf", bytes: veryDenseBytes, size: veryDenseBytes.length,

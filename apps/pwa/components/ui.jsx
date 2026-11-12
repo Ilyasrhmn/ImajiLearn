@@ -1,13 +1,33 @@
 "use client";
-import { useEffect, useRef, useState, useId, useImperativeHandle } from "react";
+import { useEffect, useRef, useState, useId, useImperativeHandle, useCallback } from "react";
 import { AlertCircle, LoaderCircle, X } from "lucide-react";
+import { createPortal } from "react-dom";
+import Notice from "@imajilearn/shared/components/notice.jsx";
+import ThemedSelect from "@imajilearn/shared/components/themed-select.jsx";
+import { Mascot } from "@imajilearn/shared/components/mascot.jsx";
 import ActionConfirmation from "@imajilearn/shared/components/action-confirmation.jsx";
 
 export function Loading({ label = "Memuat" }) { return <div className="loading" role="status"><LoaderCircle size={22} className="spinner" /><span>{label}</span></div>; }
 export function ErrorState({ message, onRetry }) { return <div className="error-state"><p role="alert"><AlertCircle size={18} />{message}</p>{onRetry && <button className="secondary" onClick={onRetry}>Coba lagi</button>}</div>; }
 export function Feedback({ children, error = false }) { return children && <p className={error ? "feedback error" : "feedback"} role={error ? "alert" : "status"}>{children}</p>; }
-export function Empty({ title, children }) { return <div className="empty-state"><h2>{title}</h2>{children}</div>; }
+export function useNotice() {
+  const [notice, update] = useState(null);
+  const setNotice = useCallback((message, type = "success") => update(message ? { message, type } : null), []);
+  return [notice, setNotice];
+}
+export function Notification({ notice, onDismiss }) {
+  return notice ? createPortal(<Notice notice={notice} onDismiss={onDismiss} insideDialog />, document.body) : null;
+}
+export function Empty({ title, children }) { return <div className="empty-state"><Mascot kind="correction" /><div><h2>{title}</h2>{children}</div></div>; }
 export function PageTitle({ title, action }) { return <div className="page-title"><h1>{title}</h1>{action}</div>; }
+export function Select({ value, defaultValue = "", onChange, ...props }) {
+  const [selected, setSelected] = useState(defaultValue);
+  return <ThemedSelect {...props} value={value ?? selected} onChange={event => {
+    setSelected(event.target.value);
+    onChange?.(event);
+  }} />;
+}
+
 export function PasswordInput({ label, name, ...props }) {
   const [visible, setVisible] = useState(false);
   return <label className="field">{label}<span className="password-input"><input {...props} name={name} type={visible ? "text" : "password"} /><button type="button" aria-label={visible ? `Sembunyikan ${label.toLowerCase()}` : `Tampilkan ${label.toLowerCase()}`} aria-pressed={visible} onClick={() => setVisible(v => !v)}>{visible ? "Sembunyikan" : "Lihat"}</button></span></label>;

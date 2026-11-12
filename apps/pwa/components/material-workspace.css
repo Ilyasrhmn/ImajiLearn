@@ -1,0 +1,46 @@
+.pwa-material-workspace.material-page { width:auto; min-width:0; padding:0; margin:0 -22px; background:var(--material-sheet); }
+.pwa-material-workspace .material-navigation { border-radius:0; padding-inline:16px; }
+.pwa-material-workspace .material-detail { min-width:0; }
+.pwa-material-workspace .upload-button { display:inline-flex; align-items:center; justify-content:center; gap:8px; min-height:44px; padding:11px 16px; border:0; border-radius:12px; background:var(--rust); color:#fff; font:inherit; font-weight:800; }
+.pwa-material-workspace .source-secondary { display:inline-flex; align-items:center; justify-content:center; gap:8px; min-height:44px; padding:10px 14px; border:1px solid var(--line); border-radius:12px; background:var(--paper); color:var(--ink); font:inherit; font-weight:750; }
+.pwa-material-workspace .material-projector-button { display:none; }
+
+.pwa-material-workspace .material-navigation { position:static; display:flex; flex-direction:column; align-items:stretch; gap:8px; padding:10px 12px 12px; }
+.pwa-material-workspace .material-return { align-self:flex-start; min-height:44px; padding:0 8px; font-size:15px; }
+.pwa-material-workspace .material-tabs { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:2px; width:100%; }
+.pwa-material-workspace :is(.material-tab-group,.material-tab-source) { display:contents; }
+.pwa-material-workspace .material-tabs a { min-width:0; min-height:62px; gap:5px; padding:6px 2px; border-radius:18px; font-size:12px; line-height:1.25; }
+.pwa-material-workspace .material-tab-art { width:28px; height:26px; }
+.pwa-material-workspace .material-tab-label { display:none; }
+.pwa-material-workspace .material-tab-label-short { display:inline; }
+.pwa-material-workspace .material-panel { padding:20px; border-radius:0; }
+.pwa-material-workspace .material-source-sections { display:flex; flex-direction:column; gap:20px; }
+.pwa-material-workspace .material-source-inner { width:100%; min-width:0; max-width:none; margin:0; }
+.pwa-material-workspace .material-panel h1,.pwa-material-workspace [data-output-heading] { font-size:26px; line-height:1.25; letter-spacing:-.5px; }
+.pwa-material-workspace .material-source-text { font-size:16px; line-height:1.7; }
+.pwa-material-workspace .material-source-text p { margin:0 0 18px; }
+.pwa-material-workspace .material-source-download { width:100%; font-size:13px; line-height:1.5; }
+.pwa-material-workspace .material-source-download span { white-space:normal; overflow-wrap:anywhere; }
+.pwa-source-sections { width:100%; }
+.pwa-section-toggle { display:flex; align-items:center; justify-content:space-between; gap:12px; width:100%; min-height:46px; padding:10px 14px; border:1px solid var(--line); border-radius:12px; background:var(--paper); color:var(--ink); font:inherit; text-align:left; }
+.pwa-section-toggle span { min-width:0; overflow-wrap:anywhere; }
+.sheet .source-section-picker ul { max-height:45dvh; overflow:auto; overscroll-behavior:contain; }
+.sheet .source-section-picker li button { width:100%; }
+.sheet .source-section-picker .source-section-create { width:100%; min-height:44px; padding:10px 14px; border:0; border-radius:12px; background:var(--rust); color:white; font:inherit; font-weight:750; }
+.pwa-material-workspace .material-slides .material-slide { grid-template-columns:minmax(0,1fr); padding:20px; gap:20px; }
+.pwa-material-workspace .material-slide h3 { font-size:24px; }
+.pwa-material-workspace .material-slide ul { font-size:17px; }
+.pwa-material-workspace .material-slide-image { width:100%; min-width:0; }
+.pwa-material-workspace .material-slide-controls { flex-wrap:wrap; gap:12px; }
+.pwa-material-workspace .material-source-actions { margin-top:12px; }
+
+.pwa-material-workspace .immersive-reading .reading-columns { display:flex; flex-direction:column; align-items:stretch; gap:22px; min-height:0; }
+.pwa-material-workspace .immersive-reading .reading-content h2 { font-size:26px; line-height:1.25; margin-bottom:20px; }
+.pwa-material-workspace .immersive-reading .reading-content p { font-size:18px; line-height:1.7; }
+.pwa-material-workspace .immersive-reading .lesson-pagination { gap:8px; }
+.pwa-material-workspace .immersive-reading .lesson-pagination > .button { min-height:44px; padding:10px; font-size:14px; }
+.pwa-material-workspace .immersive-reading .lesson-pagination > .text-button { font-size:14px; }
+.pwa-material-workspace .immersive-reading .lesson-pagination > span { font-size:13px; white-space:nowrap; }
+.pwa-material-workspace .karaoke-stage { grid-template-columns:minmax(0,1fr); padding:20px 16px 130px; min-height:320px; }
+.pwa-material-workspace .karaoke-line { font-size:23px; padding:8px 0; }
+.pwa-material-workspace .karaoke-controls { flex-wrap:wrap; gap:8px; }

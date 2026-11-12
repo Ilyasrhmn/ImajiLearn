@@ -1,4 +1,5 @@
 "use client";
+import { Notification, useNotice } from "./ui";
 import ActionConfirmation from "@imajilearn/shared/components/action-confirmation.jsx";
 import { useRef, useState } from "react";
 import { PencilLine, Plus, Trash2 } from "lucide-react";
@@ -8,7 +9,7 @@ import { Feedback, Sheet } from "./ui";
 
 export default function FolderManager({ teacherId, folders, onChange, onClose }) {
   const [name, setName] = useState(""), [editing, setEditing] = useState(null), [deleting, setDeleting] = useState(null);
-  const [busy, setBusy] = useState(false), [error, setError] = useState(""), [notice, setNotice] = useState("");
+  const [busy, setBusy] = useState(false), [error, setError] = useState(""), [notice, setNotice] = useNotice();
   const lock = useRef(false), retry = useRef(null);
   async function save(event) {
     event.preventDefault(); if (lock.current) return; lock.current = true; setBusy(true); setError(""); setNotice("");
@@ -19,12 +20,12 @@ export default function FolderManager({ teacherId, folders, onChange, onClose })
   }
   async function remove() {
     if (lock.current) return; lock.current = true; setBusy(true); setError(""); setNotice("");
-    try { await changeFolder(teacherId, { ...deleting, remove: true }); onChange(folders.filter(row => row.id !== deleting.id), deleting.id); if (editing?.id === deleting.id) { setEditing(null); setName(""); } setDeleting(null); setNotice("Mapel dihapus."); }
+    try { await changeFolder(teacherId, { ...deleting, remove: true }); onChange(folders.filter(row => row.id !== deleting.id), deleting.id); if (editing?.id === deleting.id) { setEditing(null); setName(""); } setDeleting(null); setNotice("Mapel dihapus.", "delete"); }
     catch (err) { setError(err.message); } finally { lock.current = false; setBusy(false); }
   }
   return <Sheet title={deleting ? "Hapus mapel?" : "Kelola mapel"} confirmation={Boolean(deleting)} busy={busy} dirty={Boolean(name.trim())} onClose={onClose}>
     {deleting ? <ActionConfirmation mobile title="Hapus mapel ini?" confirmLabel="Hapus mapel" busy={busy} error={error}
       onCancel={() => { setDeleting(null); setError(""); }} onConfirm={remove}>
       <p>Folder <strong>{deleting.name}</strong> akan dihapus.</p>
-    </ActionConfirmation> : <><form onSubmit={save} className="folder-form"><fieldset className="form-stack" disabled={busy}><label className="field">Nama mapel<input required maxLength={80} value={name} pattern=".*\S.*" onChange={event => setName(event.target.value)} /></label><div className="button-pair"><button className="primary" type="submit">{editing ? "Simpan nama" : <><Plus size={18} />Tambah mapel</>}</button>{editing && <button className="secondary" type="button" onClick={() => { setEditing(null); setName(""); setError(""); }}>Batal</button>}</div></fieldset></form><div>{folders.map(folder => <div className="folder-row" key={folder.id}><strong>{folder.name}</strong><button className="icon-button" disabled={busy} aria-label={`Ubah ${folder.name}`} onClick={() => { setEditing(folder); setName(folder.name); setError(""); }}><PencilLine size={19} /></button><button className="icon-button danger-text" disabled={busy} aria-label={`Hapus ${folder.name}`} onClick={() => { setDeleting(folder); setError(""); }}><Trash2 size={19} /></button></div>)}</div></>}{!deleting && <Feedback error>{error}</Feedback>}<Feedback>{notice}</Feedback></Sheet>;
+    </ActionConfirmation> : <><form onSubmit={save} className="folder-form"><fieldset className="form-stack" disabled={busy}><label className="field">Nama mapel<input required maxLength={80} value={name} pattern=".*\S.*" onChange={event => setName(event.target.value)} /></label><div className="button-pair"><button className="primary" type="submit">{editing ? "Simpan nama" : <><Plus size={18} />Tambah mapel</>}</button>{editing && <button className="secondary" type="button" onClick={() => { setEditing(null); setName(""); setError(""); }}>Batal</button>}</div></fieldset></form><div>{folders.map(folder => <div className="folder-row" key={folder.id}><strong>{folder.name}</strong><button className="icon-button" disabled={busy} aria-label={`Ubah ${folder.name}`} onClick={() => { setEditing(folder); setName(folder.name); setError(""); }}><PencilLine size={19} /></button><button className="icon-button danger-text" disabled={busy} aria-label={`Hapus ${folder.name}`} onClick={() => { setDeleting(folder); setError(""); }}><Trash2 size={19} /></button></div>)}</div></>}{!deleting && <Feedback error>{error}</Feedback>}<Notification notice={notice} onDismiss={() => setNotice("")} /></Sheet>;
 }

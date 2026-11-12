@@ -10,8 +10,9 @@ const source = { id: "source", segment: "", label: "Sumber" };
 const mobileLabels = { reading: "Bacaan", mindmap: "Visual", song: "Lagu" };
 const media = ["reading", "slides", "song", "mindmap"].map(id => formats.find(format => format.id === id));
 
-export default function MaterialNavigation({ materialId, folderId, pdf }) {
-  const [segment = ""] = useSelectedLayoutSegments();
+export default function MaterialNavigation({ materialId, folderId, pdf, activeSegment, libraryHref }) {
+  const [routeSegment = ""] = useSelectedLayoutSegments();
+  const segment = activeSegment ?? routeSegment;
   const href = `/materi/${encodeURIComponent(materialId)}`;
   const dashboardHref = folderId ? `/buat-media?folder=${encodeURIComponent(folderId)}#materi` : "/buat-media#materi";
 
@@ -25,7 +26,7 @@ export default function MaterialNavigation({ materialId, folderId, pdf }) {
   }
 
   return <header className="material-navigation">
-    <Link className="material-return material-library-link" href={dashboardHref}><ArrowLeft size={18} aria-hidden="true" />Materi</Link>
+    <Link className="material-return material-library-link" href={libraryHref ?? dashboardHref}><ArrowLeft size={18} aria-hidden="true" />Materi</Link>
     <nav className="material-tabs" aria-label="Media materi">
       <div className="material-tab-group">{media.map(tab)}</div>
       <div className="material-tab-source">{tab(source)}</div>

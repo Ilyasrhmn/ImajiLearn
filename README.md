@@ -3,7 +3,7 @@
 Monorepo npm workspaces dengan dua aplikasi Next.js berbasis JavaScript/JSX:
 
 - `apps/web`: web guru di http://localhost:3000.
-- `apps/pwa`: fondasi aplikasi mobile, diakses melalui http://localhost:3000/app.
+- `apps/pwa`: aplikasi mobile di http://localhost:3002 (otomatis ke `/app`).
 
 ## Menjalankan
 
@@ -16,106 +16,30 @@ Gunakan `npm run dev:web` atau `npm run dev:pwa` untuk menjalankan satu aplikasi
 
 ## Integrasi PWA
 
-Jalankan kedua aplikasi dengan `npm run dev`, kemudian buka `/app` melalui
-server web pada port 3000. Server PWA port 3002 memakai base path `/app` dan
-berperan sebagai upstream internal. Akses langsung port 3002 hanya untuk
-diagnostik frontend; API tetap disediakan server web.
+Jalankan `npm run dev`, lalu buka **http://localhost:3002/** untuk PWA.
+Web guru tetap di **http://localhost:3000/**. Kedua server perlu berjalan.
+Port 3002 otomatis mengarahkan ke `/app`. Login, data dan upload memakai
+`/app/api/v1` pada origin PWA, lalu diteruskan ke backend. Origin asing
+ditolak sebelum diteruskan; pemeriksaan Origin backend tetap aktif.
 
-Browser memakai origin web yang sama untuk halaman PWA dan `/api/v1`.
-Dengan demikian cookie sesi host-only dan penyimpanan browser tidak dipisah
-ke origin port 3002. Jangan mengubah `APP_ORIGIN` menjadi origin upstream atau
-melonggarkan pemeriksaan Origin backend. Hanya `/app` beserta turunannya,
-termasuk aset Next.js, yang diteruskan; `/api/v1` dan halaman web tetap lokal.
+Jika alamat berbeda, salin `apps/pwa/.env.example` ke `apps/pwa/.env.local`:
 
-Pada produksi, jalankan kedua server dan isi `PWA_INTERNAL_ORIGIN` dengan
-origin internal server PWA **sebelum build web**. Next.js menyimpan rewrites
-dalam hasil build. Gunakan upstream terpisah dari origin publik agar tidak
-membuat loop. Tanpa konfigurasi ini, build produksi web tetap berjalan tanpa
-routing PWA. `APP_ORIGIN` tetap origin HTTPS publik. Proxy publik harus
-meneruskan `/app` dan `/api/v1` melalui origin web yang sama.
+- `PWA_PUBLIC_ORIGIN`: alamat publik PWA; default development `http://localhost:3002`.
+- `PWA_BACKEND_ORIGIN`: alamat backend yang dijangkau server PWA; default development `http://localhost:3000`.
+- `PWA_BACKEND_PUBLIC_ORIGIN`: sama dengan `APP_ORIGIN` backend; jika kosong mengikuti alamat backend.
 
-PWA menyediakan layar masuk/daftar, Beranda, pengaturan profil/kata sandi,
-serta pustaka materi melalui API web yang sama. Halaman privat memuat data
-setelah sesi diverifikasi; semua akses data tetap dilindungi API server.
-Pergantian akun/logout antar-tab memuat ulang sesi. Karakter dan ikon asli
-berasal dari `@imajilearn/shared`, tanpa salinan artwork baru.
+Produksi membutuhkan origin publik HTTPS yang dikonfigurasi eksplisit.
+API key dan database tetap di backend. Akses lama melalui port 3000/app
+masih didukung jika routing `PWA_INTERNAL_ORIGIN` pada web diaktifkan.
+Alamat development utama PWA adalah port 3002.
 
-Pustaka mencakup unggah PDF/TXT/teks, pencarian, filter mapel, folder,
-sematan, arsip/pulihkan, pindah, hapus, unduh sumber, dan preferensi media/lagu.
-Form yang berubah meminta konfirmasi sebelum ditutup; kesalahan penyimpanan
-tetap menampilkan form untuk dicoba ulang. Beranda memuat materi aktif terbaru.
-
-LKPD dan soal/ujian tersedia melalui `/app/lkpd` dan `/app/ujian`. Editor,
-renderer A4, pola aktivitas, pratinjau, validasi dan akses dokumennya dipakai
-bersama dengan web dari `@imajilearn/shared`. LKPD tetap tersimpan di browser
-dengan key per guru yang sama; ujian memakai API dan autosave server.
-Pustaka ujian mobile ditampilkan lebih dahulu ketika sudah ada naskah.
-Navigasi utama menahan perpindahan ketika edit LKPD atau penyimpanan ujian
-belum selesai. Ganti nama naskah menunggu respons server sebelum menutup form.
-
-Pembuatan LKPD membutuhkan `NEXT_PUBLIC_LKPD_ENDPOINT` pada frontend yang
-digunakan (web maupun PWA), dikonfigurasi sebelum build. Endpoint harus
-memenuhi kontrak yang sama dan, bila berbeda origin, mengizinkan Origin
-aplikasi. Nilai ini adalah URL publik, bukan tempat menyimpan API key.
-Tanpa endpoint, aplikasi menampilkan status belum tersedia; tidak ada
-generator contoh yang disertakan. Isi otomatis soal belum tersedia seperti
-di web; naskah tetap dapat ditulis manual, diduplikasi dan disalin untuk remedial.
-Cetak/PDF menggunakan dialog cetak browser dan pengaturan dokumen web yang sama.
-
-Jadwal mobile tersedia di `/app/jadwal`, termasuk tahun ajaran/semester,
-hari Senin–Sabtu, kelas, mapel, tambah/edit/hapus dan akses folder materi.
-Beranda membaca agenda tersisa minggu berjalan dari API yang sama.
-Google tetap memakai callback dan redirect web yang ada.
-
-Manifest `/app/manifest.webmanifest` memakai ikon PNG dari logo kode asli dan
-mode standalone. Instalasi bergantung pada dukungan browser; produksi wajib
-HTTPS. Service worker hanya didaftarkan pada build produksi, scope `/app/`.
-Cache hanya berisi halaman offline publik, bukan HTML akun, dokumen, API,
-file privat maupun antrean write. Offline editing/sinkronisasi tidak tersedia.
-Update worker menunggu tindakan pengguna, dan tombol update ditahan selama
-editor melaporkan perubahan belum tersimpan. Tidak ada reload otomatis saat
-worker baru ditemukan. Jalankan kedua server produksi di belakang origin
-HTTPS yang sama dan konfigurasi upstream sebelum build web.
-Tidak ada perubahan schema database maupun migrasi penyimpanan LKPD.
-
-### Batas verifikasi PWA
-
-Kesetaraan fitur mengacu pada web yang tersedia di branch `pwa`: akun,
-materi/folder/media, LKPD, ujian dan jadwal. Alur utama telah diperiksa lewat
-browser mobile, HTTP dengan database terisolasi, lint dan build kedua aplikasi.
-Kesalahan koneksi dan pembatalan request juga diuji pada transport bersama.
-Panel mobile mengembalikan fokus keyboard ke pemicunya setelah ditutup.
-
-Sebelum rilis, masih diperlukan uji instalasi dan pembaruan pada perangkat
-nyata melalui HTTPS, hasil cetak/PDF melalui browser pendukung, serta koneksi
-database dan provider LKPD lingkungan tujuan. Pengujian database lokal default
-memakai PGlite; tes konkurensi khusus PostgreSQL penuh memerlukan
-`TEST_DATABASE_URL`. Akun/database pratinjau lokal bersifat sementara.
-
-Uji integrasi fondasi memakai database sintetis terisolasi:
+Tes berikut memakai database sintetis terisolasi untuk sesi, profil, logout,
+aset, cookie dan penolakan origin asing, termasuk akses langsung ke server PWA:
 
 ```sh
 npm run test:pwa:http
-```
-
-Tes ini menjalankan dua server development pada port acak, memeriksa routing
-halaman/aset, registrasi, sesi, profil, penolakan Origin asing, dan logout.
-Server tes dihentikan setelah selesai; database aplikasi tidak digunakan.
-
-Uji kedua aplikasi dalam mode produksi, termasuk rewrite yang disimpan saat
-build, aset mobile, manifest, header service worker dan cookie sesi produksi:
-
-```sh
 npm run test:pwa:production
 ```
-
-Perintah ini membangun kedua aplikasi sendiri dengan upstream port acak.
-Flag internal `IMAJILEARN_TEST_BUILD=pwa-production` memisahkan hasil tes ke
-`.next/pwa-production` pada masing-masing aplikasi agar tidak menimpa build
-normal atau mengganggu preview development. Jangan memakai flag ini pada
-deployment biasa. Database dan proses server tes dibersihkan setelah selesai.
-Origin HTTPS sintetis dipakai untuk memeriksa kebijakan sesi produksi melalui
-HTTP loopback; tes ini belum memverifikasi TLS, instalasi, atau update di HP.
 
 ```sh
 npm run lint

@@ -17,7 +17,7 @@ export default function AuthScreen({ register = false }) {
     const body = { email: values.get("email"), password: values.get("password") };
     if (register) body.name = values.get("name");
     try {
-      const response = await fetch(register ? "/api/v1/auth/register" : "/api/v1/auth/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+      const response = await fetch(register ? "/app/api/v1/auth/register" : "/app/api/v1/auth/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
       const result = await response.json().catch(() => null);
       if (!response.ok || !result?.data?.user?.id) throw new Error(result?.error?.message || "Belum dapat masuk. Coba lagi.");
       navigateAfterSessionChange("/app/beranda");
