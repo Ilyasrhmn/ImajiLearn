@@ -8,7 +8,7 @@ import { Mascot } from "./mascot";
 import { EXAM_TYPES, QUESTION_FORMS, initialExamConfig, validateExamConfig, DIFFICULTIES } from "../lib/exams.mjs";
 import "./exam-source-tools.css";
 
-export default function ExamConfiguration({ compact = false, busy = false, materials, folders, exams, profile, onCreate, onOpen, onDelete, onRename, onDuplicate }) {
+export default function ExamConfiguration({ showHeading = true, compact = false, busy = false, materials, folders, exams, profile, onCreate, onOpen, onDelete, onRename, onDuplicate }) {
   const [config, setConfig] = useState(() => ({ ...initialExamConfig(), grade: profile.grade || "4", subject: null }));
   const [creating, setCreating] = useState(() => !exams.length);
   const [folder,setFolder]=useState("all");
@@ -36,7 +36,7 @@ export default function ExamConfiguration({ compact = false, busy = false, mater
     onCreate(draft);
   }
   return <>
-    <div className="exam-heading"><h1>Soal & ujian</h1><Mascot kind="pen" mood="think" /></div>
+    {showHeading && <div className="exam-heading"><h1>Soal & ujian</h1><Mascot kind="pen" mood="think" /></div>}
     {compact && exams.length > 0 && <button className="button mobile-exam-switch" type="button" onClick={() => setCreating(value => !value)}>{creating ? "Naskah tersimpan" : "Buat naskah"}</button>}
     {(!compact || creating) && <form className="exam-config" onSubmit={submit}>
       <section className="exam-sources" aria-labelledby="exam-sources-title">

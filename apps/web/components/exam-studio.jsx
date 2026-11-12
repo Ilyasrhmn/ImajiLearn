@@ -1,10 +1,11 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
+import Link from "next/link";
+import { ArrowLeft, ClipboardCheck } from "lucide-react";
 import ExamConfiguration from "./exam-configuration";
 import ExamDocumentViewer from "./exam-document-viewer";
 import Modal, { closeModal } from "./modal";
 import Notice from "./notice";
-import TeacherWorkspace from "./teacher-workspace";
 import ActionConfirmation from "@imajilearn/shared/components/action-confirmation.jsx";
 import { listMaterials, listFolders } from "../lib/materials";
 import { readProfile } from "../lib/teacher-profile.mjs";
@@ -13,8 +14,10 @@ import { studioRequest } from "../lib/studio-api.mjs";
 import { createId } from "../lib/id.mjs";
 import { isBlankExamQuestion } from "../lib/exams.mjs";
 import "./exams.css";
+import "./material-detail.css";
+import "./media-studio.css";
 
-export default function ExamStudio({ teacherId, name }) {
+export default function ExamStudio({ teacherId }) {
   const [materials, setMaterials] = useState([]), [folders, setFolders] = useState([]), [exams, setExams] = useState([]);
   const [ready, setReady] = useState(false), [loadError, setLoadError] = useState(false), [profile, setProfile] = useState(() => readProfile(null));
   const [opened, setOpened] = useState(null), [deleteId, setDeleteId] = useState(null), [saved, setSaved] = useState(true), [notice, setNotice] = useState(null);
@@ -180,11 +183,17 @@ export default function ExamStudio({ teacherId, name }) {
     } catch (error) { setDeleteError(error.message); }
     finally { operation.current = false; setDeleting(false); }
   }
-  return <TeacherWorkspace name={profile.name || name} current="/buat-media">
-    <main id="main" className="teacher-home exam-main">
+  return <>
+    <main id="main" className="media-studio material-page exam-studio">
+      <header className="media-studio-header">
+        <Link className="material-return" href="/buat-media"><ArrowLeft size={18} aria-hidden="true" />Buat media</Link>
+        <div><ClipboardCheck size={28} aria-hidden="true" /><h1>Soal & ujian</h1></div>
+      </header>
+      <div className="material-panel exam-main">
       {!ready ? <div className="materials-skeleton" role="status" aria-label="Memuat ujian"><span /><span /></div> : loadError ? <p role="alert">Naskah tidak dapat dimuat. Muat ulang untuk mencoba lagi.</p> : opened ? <>{savingError && <p role="alert">{savingError} <button type="button" className="text-button" onClick={flush}>Coba simpan lagi</button></p>}<ExamDocumentViewer key={opened.id} exam={opened} saved={saved}
         generation={generation} onGenerate={generateQuestions} onStop={() => generationRequest.current?.abort()}
-        onChange={update} onBack={() => open(null)} onRemedial={() => add(pathFor(opened.id) + "/remedial")} /></> : <ExamConfiguration materials={materials} folders={folders} exams={exams} profile={profile} onCreate={config => add("/exams", config)} onOpen={open} onDelete={id => { setDeleteError(""); setDeleteId(id); }} onDuplicate={exam => add(pathFor(exam.id) + "/duplicate")} onRename={rename} />}
+        onChange={update} onBack={() => open(null)} onRemedial={() => add(pathFor(opened.id) + "/remedial")} /></> : <ExamConfiguration showHeading={false} materials={materials} folders={folders} exams={exams} profile={profile} onCreate={config => add("/exams", config)} onOpen={open} onDelete={id => { setDeleteError(""); setDeleteId(id); }} onDuplicate={exam => add(pathFor(exam.id) + "/duplicate")} onRename={rename} />}
+      </div>
     </main>
     {deleteId && <Modal title="Hapus naskah" className="action-confirmation-dialog" dismissible={!deleting} onClose={() => setDeleteId(null)}>
       <ActionConfirmation title="Hapus naskah ini?" confirmLabel="Hapus naskah" busy={deleting} error={deleteError} onCancel={() => closeModal(() => setDeleteId(null))} onConfirm={remove}>
@@ -192,5 +201,5 @@ export default function ExamStudio({ teacherId, name }) {
       </ActionConfirmation>
     </Modal>}
     {notice && <Notice notice={notice} onDismiss={dismissNotice} />}
-  </TeacherWorkspace>;
+  </>;
 }

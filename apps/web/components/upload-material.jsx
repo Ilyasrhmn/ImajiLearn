@@ -1,5 +1,5 @@
 "use client";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { FileText, Upload } from "lucide-react";
 import Modal, { closeModal } from "./modal";
 import ThemedSelect from "./themed-select";
@@ -7,7 +7,7 @@ import { Mascot } from "./mascot";
 import { NO_SUBJECT_LABEL, saveMaterial } from "../lib/materials";
 import { createId } from "../lib/id.mjs";
 
-export default function UploadMaterial({ teacherId, onClose, onSaved, folders, initialFolder = "" }) {
+export default function UploadMaterial({ teacherId, onClose, onSaved, folders, initialFolder = "", embedded = false, onBusyChange }) {
   const [title, setTitle] = useState("");
   const [folderId, setFolderId] = useState(initialFolder);
   const [file, setFile] = useState(null);
@@ -18,6 +18,10 @@ export default function UploadMaterial({ teacherId, onClose, onSaved, folders, i
   const input = useRef(null);
   const request = useRef(0);
   const retry = useRef(null);
+  useEffect(() => {
+    onBusyChange?.(saving);
+    return () => onBusyChange?.(false);
+  }, [saving, onBusyChange]);
 
   async function choose(next) {
     if (!next || saving) return;
@@ -56,8 +60,7 @@ export default function UploadMaterial({ teacherId, onClose, onSaved, folders, i
       onSaved(await saveMaterial(teacherId, material, key));
     } catch (error) { setError(error.message); setSaving(false); }
   }
-  return <Modal title="Unggah materi" onClose={onClose} dismissible={!saving} wide>
-    <form className="source-form" onSubmit={submit}>
+  const content = <form className="source-form" onSubmit={submit}>
       <div className="source-heading"><h2>Unggah materi</h2><Mascot kind="pen" mood="think" /></div>
       <div className="source-field source-folder-field"><label htmlFor="upload-folder">Mata pelajaran (opsional)</label><ThemedSelect id="upload-folder" value={folderId} onChange={event => setFolderId(event.target.value)}><option value="">{NO_SUBJECT_LABEL}</option>{folders.map(folder => <option key={folder.id} value={folder.id}>{folder.name}</option>)}</ThemedSelect></div>
       <div className="source-upload" onDragOver={e => e.preventDefault()} onDrop={e => { e.preventDefault(); choose(e.dataTransfer.files[0]); }}>
@@ -69,7 +72,7 @@ export default function UploadMaterial({ teacherId, onClose, onSaved, folders, i
       <label className="source-field">Judul materi<input value={title} onChange={e => setTitle(e.target.value)} maxLength={120} placeholder="Judul pelajaran Anda" /></label>
       <label className="source-field">Teks materi <span>(opsional jika memakai PDF)</span><textarea rows={3} value={text} onChange={e => setText(e.target.value)} maxLength={40000} placeholder="Atau tempelkan materi di sini…" /></label>
       {error && <p className="source-error" role="alert">{error}</p>}
-      <div className="source-actions"><button type="button" className="source-secondary" onClick={() => closeModal(onClose)} disabled={saving}>Batal</button><button className="upload-button" type="submit" disabled={saving || reading}>{saving ? "Menyimpan…" : reading ? "Membaca file…" : "Simpan materi"}</button></div>
-    </form>
-  </Modal>;
+      <div className="source-actions"><button type="button" className="source-secondary" onClick={() => embedded ? onClose() : closeModal(onClose)} disabled={saving}>Batal</button><button className="upload-button" type="submit" disabled={saving || reading}>{saving ? "Menyimpan…" : reading ? "Membaca file…" : "Simpan materi"}</button></div>
+    </form>;
+  return embedded ? content : <Modal title="Unggah materi" onClose={onClose} dismissible={!saving} wide>{content}</Modal>;
 }
