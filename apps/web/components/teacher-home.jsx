@@ -58,6 +58,8 @@ export default function TeacherHome({ teacherId, name }) {
     return () => { active = false; controller.abort(); };
   }, [teacherId, termKey, attempt]);
 
+  const hour = now?.getHours();
+  const greeting = now ? hour < 11 ? "Selamat pagi" : hour < 15 ? "Selamat siang" : hour < 18 ? "Selamat sore" : "Selamat malam" : "Halo";
   const scheduleReady = schedule?.termKey === termKey;
   const lessons = now && scheduleReady ? todayLessons(schedule.entries, now) : [];
   const minutes = now ? now.getHours() * 60 + now.getMinutes() : 0;
@@ -70,13 +72,12 @@ export default function TeacherHome({ teacherId, name }) {
   return <TeacherWorkspace name={name} current="/beranda">
     <main id="main" className="teacher-home">
       <section className="home-welcome" aria-labelledby="home-welcome-title">
-        <div><h1 id="home-welcome-title">Besok mengajar apa{name?.trim() ? `, ${name.trim()}` : ""}?</h1><button className="upload-button" type="button" onClick={() => setUploading(true)}><Upload size={20} aria-hidden="true" />Unggah materi</button></div>
+        <div><p className="home-greeting">{greeting},</p><h1 id="home-welcome-title">{name?.trim()}</h1>{now && <time className="home-welcome-date">{now.toLocaleDateString("id-ID", { weekday:"long", day:"numeric", month:"long", year:"numeric" })}</time>}<button className="upload-button" type="button" onClick={() => setUploading(true)}><Upload size={20} aria-hidden="true" />Unggah materi</button></div>
         <div className="home-welcome-characters" aria-hidden="true"><Mascot kind="book" /><Mascot kind="pencil" mood="think" /></div>
       </section>
       <div className="home-columns">
         <section className="home-section" aria-labelledby="home-schedule-title">
           <div className="home-section-heading"><h2 id="home-schedule-title">Jadwal hari ini</h2></div>
-          {now && <p className="home-date">{now.toLocaleDateString("id-ID", { weekday: "long", day: "numeric", month: "long" })}</p>}
           {scheduleError ? <div className="home-error" role="alert"><p>Jadwal belum dapat dimuat.</p><button className="source-secondary" onClick={retry}>Coba lagi</button></div>
             : !scheduleReady || !now ? <LoadingRows label="Memuat jadwal" />
             : lessons.length ? <ul className="home-lessons">{lessons.map(slot => {

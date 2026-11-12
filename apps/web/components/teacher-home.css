@@ -18,7 +18,7 @@
 .home-workspace .teacher-home { max-width: none; margin-left: var(--home-sidebar-width); padding: 112px 40px 64px; transition: margin-left 220ms ease; }
 .home-welcome { display: flex; align-items: center; justify-content: space-between; gap: 24px; min-height: 290px; padding: 36px 40px; border-radius: 28px; background: #f1ecdc; }
 .home-welcome > div:first-child { flex: 1; min-width: 0; }
-.home-welcome h1 { max-width: 660px; margin: 0 0 28px; font-size: clamp(28px, 3vw, 44px); line-height: 1.2; overflow-wrap: anywhere; }
+.home-welcome h1 { max-width: 660px; margin: 4px 0 8px; font-size: clamp(28px, 3vw, 44px); line-height: 1.2; overflow-wrap: anywhere; }
 .home-welcome-characters { display: flex; align-items: center; width: 300px; flex-shrink: 0; }
 .home-welcome-characters .mascot { width: 56%; height: 230px; }
 .home-welcome-characters .mascot + .mascot { width: 44%; height: 200px; }
@@ -58,7 +58,8 @@
 .home-section-heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; min-height: 40px; }
 .home-section-heading h2 { margin: 0; font-size: 25px; }
 .home-text-link { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; color: #a4402b; font-weight: 800; text-decoration: none; }
-.home-date { margin: 8px 0 20px; color: #5b706c; font-size: 15px; }
+.home-greeting { margin:0; color:var(--rust, #b64f38); font-size:20px; font-weight:750; }
+.home-welcome-date { display:block; margin-bottom:24px; color:#5b706c; font-size:16px; }
 .home-lessons, .home-recent { list-style: none; padding: 0; margin: 20px 0 0; }
 .home-lessons { display: grid; gap: 12px; }
 .home-lessons li { display: flex; align-items: center; gap: 18px; min-height: 100px; padding: 18px; border: 1px solid var(--line); border-radius: 16px; background: #fffdf8; }
