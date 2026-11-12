@@ -1,6 +1,5 @@
 import { AnnotationMode, getDocument, OPS, Util } from "pdfjs-dist/legacy/build/pdf.mjs";
 import { ApiError } from "../core/errors.mjs";
-import { sourceBlocks, sourceFormulas, sourceRows } from "./pdf-source-layout.mjs";
 import { sourceTextLimit, sourceTextLimitMessage } from "../../lib/material-limits.mjs";
 import { sectionLabel } from "../../lib/material-section-label.mjs";
 
@@ -73,6 +72,29 @@ function pageText(items, viewport) {
   return items.filter(item => typeof item.str === "string" && item.str.trim()).map(item => {
     const [, , , , x, y] = Util.transform(viewport.transform, item.transform);
     return { text: item.str.trim(), x, y, width: item.width * viewport.scale, height: item.height * viewport.scale };
+  });
+}
+
+function headingRows(items) {
+  const rows = [];
+  for (const item of [...items].sort((a, b) => b.height - a.height)) {
+    const row = rows.find(row => Math.abs(row.y - item.y) <= 2 || (
+      item.height > 0 && item.height < row.height * .8 && Math.abs(row.y - item.y) <= row.height * .6 &&
+      row.items.some(base => base.x - 2 <= item.x && base.x + base.width + row.height * .35 >= item.x)
+    ));
+    if (row) row.items.push(item);
+    else rows.push({ y: item.y, height: item.height, items: [item] });
+  }
+  return rows.sort((a, b) => a.y - b.y).map(({ items, height, y }) => {
+    items.sort((a, b) => a.x - b.x);
+    const text = items.map((item, index) => {
+      const previous = items[index - 1];
+      const gap = previous ? item.x - previous.x - previous.width : 0;
+      const script = item.height < height * .8 && Math.abs(y - item.y) > 2;
+      const space = previous && !script && (gap > height * .11 || !/^[,.;:!?)]/u.test(item.text) && gap > height * .065);
+      return (space ? " " : "") + item.text;
+    }).join("");
+    return { height, text };
   });
 }
 
@@ -180,71 +202,26 @@ export async function findPdfFigures(bytes, topic, range) {
   }
 }
 
-const imageOperations = new Set([
-  OPS.paintImageXObject, OPS.paintInlineImageXObject, OPS.paintInlineImageXObjectGroup, OPS.paintImageXObjectRepeat,
-]);
-
 export async function readPdfSourcePage(bytes, number) {
-  const loading = openPdf(bytes, { maxImageSize: 16_000_000, fontExtraProperties: true });
-  const timer = setTimeout(() => { void loading.destroy().catch(() => {}); }, 8000);
+  const loading = openPdf(bytes, { maxImageSize: 16_000_000 });
+  const timer = setTimeout(() => { void loading.destroy().catch(() => {}); }, 15000);
   try {
     const pdf = await loading.promise;
-    if (number > pdf.numPages || number > 100) throw new ApiError(404, "SOURCE_PAGE_NOT_FOUND", "Halaman sumber tidak ditemukan.");
+    if (!Number.isInteger(number) || number < 1 || number > Math.min(pdf.numPages, 100)) {
+      throw new ApiError(404, "SOURCE_PAGE_NOT_FOUND", "Halaman sumber tidak ditemukan.");
+    }
     const page = await pdf.getPage(number);
     const base = page.getViewport({ scale: 1 });
-    const viewport = page.getViewport({ scale: 1300 / Math.max(base.width, base.height) });
-    const [{ items }, operations] = await Promise.all([page.getTextContent(), page.getOperatorList()]);
-    const fonts = new Map();
-    const rows = sourceRows(items.filter(item => item.str?.trim()).map(item => {
-      if (!fonts.has(item.fontName)) {
-        const name = page.commonObjs.has(item.fontName) ? page.commonObjs.get(item.fontName)?.name ?? "" : "";
-        fonts.set(item.fontName, { bold: /bold|heavy|black|demi/i.test(name), italic: /italic|oblique/i.test(name) });
-      }
-      const [, , , , x, y] = Util.transform(viewport.transform, item.transform);
-      return { x, y, text: item.str.trim(), width: item.width * viewport.scale, height: item.height * viewport.scale, ...fonts.get(item.fontName) };
-    }));
-    const formulas = sourceFormulas(rows);
-    const illustrations = [];
-    const croppedRows = new Set();
-    const hasImages = operations.fnArray.some(op => imageOperations.has(op));
-    if (hasImages || formulas.length) {
-      const factory = pdf.canvasFactory;
-      const { canvas, context } = factory.create(Math.ceil(viewport.width), Math.ceil(viewport.height));
-      try {
-        const task = page.render({ canvas, canvasContext: context, viewport, recordImages: hasImages, annotationMode: AnnotationMode.DISABLE });
-        await task.promise;
-        const bounds = hasImages ? imageBounds(task.imageCoordinates, canvas.width, canvas.height, 48, 48) : [];
-        const regions = [
-          ...formulas.map(group => ({
-            group,
-            left: Math.max(0, Math.floor(Math.min(...group.map(row => row.x)) - 5)),
-            right: Math.min(canvas.width, Math.ceil(Math.max(...group.map(row => row.right)) + 5)),
-            top: Math.max(0, Math.floor(Math.min(...group.map(row => row.top)) - 2)),
-            bottom: Math.min(canvas.height, Math.ceil(group.at(-1).y + group.at(-1).height * .35)),
-          })),
-          ...bounds,
-        ];
-        let imageBytes = 0;
-        for (const box of regions) {
-          const width = Math.floor(box.right - box.left), height = Math.floor(box.bottom - box.top);
-          if (width < 1 || height < 1) continue;
-          const crop = factory.create(width, height);
-          try {
-            crop.context.drawImage(canvas, box.left, box.top, width, height, 0, 0, width, height);
-            const mime = box.group ? "image/png" : "image/jpeg";
-            const image = box.group ? crop.canvas.toBuffer("image/png") : crop.canvas.toBuffer("image/jpeg", 84);
-            if (imageBytes + image.length > 2 * 1024 * 1024) continue;
-            imageBytes += image.length;
-            illustrations.push({ y: box.top, kind: box.group ? "formula" : "image", src: `data:${mime};base64,${image.toString("base64")}`, width, height,
-              lines: box.group?.filter(row => !/^_{4,}$/u.test(row.text)).map(row => row.text) });
-            for (const row of box.group ?? []) croppedRows.add(row);
-          } finally { factory.destroy(crop); }
-        }
-      } finally { factory.destroy({ canvas, context }); }
-    }
-
-    const blocks = sourceBlocks(rows.filter(row => !croppedRows.has(row)), illustrations, viewport.height);
-    return { blocks, page: number, next: number < Math.min(pdf.numPages, 100) ? number + 1 : null };
+    const viewport = page.getViewport({ scale: 1800 / Math.max(base.width, base.height) });
+    const surface = pdf.canvasFactory.create(Math.ceil(viewport.width), Math.ceil(viewport.height));
+    try {
+      await page.render({ canvas: surface.canvas, canvasContext: surface.context, viewport,
+        annotationMode: AnnotationMode.DISABLE }).promise;
+      const image = surface.canvas.toBuffer("image/jpeg", 88);
+      return { page: number, next: number < Math.min(pdf.numPages, 100) ? number + 1 : null,
+        preview: `data:image/jpeg;base64,${image.toString("base64")}`,
+        width: surface.canvas.width, height: surface.canvas.height };
+    } finally { pdf.canvasFactory.destroy(surface); }
   } catch (error) {
     if (error instanceof ApiError) throw error;
     throw new ApiError(422, "SOURCE_PAGE_UNREADABLE", "Halaman PDF tidak dapat ditampilkan.");
@@ -292,7 +269,7 @@ export async function describePdfSections(bytes) {
         if (detectHeadings && heading && !headings.has(number)) headings.set(number, heading.str.trim().slice(0, 120));
         const bodyHeights = items.filter(item => item.str?.trim().length >= 30).map(item => item.height).sort((a, b) => a - b);
         const bodyHeight = bodyHeights[Math.floor(bodyHeights.length / 2)] ?? 0;
-        const rows = sourceRows(pageText(items, page.getViewport({ scale: 1 })));
+        const rows = headingRows(pageText(items, page.getViewport({ scale: 1 })));
         const labels = rows.filter(row => row.height > bodyHeight * 1.06 && row.text.length < 100 &&
           /^(?:\d+(?:\.\d+)*[.)]|[A-Z][.)]|\([a-z0-9]+\)|[a-z]\))\s*\p{L}/u.test(row.text));
         if (labels[0]) subheadings.set(number, labels[0].text);
