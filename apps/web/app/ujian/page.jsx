@@ -4,5 +4,5 @@ import ExamStudio from "../../components/exam-studio";
 export const metadata = { title: "Soal dan ujian" };
 export default async function Page() {
   const teacher = await requirePageTeacher();
-  return <><SessionReload /><ExamStudio key={teacher.id} teacherId={teacher.id} name={teacher.name} /></>;
+  return <><SessionReload /><ExamStudio key={teacher.id} teacherId={teacher.id} /></>;
 }

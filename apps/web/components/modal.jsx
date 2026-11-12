@@ -84,8 +84,17 @@ export function closeModal(onClose) {
   animation.finished.catch(() => {}).then(onClose);
 }
 
-export default function Modal({ title, children, onClose, wide = false, className = "", dismissible = true, showClose = true }) {
+export default function Modal({ title, children, onClose, beforeClose, wide = false, className = "", dismissible = true, showClose = true }) {
   const ref = useRef(null);
+  const closing = useRef(false);
+  async function requestClose() {
+    if (!dismissible || closing.current) return;
+    closing.current = true;
+    try {
+      if (beforeClose && await beforeClose() === false) return;
+      closeModal(onClose);
+    } finally { closing.current = false; }
+  }
   useEffect(() => {
     const dialog = ref.current;
     const previous = document.activeElement;
@@ -110,7 +119,7 @@ export default function Modal({ title, children, onClose, wide = false, classNam
       className={`modal${wide ? " modal-wide" : ""}${className ? ` ${className}` : ""}`}
       onCancel={(e) => {
         e.preventDefault();
-        if (dismissible) closeModal(onClose);
+        if (dismissible) void requestClose();
       }}
       onClick={(e) => {
         if (dismissible && e.target === ref.current) {
@@ -121,7 +130,7 @@ export default function Modal({ title, children, onClose, wide = false, classNam
             e.clientY < r.top ||
             e.clientY > r.bottom
           )
-            closeModal(onClose);
+            void requestClose();
         }
       }}
     >
@@ -129,7 +138,7 @@ export default function Modal({ title, children, onClose, wide = false, classNam
         type="button"
         className="icon-button modal-close"
         aria-label="Tutup dialog"
-        onClick={() => closeModal(onClose)}
+        onClick={() => void requestClose()}
       >
         <Icon name="close" />
       </button>}
