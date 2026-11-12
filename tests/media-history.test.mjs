@@ -34,7 +34,7 @@ test("history groups saved media by source and feature without regenerating or e
     const reading = createMaterialReading(db, async () => { calls++; return { content }; });
     const prepared = createPreparedLesson(db, reading, "reading", () => assert.fail("No image needed"),
       async () => ({ content: { generate: false, figureId: null } }));
-    await prepared.generate(owner.id, first.id);
+    while ((await prepared.generate(owner.id, first.id)).status === "preparing") {}
     await reading.generate(owner.id, second.id);
     await reading.generate(owner.id, unrelated.id);
     await reading.generate(other.id, otherSource.id);
@@ -65,7 +65,7 @@ test("history groups saved media by source and feature without regenerating or e
     assert.deepEqual(await materialMediaHistory(db, owner.id, second.id, new URLSearchParams({ feature: "reading" })), rows);
     assert.equal((await history("slides")).items.length, 0);
     const before = calls;
-    await prepared.generate(owner.id, first.id);
+    while ((await prepared.generate(owner.id, first.id)).status === "preparing") {}
     assert.equal(calls, before);
     assert.equal((await history("reading")).items.length, 2);
     await assert.rejects(materialMediaHistory(db, other.id, source.id, new URLSearchParams({ feature: "reading" })), { status: 404 });

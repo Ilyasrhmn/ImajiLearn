@@ -42,7 +42,18 @@ export async function generateLessonParts(source, generate, combine, renew) {
     }
   }
 
-  const parts = [];
-  for (const chunk of chunks) parts.push(...await generatePart(chunk, chunks.length > 1));
+  const results = new Array(chunks.length);
+  let cursor = 0;
+  let failure;
+  async function worker() {
+    while (!failure && cursor < chunks.length) {
+      const index = cursor++;
+      try { results[index] = await generatePart(chunks[index], chunks.length > 1); }
+      catch (error) { failure ??= error; }
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(2, chunks.length) }, worker));
+  if (failure) throw failure;
+  const parts = results.flat();
   return parts.length === 1 ? parts[0] : combine(parts, source.title);
 }

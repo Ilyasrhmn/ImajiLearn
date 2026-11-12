@@ -45,6 +45,7 @@ test("a lesson stays hidden until every image is ready, resumes failures and reu
           composition: ["Close-up of a leaf", "Sunlight reaches its surface"], details: "A green leaf attached to a stem." } };
     });
     assert.equal(await prepare.get(owner.id, source.id), null);
+    assert.equal((await prepare.generate(owner.id, source.id)).status, "preparing");
     const pending = prepare.generate(owner.id, source.id);
     try {
       await Promise.race([started.promise, pending]);
@@ -58,7 +59,8 @@ test("a lesson stays hidden until every image is ready, resumes failures and reu
     });
     assert.equal(original.sourcePage, 1);
     assert.ok(original.bytes.length > 4);
-    const result = await prepare.generate(owner.id, source.id);
+    let result;
+    do { result = await prepare.generate(owner.id, source.id); } while (result.status === "preparing");
     assert.deepEqual(result.illustrations, [
       { ready: true, skipped: false }, { ready: true, skipped: false }, { ready: false, skipped: true },
     ]);
@@ -76,7 +78,14 @@ test("a lesson stays hidden until every image is ready, resumes failures and reu
     };
     const deck = createPreparedLesson(storage.db, createMaterialSlides(storage.db, async () => ({ content: slides })),
       "slides", async () => readyImage, async () => ({ content: { generate: false, figureId: null } }));
-    const preparedDeck = await deck.generate(owner.id, source.id);
+    const firstStep = await deck.generate(owner.id, source.id);
+    assert.deepEqual(firstStep, { status: "preparing", completed: 0, total: 13 });
+    assert.equal(await deck.get(owner.id, source.id), null);
+    const secondStep = await deck.generate(owner.id, source.id);
+    assert.deepEqual(secondStep, { status: "preparing", completed: 2, total: 13 });
+    assert.equal(await deck.get(owner.id, source.id), null);
+    let preparedDeck;
+    do { preparedDeck = await deck.generate(owner.id, source.id); } while (preparedDeck.status === "preparing");
     assert.equal(preparedDeck.illustrations.length, 13);
     assert.ok(preparedDeck.illustrations.every(status => status.skipped));
     assert.deepEqual(await deck.get(owner.id, source.id), preparedDeck);

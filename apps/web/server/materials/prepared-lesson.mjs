@@ -44,9 +44,12 @@ export function createPreparedLesson(db, textService, feature, generateImage, ge
   return {
     get,
     async generate(userId, materialId) {
-      const content = await textService.generate(userId, materialId);
+      const existing = await textService.get(userId, materialId);
+      const content = existing ?? await textService.generate(userId, materialId);
       const state = await inspect(userId, materialId, content);
       if (state.ready) return { ...content, revision: state.source.revision, illustrations: state.statuses };
+      if (!existing) return { status: "preparing",
+        completed: state.statuses.filter(item => item.ready || item.skipped).length, total: state.statuses.length };
       const job = await db.$transaction(async tx => {
         const source = await getOwnedMaterial(tx, userId, materialId);
         if (!source || source.revision !== state.source.revision) throw changed();
@@ -56,7 +59,7 @@ export function createPreparedLesson(db, textService, feature, generateImage, ge
         if (row?.leaseUntil > new Date()) {
           throw new ApiError(409, "LESSON_IN_PROGRESS", "Media sedang disiapkan. Coba buka lagi sebentar.");
         }
-        await consumeRateLimit(tx, "lesson-preparation:" + feature + ":" + userId, 10, 15 * 60_000);
+        await consumeRateLimit(tx, "lesson-preparation:" + feature + ":" + userId, 60, 15 * 60_000);
         const leaseId = randomUUID();
         await tx[delegate].update({
           where: { materialId_revision: key }, data: { leaseId, leaseUntil: new Date(Date.now() + leaseDuration) },
@@ -66,8 +69,8 @@ export function createPreparedLesson(db, textService, feature, generateImage, ge
       try {
         const topics = entries(content).map(entry => reading ? entry.heading : entry.title);
         const sourceFigures = await lessonSourceFigures(db, userId, job.source, topics);
-        for (const [index, status] of state.statuses.entries()) {
-          if (status.ready || status.skipped) continue;
+        const pending = state.statuses.flatMap((status, index) => status.ready || status.skipped ? [] : [index]);
+        async function prepare(index) {
           const renewal = await db[delegate].updateMany({
             where: job.reservation, data: { leaseUntil: new Date(Date.now() + leaseDuration) },
           });
@@ -76,6 +79,14 @@ export function createPreparedLesson(db, textService, feature, generateImage, ge
           if (reading) await imageService.generate(userId, materialId, false, index, preparation);
           else await imageService.generate(userId, materialId, job.source.revision, index, false, preparation);
         }
+        const results = await Promise.allSettled(pending.slice(0, 2).map(prepare));
+        const failed = results.find(result => result.status === "rejected");
+        if (failed) throw failed.reason;
+        const progress = await inspect(userId, materialId, content);
+        if (!progress.ready) return {
+          status: "preparing", completed: progress.statuses.filter(item => item.ready || item.skipped).length,
+          total: progress.statuses.length,
+        };
         const result = await get(userId, materialId);
         if (!result) throw new ApiError(502, "LESSON_NOT_READY", "Gambar materi belum lengkap. Coba lagi.");
         await db[delegate].updateMany({
