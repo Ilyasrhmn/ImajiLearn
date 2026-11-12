@@ -1,0 +1,64 @@
+.exam-section-dialog .source-section-picker { text-align: start; }
+.exam-section-dialog .source-section-picker ul { display: grid; gap: 3px; margin: 0; padding: 0; list-style: none; }
+.exam-section-dialog .source-section-picker li button {
+  display: grid;
+  grid-template-columns: 17px minmax(0, 1fr);
+  align-items: start;
+  gap: 10px;
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 11px;
+  text-align: start;
+  color: inherit;
+  background: transparent;
+  border: 0;
+  border-radius: 12px;
+  cursor: pointer;
+  overflow-wrap: anywhere;
+}
+.exam-section-dialog .source-section-picker li button:is(:hover, [data-reading-page], [aria-pressed="true"]) { background: #f5eee5; }
+.exam-section-dialog .source-section-picker li button[aria-pressed="true"] { font-weight: 750; }
+.exam-section-dialog .source-section-mark {
+  display: grid;
+  place-items: center;
+  width: 17px;
+  height: 17px;
+  margin-top: 3px;
+  border: 1px solid #88948a;
+  border-radius: 50%;
+}
+.exam-section-dialog .source-section-picker [aria-pressed="true"] .source-section-mark {
+  color: #fffdf8;
+  border-color: #a7452f;
+  background: #a7452f;
+}
+.exam-section-dialog .source-section-picker small { margin-top: 2px; color: var(--material-secondary); font-weight: 500; }
+.exam-section-dialog .source-section-picker small { display: block; }
+.exam-section-dialog .source-section-manual { min-height: 44px; padding-inline: 8px; color: #873e29; background: transparent; border: 0; cursor: pointer; }
+.exam-section-dialog .source-page-range {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: end;
+  gap: 12px;
+  padding: 6px;
+}
+.exam-section-dialog .source-page-range label { min-width: 0; }
+.exam-section-dialog .source-page-range input {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  min-height: 44px;
+  margin-top: 4px;
+  padding: 9px 10px;
+  border: 1px solid #a5b7aa;
+  border-radius: 10px;
+  background: #fffdf8;
+  color: inherit;
+}
+.exam-section-dialog .source-page-range input:focus-visible { outline-width: 2px; outline-offset: 2px; }
+.exam-section-dialog .source-section-create { margin-top: 14px; width: 100%; min-height: 44px; }
+.exam-section-dialog { width:min(540px,calc(100% - 32px)); }
+.exam-section-dialog .source-section-picker ul { max-height:46dvh; overflow:auto; }
+.exam-section-dialog .source-error { color:#9f392c; }
+.exam-section-dialog .source-section-create { background:var(--rust,#b64f38);color:#fff;font:inherit;font-weight:750;border:0;padding:12px;border-radius:12px; }
+.exam-source-scope { display:block; padding:8px 12px; border:0; background:transparent; color:var(--rust,#b64f38); font:inherit; font-size:14px; text-align:left; cursor:pointer; }
