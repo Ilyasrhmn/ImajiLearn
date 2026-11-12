@@ -3,7 +3,7 @@ import { apiPath } from "@imajilearn/shared/lib/session.mjs";
 
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
-import { ChevronLeft, ChevronRight, Maximize2, Minimize2, Volume2, VolumeX } from "lucide-react";
+import { ChevronLeft, ChevronRight, Maximize2, Minimize2, RefreshCw, Volume2, VolumeX } from "lucide-react";
 import { studioRequest } from "../lib/studio-api.mjs";
 import "./material-slides.css";
 
@@ -55,7 +55,11 @@ export default function MaterialSlides({ deck, teacherId, illustrationsPath, rev
       setError("Browser ini belum bisa membacakan slide.");
       return;
     }
-    const utterance = new window.SpeechSynthesisUtterance([slide.title, ...slide.points].join("\n"));
+    const narration = [slide.title, ...slide.points].map(text => {
+      const sentence = text.trim();
+      return /[.!?\u2026]$/.test(sentence) ? sentence : `${sentence}.`;
+    }).join("\n\n");
+    const utterance = new window.SpeechSynthesisUtterance(narration);
     utterance.lang = "id-ID";
     const voice = synthesis.getVoices().find(item => /^id(?:[-_]|$)/i.test(item.lang));
     if (voice) utterance.voice = voice;
@@ -118,17 +122,18 @@ export default function MaterialSlides({ deck, teacherId, illustrationsPath, rev
         <button type="button" className="icon-button source-secondary" aria-label="Slide berikutnya"
           disabled={index === deck.slides.length - 1} onClick={() => move(1)}><ChevronRight size={20} aria-hidden="true" /></button>
       </div>
-      <button type="button" className="source-secondary" onClick={speak}>
-        {speaking ? <VolumeX size={18} aria-hidden="true" /> : <Volume2 size={18} aria-hidden="true" />}
-        {speaking ? "Hentikan suara" : "Bacakan slide"}
-      </button>
+      <div className="material-slide-actions">
+        <button type="button" className="source-secondary" onClick={speak}>
+          {speaking ? <VolumeX size={18} aria-hidden="true" /> : <Volume2 size={18} aria-hidden="true" />}
+          {speaking ? "Hentikan suara" : "Bacakan slide"}
+        </button>
+        {visual?.ready && <button type="button" className="source-secondary material-slide-regenerate" onClick={replaceImage} disabled={replacing}>
+          <RefreshCw size={18} aria-hidden="true" className={replacing ? "is-busy" : undefined} />
+          {replacing ? "Membuat ilustrasi\u2026" : "Buat ulang ilustrasi"}
+        </button>}
+      </div>
     </div>
-    {visual?.ready && <div className="material-slide-regenerate">
-      <button type="button" className="source-secondary" onClick={replaceImage} disabled={replacing}>
-        {replacing ? "Membuat ilustrasi…" : "Buat ulang ilustrasi"}
-      </button>
-      {imageError && <p className="source-error" role="alert">{imageError}</p>}
-    </div>}
+    {imageError && <p className="source-error" role="alert">{imageError}</p>}
     {error && <p className="source-error" role="alert">{error}</p>}
   </article>;
 }
