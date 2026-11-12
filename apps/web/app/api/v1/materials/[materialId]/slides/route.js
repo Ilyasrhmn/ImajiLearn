@@ -5,7 +5,7 @@ import { database } from "@/server/core/database.mjs";
 import { endpoint } from "@/server/core/http.mjs";
 import { createMaterialSlides } from "@/server/materials/slides.mjs";
 import { createPreparedLesson } from "@/server/materials/prepared-lesson.mjs";
-import { generateIllustration } from "@/server/ai/providers/kie-image.mjs";
+import { generateIllustration } from "@/server/ai/providers/lesson-image.mjs";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;

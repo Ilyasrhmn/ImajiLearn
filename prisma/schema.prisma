@@ -136,6 +136,8 @@ model MediaDraft {
 }
 
 model MaterialReading {
+  imagePlan Json? @db.JsonB
+  zImageRequests Int @default(0)
   materialId String   @db.Uuid
   revision   String   @db.Char(64)
   content    Json?    @db.JsonB
@@ -153,6 +155,7 @@ model MaterialReading {
 }
 
 model MaterialReadingIllustration {
+  imageProvider String? @db.VarChar(16)
   providerTaskId String? @db.VarChar(128)
   materialId   String @db.Uuid
   revision     String @db.Char(64)
@@ -184,6 +187,8 @@ model MaterialVisual {
 }
 
 model MaterialSlideDeck {
+  imagePlan Json? @db.JsonB
+  zImageRequests Int @default(0)
   materialId String    @db.Uuid
   revision   String    @db.Char(64)
   content    Json?     @db.JsonB
@@ -229,6 +234,7 @@ model MaterialSong {
 }
 
 model MaterialSlideIllustration {
+  imageProvider String? @db.VarChar(16)
   providerTaskId String? @db.VarChar(128)
   materialId String    @db.Uuid
   revision   String    @db.Char(64)

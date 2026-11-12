@@ -37,6 +37,8 @@ test("a lesson stays hidden until every image is ready, resumes failures and reu
       if (imageCalls === 1) { started.resolve(); await release.promise; throw new Error("image service interrupted"); }
       return readyImage;
     }, async (_feature, { messages }) => {
+      const input = JSON.parse(messages[1].content);
+      if (input.purpose === "illustration-routing") return { content: { sections: input.sections.map(({ index }) => ({ index, complexity: "complex", priority: 50 })) } };
       planCalls++;
       const { title } = JSON.parse(messages[1].content);
       assert.notEqual(title, "Akar", "An exact caption match should not need an AI planner");
@@ -77,7 +79,12 @@ test("a lesson stays hidden until every image is ready, resumes failures and reu
       slides: Array.from({ length: 13 }, (_, index) => ({ title: "Bagian " + index, points: ["Akar menyerap air."] })),
     };
     const deck = createPreparedLesson(storage.db, createMaterialSlides(storage.db, async () => ({ content: slides })),
-      "slides", async () => readyImage, async () => ({ content: { generate: false, figureId: null } }));
+      "slides", async () => readyImage, async (_feature, { messages }) => {
+        const input = JSON.parse(messages[1].content);
+        return { content: input.purpose === "illustration-routing"
+          ? { sections: input.sections.map(({ index }) => ({ index, complexity: "complex", priority: 50 })) }
+          : { generate: false, figureId: null } };
+      });
     const firstStep = await deck.generate(owner.id, source.id);
     assert.deepEqual(firstStep, { status: "preparing", completed: 0, total: 13 });
     assert.equal(await deck.get(owner.id, source.id), null);
