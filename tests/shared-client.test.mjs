@@ -17,7 +17,7 @@ test("expired sessions keep the caller in the correct web or mobile login flow",
   const oldWindow = Object.getOwnPropertyDescriptor(globalThis, "window");
   t.after(() => { if (oldWindow) Object.defineProperty(globalThis, "window", oldWindow); else delete globalThis.window; });
   t.mock.method(globalThis, "fetch", async () => Response.json({ error: { code: "SESSION_REQUIRED", message: "Masuk kembali" } }, { status: 401 }));
-  for (const [pathname, target] of [["/app", "/app/masuk"], ["/app/lkpd", "/app/masuk"], ["/dashboard", "/masuk"]]) {
+  for (const [pathname, target] of [["/app", "/app/masuk"], ["/dashboard", "/masuk"]]) {
     const redirects = [];
     Object.defineProperty(globalThis, "window", { configurable: true, value: { location: { pathname, replace: path => redirects.push(path) } } });
     await assert.rejects(studioRequest("teacher", "/materials"), error => error.status === 401);

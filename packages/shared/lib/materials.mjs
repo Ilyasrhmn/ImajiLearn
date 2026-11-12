@@ -45,11 +45,6 @@ export async function saveMaterial(teacherId, material, key) {
 }
 
 export async function updateMaterial(teacherId, material, changes) {
-  if (Object.hasOwn(changes, "selectedMedia")) {
-    const { data } = await studioRequest(teacherId, `/media-preferences/${encodeURIComponent(material.id)}`,
-      { method: "PUT", body: changes, version: material.preferenceVersion ?? 0 });
-    return { ...material, selectedMedia: data.selectedMedia, songTemplateId: data.songTemplateId, preferenceVersion: data.resourceVersion };
-  }
   const body = Object.hasOwn(changes, "folderId") ? { ...changes, folderId: changes.folderId || null } : changes;
   const { data } = await studioRequest(teacherId, materialPath(material.id), { method: "PATCH", body, version: material.resourceVersion });
   return { ...material, ...adapt(data) };
