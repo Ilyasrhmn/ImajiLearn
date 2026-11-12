@@ -10,7 +10,6 @@ import MaterialSlides from "./material-slides";
 import MaterialSong from "./material-song";
 import MaterialSource from "./material-source";
 import SectionPicker from "./material-section-picker";
-import MaterialBatch from "./material-batch";
 import { Mascot } from "./mascot";
 import MaterialProjector from "./material-projector";
 import Modal, { closeModal } from "./modal";
@@ -34,21 +33,22 @@ export default function MaterialDetail({ teacherId, material, format, parent, li
   const panel = useRef(null);
   const router = useRouter();
   const search = useSearchParams();
-  const pickerRef = useRef(null);
   const [selecting, setSelecting] = useState(false);
+  const [previewRanges, setPreviewRanges] = useState(null);
   const [visiblePage, setVisiblePage] = useState(material.pageStart ?? 1);
-  const [batch, setBatch] = useState(() => search.get("create") === "1");
   const [history, setHistory] = useState(null);
   const [historyError, setHistoryError] = useState("");
   const [historyVersion, setHistoryVersion] = useState(0);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [requested, setRequested] = useState(() => search.get("resume") === "1" || search.get("make") === "1");
-  const [sectionError, setSectionError] = useState("");
   const working = useRef(false);
+  const generation = useRef(null);
+  useEffect(() => () => generation.current?.abort(), []);
   const [output, setOutput] = useState(null);
   const [loadError, setLoadError] = useState(false);
   const [attempt, setAttempt] = useState(0);
+  const [preparation, setPreparation] = useState(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [dismissed, setDismissed] = useState(false);
@@ -64,12 +64,14 @@ export default function MaterialDetail({ teacherId, material, format, parent, li
   }, [teacherId, original.id, original.archived]);
   const isPdf = original.file?.mime === "application/pdf";
   const current = material.parentId ? { first: material.pageStart, last: material.pageEnd, pages: material.sectionPages } : null;
+  const previewPages = previewRanges ? [...new Set(previewRanges.flatMap(({ first, last }) =>
+    Array.from({ length: last - first + 1 }, (_, index) => first + index)))].sort((a, b) => a - b) : null;
+  const preview = previewPages?.length ? { first: previewPages[0], last: previewPages.at(-1), pages: previewPages } : current;
   const sectionTitle = /^Hlm\. \d+\s*[-–]\s*\d+$/.test(material.title) ? "Pilihan halaman" : compactSectionLabel(material.title);
   const sectionLabel = current?.pages?.length ? `Pilihan halaman · ${current.pages.length} halaman`
     : current ? `${sectionTitle} · hlm. ${current.first} - ${current.last}` : "Seluruh materi";
-  const picker = isPdf && !original.archived ? <SectionPicker ref={pickerRef} teacherId={teacherId} parentId={original.id} current={current} visiblePage={format ? undefined : visiblePage}
-    manualDefault={search.get("pages") === "1"} onCreate={format ? undefined : openBatch} creating={busy}
-    onError={format ? undefined : setSectionError}
+  const picker = isPdf && !original.archived ? <SectionPicker teacherId={teacherId} parentId={original.id} current={format ? current : preview} onPreview={format ? undefined : setPreviewRanges} visiblePage={format ? undefined : visiblePage}
+    manualDefault={search.get("pages") === "1"} creating={busy}
     onChoose={(sectionId, options) => {
       if (sectionId === material.id) {
         if (!options?.manual) setSelecting(false);
@@ -180,8 +182,12 @@ export default function MaterialDetail({ teacherId, material, format, parent, li
     setBusy(true);
     setError("");
     setSongCheckError("");
+    setPreparation(null);
+    const controller = new AbortController();
+    generation.current = controller;
     try {
-      const data = await generateMaterialMedia(teacherId, regenerate ? outputPath + "?regenerate=1" : outputPath, original.id, format.id);
+      const data = await generateMaterialMedia(teacherId, regenerate ? outputPath + "?regenerate=1" : outputPath, original.id, format.id,
+        { signal: controller.signal, onProgress: setPreparation });
       if (!panel.current?.isConnected) return;
       if (regenerate) {
         setOutput(previous => ({ data, version: (previous?.version ?? 0) + 1 }));
@@ -190,8 +196,9 @@ export default function MaterialDetail({ teacherId, material, format, parent, li
       else if (format.id === "song" && data?.status !== "ready") setOutput({ data });
       else finishGeneration(data);
     } catch (failure) {
-      setError(failure.message);
+      if (!controller.signal.aborted) setError(failure.message);
     } finally {
+      if (generation.current === controller) generation.current = null;
       working.current = false;
       setBusy(false);
     }
@@ -217,23 +224,6 @@ export default function MaterialDetail({ teacherId, material, format, parent, li
     }
   }
 
-  async function openBatch() {
-    if (working.current) return;
-    working.current = true;
-    setBusy(true);
-    setSectionError("");
-    try {
-      const selectedId = await pickerRef.current?.apply();
-      if (selectedId === null) return;
-      if (selectedId && selectedId !== material.id) {
-        router.push(`/materi/${encodeURIComponent(selectedId)}?create=1`);
-      } else setBatch(true);
-    } finally {
-      working.current = false;
-      setBusy(false);
-    }
-  }
-
   if (!format) return <article className="material-panel material-source">
     <div className={picker ? "material-source-sections" : "material-source-inner"}>
       {picker && (SourceSidebar ? <SourceSidebar label={sectionLabel}>{picker}</SourceSidebar> : <aside className="material-source-sidebar" aria-label="Bagian materi">{picker}</aside>)}
@@ -244,31 +234,14 @@ export default function MaterialDetail({ teacherId, material, format, parent, li
             aria-label={`Unduh ${original.file.name}`}>
             <Download size={18} aria-hidden="true" /><span>{original.file.name}</span>
           </button>}
-          {!material.archived && sourceReady && !picker && <button className="source-secondary material-batch-open" type="button" disabled={busy}
-            onClick={openBatch}>{busy ? "Memuat…" : "Buat media"}</button>}
+
         </div>
         {error && <p className="source-error" role="alert">{error}</p>}
-        <MaterialSource key={material.id} teacherId={teacherId} sourcePath={`/materials/${original.id}`} material={original}
-          firstPage={current?.first} lastPage={current?.last} selectedPages={current?.pages} onVisiblePage={picker ? setVisiblePage : undefined} />
+        <MaterialSource key={previewPages?.join(",") ?? material.id} teacherId={teacherId} sourcePath={`/materials/${original.id}`} material={original}
+          firstPage={preview?.first} lastPage={preview?.last} selectedPages={preview?.pages} onVisiblePage={picker ? setVisiblePage : undefined} />
       </div>
     </div>
-    {sectionError && <Modal title="Bagian belum bisa dipakai" onClose={() => setSectionError("")}
-      showClose={false} className="material-generate-dialog">
-      <div aria-hidden="true"><Mascot kind="book" className="material-generate-mascot" /></div>
-      <h2>Bagian belum bisa dipakai</h2>
-      <p role="alert" className="source-error">{sectionError}</p>
-      <div className="source-actions"><button type="button" className="source-secondary"
-        onClick={() => closeModal(() => setSectionError(""))}>Tutup</button></div>
-    </Modal>}
-    {(batch || search.get("create") === "1") && <MaterialBatch teacherId={teacherId} material={material} sectionLabel={sectionLabel} close={() => {
-      setBatch(false);
-      if (search.has("create")) router.replace(detailHref, { scroll: false });
-    }}
-      choosePages={() => {
-        setBatch(false);
-        if (search.has("create")) router.replace(detailHref, { scroll: false });
-        requestAnimationFrame(() => document.querySelector(".source-section-picker li button:not([aria-pressed='true']):not(:disabled)")?.focus());
-      }} />}
+
   </article>;
 
   const generating = busy || finishing || (songPending && !songCheckError);
@@ -276,7 +249,7 @@ export default function MaterialDetail({ teacherId, material, format, parent, li
   const incomplete = search.get("resume") === "1" || history?.items.some(item => item.materialId === material.id && item.status !== "ready");
   const question = !sourceReady ? blockedTitle : loadError ? "Media tidak dapat dimuat"
     : incomplete ? `Lengkapi ${format.action}?` : prompts[format.id];
-  const title = generating ? `Membuat ${format.action}…` : question;
+  const title = generating ? `Membuat ${format.action}…${preparation ? ` ${preparation.completed}/${preparation.total}` : ""}` : question;
   const hasResult = sourceReady && output?.data && (!song || song.status === "ready") && !showDialog && !showHistory;
 
   async function loadMoreHistory() {

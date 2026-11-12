@@ -44,6 +44,7 @@ function MediaSourceDialog({ teacherId, format, initial, onClose, onDraftSaved, 
   const [error, setError] = useState("");
   const [listError, setListError] = useState("");
   const [attempt, setAttempt] = useState(0);
+  const [preparation, setPreparation] = useState(null);
   const [busy, setBusy] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [uploadBusy, setUploadBusy] = useState(false);
@@ -133,8 +134,9 @@ function MediaSourceDialog({ teacherId, format, initial, onClose, onDraftSaved, 
         throw new Error(source.extractionError === "SOURCE_TEXT_TOO_LONG" ? sourceTextLimitMessage : "Teks materi belum dapat dibaca. Pilih materi lain atau unggah teksnya.");
       }
       if (source.text.length > sourceTextLimit) throw new Error(sourceTextLimitMessage);
+      setPreparation(null);
       setGenerating(true);
-      let data = await generateMaterialMedia(teacherId, outputPath(format, source.id), material.parentId ?? material.id, format.id);
+      let data = await generateMaterialMedia(teacherId, outputPath(format, source.id), material.parentId ?? material.id, format.id, { signal: controller.signal, onProgress: setPreparation });
       if (format.id === "song") {
         const deadline = Date.now() + 10 * 60_000;
         working.current = false;
@@ -166,7 +168,7 @@ function MediaSourceDialog({ teacherId, format, initial, onClose, onDraftSaved, 
     }
   }
   const locked = busy || uploadBusy;
-  const title = generating ? `Membuat ${format.action}…` : stage === "sources" ? "Pilih materi" : stage === "upload" ? "Unggah materi" : "Pilih bagian";
+  const title = generating ? `Membuat ${format.action}…${preparation ? ` ${preparation.completed}/${preparation.total}` : ""}` : stage === "sources" ? "Pilih materi" : stage === "upload" ? "Unggah materi" : "Pilih bagian";
   const matches = items?.filter(item => item.title.toLocaleLowerCase("id").includes(query.toLocaleLowerCase("id")));
   return <Modal title={title} wide className="studio-create" onClose={onClose} beforeClose={beforeClose} dismissible={!locked}>
     <div className="studio-create-heading">

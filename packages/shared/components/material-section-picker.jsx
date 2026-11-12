@@ -5,7 +5,7 @@ import { sectionLabel } from "../lib/material-section-label.mjs";
 
 const sectionCache = new Map();
 
-export default forwardRef(function SectionPicker({ teacherId, parentId, onChoose, onError, current, visiblePage, manualDefault = false, onCreate, creating = false, actionLabel = "Buat media" }, ref) {
+export default forwardRef(function SectionPicker({ teacherId, parentId, onChoose, onPreview, current, visiblePage, manualDefault = false, onCreate, creating = false, actionLabel = "Buat media" }, ref) {
   const list = useRef(null);
   const cacheKey = teacherId + ":" + parentId;
   const [data, setData] = useState(() => sectionCache.get(cacheKey) ?? null);
@@ -38,6 +38,11 @@ export default forwardRef(function SectionPicker({ teacherId, parentId, onChoose
   }, [teacherId, path, cacheKey]);
 
   async function select(ranges, navigate = true, keepManual = false) {
+    if (onPreview) {
+      confirmed.current = ranges;
+      onPreview(ranges);
+      return parentId;
+    }
     const key = ranges.map(({ first, last }) => first + "-" + last).sort().join(",");
     if (pending.current?.key === key) return pending.current.promise;
     const request = ++sequence.current;
@@ -67,8 +72,7 @@ export default forwardRef(function SectionPicker({ teacherId, parentId, onChoose
           setManual(false);
           setPageRange({ first: String(current?.first ?? 1), last: String(current?.last ?? data?.pages ?? "") });
         }
-        if (onError) onError(failure.message);
-        else setError(failure.message);
+        setError(failure.message);
         return null;
       } finally {
         if (request === sequence.current) {
@@ -172,12 +176,12 @@ export default forwardRef(function SectionPicker({ teacherId, parentId, onChoose
       const selected = selectedRanges.some(entry => entry.first === first && entry.last === last);
       const viewing = activeIndex === index;
       return <li key={title + first}>
-        <button type="button" disabled={creating || unavailable} aria-pressed={selected}
+        <button type="button" disabled={creating || (unavailable && !onPreview)} aria-pressed={selected}
           aria-current={viewing ? "location" : undefined} data-reading-page={viewing ? "" : undefined}
           onClick={() => toggle({ first, last }, index === 0)}>
           <span className="source-section-mark" aria-hidden="true">{selected && <Check size={13} strokeWidth={2.5} />}</span>
           <span>{sectionLabel(title)}{!pageGroup && <small>Hlm. {first} - {last}</small>}
-            {unavailable && <small>Halaman ini melebihi 40.000 karakter.</small>}</span>
+            {unavailable && !onPreview && <small>Halaman ini melebihi 40.000 karakter.</small>}</span>
         </button>
       </li>;
     })}</ul>

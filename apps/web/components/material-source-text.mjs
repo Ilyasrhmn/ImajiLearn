@@ -2,22 +2,18 @@ const headingPrefix = /^(?:bab|bagian|subbab)\s+(?:\d+|[ivx]+)\b/iu;
 const bullet = /^(?:([0-9]+)[.)]|[•●▪◦*-])\s+(.+)/u;
 const caption = /^(?:gambar|figure|fig\.?|diagram|ilustrasi|tabel)\s+\d/iu;
 
-export function formatSourceText(text, pdf = false) {
+export function formatSourceText(text) {
   const lines = text.replace(/\r\n?/g, "\n").split("\n");
   const blocks = [];
   let paragraph = [];
-  let previous = "";
 
   function flush() {
-    if (paragraph.length) blocks.push({ kind: "paragraph", runs: [{ text: paragraph.join(pdf ? " " : "\n") }] });
+    if (paragraph.length) blocks.push({ kind: "paragraph", runs: [{ text: paragraph.join("\n") }] });
     paragraph = [];
-    previous = "";
   }
 
-  const widths = lines.map(line => line.trim().length).filter(length => length >= 35).sort((a, b) => a - b);
-  const typicalWidth = widths[Math.floor(widths.length * .7)] ?? 68;
   for (const raw of lines) {
-    const line = pdf ? raw.trim().replace(/[\t \u00a0]+/g, " ") : raw.trim();
+    const line = raw.trim();
     if (!line) { flush(); continue; }
     const markedHeading = /^(#{1,4})\s+(.+)$/u.exec(line);
     const concise = line.length <= 85 && !/[.!?;]$/u.test(line);
@@ -41,9 +37,7 @@ export function formatSourceText(text, pdf = false) {
       blocks.at(-1).items.push({ value: bulletItem[1] ? Number(bulletItem[1]) : undefined, runs: [{ text: bulletItem[2] }] });
       continue;
     }
-    if (pdf && /[.!?][”"')\]]?$/u.test(previous) && previous.length < typicalWidth * .88 && /^[\p{Lu}]/u.test(line)) flush();
     paragraph.push(line);
-    previous = line;
   }
   flush();
   return blocks;
