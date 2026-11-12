@@ -101,6 +101,14 @@ export async function requestJson(config, request, transport = fetch) {
   } catch (error) {
     if (request.signal?.aborted) throw new AIError("CANCELED");
     if (timedOut) throw new AIError("PROVIDER_TIMEOUT");
+    if (!(error instanceof AIError) || error.code === "PROVIDER_UNAVAILABLE") {
+      const transportCode = error.cause?.code;
+      console.warn("[ai-provider] Request failed", {
+        feature: config.feature,
+        status: error instanceof AIError ? error.status ?? null : null,
+        transport: typeof transportCode === "string" && /^[A-Z0-9_]{1,40}$/.test(transportCode) ? transportCode : null,
+      });
+    }
     if (error instanceof AIError) throw error;
     // An interrupted request may already have been billed; retry belongs to the job budget.
     throw new AIError("PROVIDER_UNAVAILABLE");
