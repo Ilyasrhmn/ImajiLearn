@@ -105,7 +105,7 @@ test("preference migration preserves existing materials, revisions and teacher d
     const index = upgrade.migrations.findIndex(name => name.includes("media_preferences"));
     assert.ok(index > 0);
     for (const migration of upgrade.migrations.slice(0, index)) await upgrade.migrate(migration);
-    const teacher = await upgrade.db.teacher.create({ data: { name: "Upgrade", email: "preference-upgrade@example.test", passwordHash: "synthetic-test-hash" } });
+    const teacher = await upgrade.db.teacher.create({ data: { name: "Upgrade", email: "preference-upgrade@example.test", passwordHash: "synthetic-test-hash" }, select: { id: true, name: true, email: true, passwordHash: true, school: true, grade: true, createdAt: true } });
     const id = randomUUID(), title = "Existing source", text = "Original text.", revision = "a".repeat(64);
     await upgrade.db.$executeRaw`INSERT INTO "Material" ("id", "userId", "title", "text", "revision")
       VALUES (${id}::uuid, ${teacher.id}::uuid, ${title}, ${text}, ${revision})`;
@@ -114,7 +114,7 @@ test("preference migration preserves existing materials, revisions and teacher d
     assert.deepEqual({ id: material.id, title: material.title, text: material.text, revision: material.revision }, { id, title, text, revision });
     assert.equal(material.pinned, false);
     assert.equal(material.folderId, null);
-    assert.deepEqual(await upgrade.db.teacher.findUnique({ where: { id: teacher.id } }), teacher);
+    assert.deepEqual(await upgrade.db.teacher.findUnique({ where: { id: teacher.id }, select: { id: true, name: true, email: true, passwordHash: true, school: true, grade: true, createdAt: true } }), teacher);
     assert.equal(await upgrade.db.mediaPreference.count(), 0);
   } finally { await upgrade.close(); }
 });

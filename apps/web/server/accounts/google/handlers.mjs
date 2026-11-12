@@ -9,6 +9,7 @@ import { createSessionHandlers } from "../sessions.mjs";
 import { sessionToken } from "../session-cookie.mjs";
 import { issueSession } from "../session-issuer.mjs";
 import { createGoogleProvider } from "./provider.mjs";
+import { googleAvatarUrl } from "@imajilearn/shared/lib/google-avatar.mjs";
 
 const lifetime = 600;
 const opaque = () => randomBytes(32).toString("base64url");
@@ -57,15 +58,17 @@ export function createGoogleHandlers(db, config, { provider = createGoogleProvid
     if (await tx.googleIdentity.findUnique({ where: { teacherId: teacher.id } })) throw new FlowError("already_linked");
     if (await tx.googleIdentity.findUnique({ where: { sub: identity.sub } })) throw new FlowError("conflict");
     await tx.googleIdentity.create({ data: { sub: identity.sub, teacherId: teacher.id } });
+    await tx.teacher.update({ where: { id: teacher.id }, data: { avatarUrl: googleAvatarUrl(identity.avatarUrl) } });
   }
   async function completeLogin(tx, flow, identity, request) {
     const linked = await tx.googleIdentity.findUnique({ where: { sub: identity.sub } });
     let teacherId = linked?.teacherId;
     if (teacherId) {
       await tx.$queryRaw`SELECT "id" FROM "Teacher" WHERE "id" = ${teacherId}::uuid FOR UPDATE`;
+      await tx.teacher.update({ where: { id: teacherId }, data: { avatarUrl: googleAvatarUrl(identity.avatarUrl) } });
     } else {
       if (await tx.teacher.findUnique({ where: { email: identity.email }, select: { id: true } })) throw new FlowError("email_exists");
-      const teacher = await tx.teacher.create({ data: { name: identity.name, email: identity.email, passwordHash: null } });
+      const teacher = await tx.teacher.create({ data: { name: identity.name, email: identity.email, avatarUrl: googleAvatarUrl(identity.avatarUrl), passwordHash: null } });
       teacherId = teacher.id;
       await tx.googleIdentity.create({ data: { sub: identity.sub, teacherId } });
     }

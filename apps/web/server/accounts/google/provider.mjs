@@ -1,6 +1,7 @@
 import { createRemoteJWKSet, jwtVerify } from "jose";
 import { digest } from "../../core/crypto.mjs";
 import { parseEmail } from "../registration-contract.mjs";
+import { googleAvatarUrl } from "@imajilearn/shared/lib/google-avatar.mjs";
 
 const googleKeys = createRemoteJWKSet(new URL("https://www.googleapis.com/oauth2/v3/certs"), { timeoutDuration: 5000 });
 const failure = () => new Error("Google verification failed");
@@ -38,7 +39,7 @@ export function createGoogleProvider(config, { fetch: transport = fetch, keys = 
       const { payload } = await jwtVerify(result.id_token, keys, {
         algorithms: ["RS256"], issuer: ["https://accounts.google.com", "accounts.google.com"], audience: config.clientId,
         requiredClaims: ["sub", "iss", "aud", "exp", "iat", "nonce", "email", "email_verified"],
-        maxTokenAge: "10m",
+        maxTokenAge: "10m", clockTolerance: 30,
       });
       if (typeof payload.nonce !== "string" || digest(payload.nonce) !== nonceHash ||
           typeof payload.sub !== "string" || !payload.sub.trim() || payload.sub.length > 255 || /[\u0000-\u0020\u007f]/.test(payload.sub) ||
@@ -46,7 +47,7 @@ export function createGoogleProvider(config, { fetch: transport = fetch, keys = 
           (Array.isArray(payload.aud) && payload.aud.length > 1 && payload.azp !== config.clientId)) throw failure();
       const email = parseEmail(payload.email);
       const name = (typeof payload.name === "string" ? payload.name.replace(/[\u0000-\u001f\u007f]/g, "").trim() : "").slice(0, 60) || email.split("@")[0].slice(0, 60);
-      return { sub: payload.sub, email, name };
+      return { sub: payload.sub, email, name, avatarUrl: googleAvatarUrl(payload.picture) };
     },
   };
 }
