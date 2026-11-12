@@ -62,7 +62,7 @@ export function createReadingIllustration(db, generateIllustration, generateJson
         });
         const chapter = row.content.sections[index];
         const scene = row.content.illustration?.sectionIndex === index ? row.content.illustration.scene : undefined;
-        return { source, chapter, scene, outline: row.content.sections.map(item => item.heading), previous: stored?.sourceBytes ?? stored?.bytes, reservation: { ...image, leaseId: lease.leaseId } };
+        return { source, chapter, scene, outline: row.content.sections.map(item => item.heading), previous: stored?.sourceBytes ?? stored?.bytes, providerTaskId: stored?.providerTaskId, reservation: { ...image, leaseId: lease.leaseId } };
       });
 
       if (job.cached) return job.illustration;
@@ -70,12 +70,16 @@ export function createReadingIllustration(db, generateIllustration, generateJson
         const visual = await resolveLessonIllustration(db, generateJson, generateIllustration, {
           userId, source: job.source, feature: "reading", title: job.chapter.heading, lines: job.chapter.paragraphs, scene: job.scene,
           outline: job.outline, sourceFigures: preparation.sourceFigures,
+          imageTask: { taskId: job.providerTaskId, onTask: async providerTaskId => {
+            const updated = await db.materialReadingIllustration.updateMany({ where: job.reservation, data: { providerTaskId } });
+            if (!updated.count) throw new ApiError(409, "SOURCE_CHANGED", "Materi berubah. Buka ulang lalu coba lagi.");
+          } },
         });
         await db.$transaction(async tx => {
           const latest = await getOwnedMaterial(tx, userId, job.reservation.materialId);
           if (!latest || latest.archived || latest.revision !== job.reservation.revision) throw sourceChanged();
           const updated = await tx.materialReadingIllustration.updateMany({
-            where: job.reservation, data: { ...(visual.visualSkipped && job.previous ? {} : visual), ...clearLease },
+            where: job.reservation, data: { ...(visual.visualSkipped && job.previous ? {} : visual), providerTaskId: null, ...clearLease },
           });
           if (!updated.count) throw sourceChanged();
         });

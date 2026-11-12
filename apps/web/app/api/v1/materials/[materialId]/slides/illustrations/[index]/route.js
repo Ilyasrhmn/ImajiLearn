@@ -4,7 +4,7 @@ import { database } from "@/server/core/database.mjs";
 import { endpoint } from "@/server/core/http.mjs";
 import { createSlideIllustrations } from "@/server/materials/slide-illustrations.mjs";
 
-import { parseLessonIndex } from "@/server/materials/lesson-illustration.mjs";
+import { illustrationMime, parseLessonIndex } from "@/server/materials/lesson-illustration.mjs";
 
 export const runtime = "nodejs";
 
@@ -20,5 +20,5 @@ export const GET = (request, context) => endpoint(async () => {
   if (mode === "status") return Response.json({ data: result });
   const image = result;
   if (!image) return new Response(null, { status: 204 });
-  return new Response(image, { headers: { "content-type": "image/jpeg", "x-content-type-options": "nosniff" } });
+  return new Response(image, { headers: { "content-type": illustrationMime(image), "x-content-type-options": "nosniff" } });
 }, process.env.APP_ORIGIN)(request);

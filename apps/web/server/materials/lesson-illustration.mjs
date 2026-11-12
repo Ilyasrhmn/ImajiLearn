@@ -11,7 +11,7 @@ const instructions = [
   "Subject identifies the main object and action. Composition specifies where essential objects go, viewpoint, direction, sequence, or how to arrange a comparison. Details specifies the visible features that make the lesson idea clear.",
   "Improve vague visual hints by making relationships observable. Keep the lesson facts, quantities and direction. Do not invent examples or physical details that would change the meaning.",
   "Avoid unrelated objects, decorative animals, mascots, text and labels. Do not reproduce lesson sentences in the image.",
-  "Limits: subject 160 characters, composition 420, details 360.",
+  "Limits: subject 140 characters, composition 360, details 280.",
 ].join("\n");
 
 const schema = {
@@ -67,7 +67,8 @@ export async function lessonSourceFigures(db, userId, source, topics) {
   return file ? await (await import("./pdf.mjs")).findPdfFigures(file.bytes, topics.join(" "), source.parentId ? { first: source.pageStart, last: source.pageEnd, pages: source.sectionPages } : undefined) : [];
 }
 
-export async function resolveLessonIllustration(db, generateJson, generateImage, { userId, source, feature, title, lines, scene, outline, sourceFigures }) {
+export async function resolveLessonIllustration(db, generateJson, generateImage, { userId, source, feature, title, lines, scene, outline, sourceFigures, imageTask }) {
+  if (imageTask?.taskId) return { bytes: await generateImage(null, imageTask), sourcePage: null, sourceBytes: null, visualSkipped: false };
   const figures = sourceFigures ?? await lessonSourceFigures(db, userId, source, [title, ...lines]);
   const match = matchingSourceFigure(figures, title);
   if (match) return { bytes: match.bytes, sourcePage: match.page, sourceBytes: null, visualSkipped: false };
@@ -86,14 +87,14 @@ export async function resolveLessonIllustration(db, generateJson, generateImage,
   if (selected) return { bytes: selected.bytes, sourcePage: selected.page, sourceBytes: null, visualSkipped: false };
   if (!content.generate) return { bytes: null, sourcePage: null, sourceBytes: null, visualSkipped: true };
 
-  const subject = requiredText(content.subject, 160);
-  const composition = requiredText(content.composition, 420);
-  const details = requiredText(content.details, 360);
+  const subject = requiredText(content.subject, 140);
+  const composition = requiredText(content.composition, 360);
+  const details = requiredText(content.details, 280);
   const bytes = await generateImage([
     subject, composition, details,
     "Clean educational textbook illustration, recognizable shapes, clear composition, warm cream, soft sage and terracotta.",
     "All surfaces are blank. No lettering, captions, logos, decorative objects or poster framing.",
-  ].join("\n"));
+  ].join("\n"), imageTask);
   return { bytes, sourcePage: null, sourceBytes: null, visualSkipped: false };
 }
 
@@ -102,3 +103,5 @@ export const illustrationStatus = row => ({
   ready: Boolean(row?.sourceBytes ?? row?.bytes),
   skipped: Boolean(row?.visualSkipped),
 });
+
+export const illustrationMime = bytes => Buffer.from(bytes).subarray(0, 8).toString("hex") === "89504e470d0a1a0a" ? "image/png" : "image/jpeg";

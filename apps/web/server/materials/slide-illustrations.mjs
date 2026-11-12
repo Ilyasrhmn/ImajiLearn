@@ -23,14 +23,6 @@ export function createSlideIllustrations(db, generateIllustration, generateJson)
   }
 
   return {
-    async list(userId, materialId, revision) {
-      const key = await readKey(userId, materialId, revision);
-      const rows = await db.materialSlideIllustration.findMany({
-        where: { ...key, NOT: { bytes: null } }, select: { slideIndex: true }, orderBy: { slideIndex: "asc" },
-      });
-      return rows.map(row => row.slideIndex);
-    },
-
     async get(userId, materialId, revision, slideIndex, mode) {
       const key = await readKey(userId, materialId, revision);
       validIndex(slideIndex);
@@ -63,7 +55,7 @@ export function createSlideIllustrations(db, generateIllustration, generateJson)
         if (!preparation.budgeted) await consumeRateLimit(tx, "slide-illustration:" + userId, 12, 15 * 60_000);
         const lease = { leaseId: randomUUID(), leaseUntil: new Date(Date.now() + 180_000) };
         await tx.materialSlideIllustration.upsert({ where, create: { ...imageKey, ...lease }, update: lease });
-        return { source, slide, outline: deck.content.slides.map(item => item.title), hadImage: Boolean(row?.bytes), reservation: { ...imageKey, leaseId: lease.leaseId } };
+        return { source, slide, outline: deck.content.slides.map(item => item.title), hadImage: Boolean(row?.bytes), providerTaskId: row?.providerTaskId, reservation: { ...imageKey, leaseId: lease.leaseId } };
       });
 
       if (!job) return;
@@ -71,18 +63,22 @@ export function createSlideIllustrations(db, generateIllustration, generateJson)
         const visual = await resolveLessonIllustration(db, generateJson, generateIllustration, {
           userId, source: job.source, feature: "slides", title: job.slide.title, lines: job.slide.points, scene: job.slide.scene,
           outline: job.outline, sourceFigures: preparation.sourceFigures,
+          imageTask: { taskId: job.providerTaskId, onTask: async providerTaskId => {
+            const updated = await db.materialSlideIllustration.updateMany({ where: job.reservation, data: { providerTaskId } });
+            if (!updated.count) throw new ApiError(409, "SOURCE_CHANGED", "Materi berubah. Buka ulang lalu coba lagi.");
+          } },
         });
         await db.$transaction(async tx => {
           const latest = await getOwnedMaterial(tx, userId, job.reservation.materialId);
           if (!latest || latest.archived || latest.revision !== revision) throw changed();
           const updated = await tx.materialSlideIllustration.updateMany({
-            where: job.reservation, data: { ...(visual.visualSkipped && job.hadImage ? {} : visual), leaseId: null, leaseUntil: null },
+            where: job.reservation, data: { ...(visual.visualSkipped && job.hadImage ? {} : visual), providerTaskId: null, leaseId: null, leaseUntil: null },
           });
           if (!updated.count) throw changed();
         });
       } catch (error) {
         await db.$transaction(async tx => {
-          await tx.materialSlideIllustration.deleteMany({ where: { ...job.reservation, bytes: null, visualSkipped: false } });
+          await tx.materialSlideIllustration.deleteMany({ where: { ...job.reservation, bytes: null, visualSkipped: false, providerTaskId: null } });
           await tx.materialSlideIllustration.updateMany({
             where: job.reservation, data: { leaseId: null, leaseUntil: null },
           });
