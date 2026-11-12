@@ -55,3 +55,59 @@ test("the client advances preparation steps and returns only the completed lesso
   assert.deepEqual(progress, [0, 1]);
   assert.deepEqual(result, states[2]);
 });
+
+
+test("preparation waits for a text-provider rate limit and resumes saved progress", async t => {
+  let posts = 0, timers = [];
+  t.mock.method(globalThis, "setTimeout", (callback, milliseconds) => {
+    timers.push(milliseconds); queueMicrotask(callback); return 0;
+  });
+  t.mock.method(globalThis, "fetch", async (_path, options) => {
+    if (options.method !== "POST") return Response.json({ data: [] });
+    posts++;
+    if (posts === 1) return Response.json({ data: { status: "preparing", completed: 23, total: 34 } });
+    if (posts === 2) return Response.json({ error: { code: "RATE_LIMITED", message: "Limit" } },
+      { status: 429, headers: { "retry-after": "60" } });
+    return Response.json({ data: { title: "Ready", slides: [] } });
+  });
+  const progress = [];
+  const result = await generateMaterialMedia("teacher", "/materials/material/slides", "material", "slides",
+    { onProgress: state => progress.push(state) });
+  assert.equal(result.title, "Ready");
+  assert.equal(posts, 3);
+  assert.deepEqual(timers, [60_000]);
+  assert.equal(progress[1].waiting, true);
+  assert.equal(progress[1].completed, 23);
+});
+
+test("preparation bounds rate-limit waits and never retries uncertain or music requests", async t => {
+  t.mock.method(globalThis, "setTimeout", callback => { queueMicrotask(callback); return 0; });
+  let posts = 0, status = 429, code = "RATE_LIMITED";
+  t.mock.method(globalThis, "fetch", async () => {
+    posts++;
+    return Response.json({ error: { code, message: "Blocked" } }, { status });
+  });
+  await assert.rejects(generateMaterialMedia("teacher", "/materials/material/slides", "material", "slides"), { status: 429 });
+  assert.equal(posts, 3);
+  posts = 0; status = 503; code = "PROVIDER_UNAVAILABLE";
+  await assert.rejects(generateMaterialMedia("teacher", "/materials/material/slides", "material", "slides"), { status: 503 });
+  assert.equal(posts, 1);
+  posts = 0; status = 429; code = "RATE_LIMITED";
+  await assert.rejects(generateMaterialMedia("teacher", "/materials/material/song", "material", "song"), { status: 429 });
+  assert.equal(posts, 1);
+});
+
+test("canceling a rate-limit wait prevents a later generation request", async t => {
+  const controller = new AbortController();
+  let posts = 0;
+  t.mock.method(globalThis, "setTimeout", () => {
+    queueMicrotask(() => controller.abort(new DOMException("Canceled", "AbortError"))); return 0;
+  });
+  t.mock.method(globalThis, "fetch", async () => {
+    posts++;
+    return Response.json({ error: { code: "RATE_LIMITED", message: "Limit" } }, { status: 429 });
+  });
+  await assert.rejects(generateMaterialMedia("teacher", "/materials/material/slides", "material", "slides",
+    { signal: controller.signal }), { name: "AbortError" });
+  assert.equal(posts, 1);
+});
