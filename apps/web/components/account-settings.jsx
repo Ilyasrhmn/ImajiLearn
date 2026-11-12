@@ -74,7 +74,7 @@ function SignInSettings({ teacherId, profile, notify }) {
     {auth?.googleLinked ? <section className="account-google" aria-labelledby="google-linked-title"><h2 id="google-linked-title">Google terhubung</h2></section> : auth?.googleEnabled && auth?.hasPassword ? <GoogleLinkForm teacherId={teacherId} email={profile.email} /> : null}
   </div>;
 }
-export default function AccountSettings({ teacherId, name, googleNotice = null }) {
+export default function AccountSettings({ teacherId, name, account, googleNotice = null }) {
   const [ready, setReady] = useState(false), [loadError, setLoadError] = useState(""), [tab, setTab] = useState(googleNotice ? "password" : "profile");
   const [retry, setRetry] = useState(0), [saving, setSaving] = useState(false);
   const submitting = useRef(false);
@@ -113,7 +113,7 @@ export default function AccountSettings({ teacherId, name, googleNotice = null }
     }
   }
   const tabs = [{ id: "profile", label: "Profil", Icon: UserRound }, { id: "password", label: profile.auth?.googleEnabled || profile.auth?.googleLinked ? "Metode masuk" : "Kata sandi", Icon: LockKeyhole }];
-  return <TeacherWorkspace name={profile.name || name} current="/akun">
+  return <TeacherWorkspace name={profile.name || name} account={account} current="/akun">
     <main id="main" className="teacher-home account-main">
       {!ready ? <div className="materials-skeleton" role="status" aria-label="Memuat akun"><span /><span /></div> : loadError ? <div><p role="alert">{loadError}</p><button type="button" className="upload-button" onClick={() => { setReady(false); setLoadError(""); setRetry(attempt => attempt + 1); }}>Coba lagi</button></div> : <><div className="account-heading"><h1>Pengaturan akun</h1><div aria-hidden="true"><Mascot kind="pen" mood="calm" /></div></div>
         <div className="account-tabs" role="tablist" aria-label="Pengaturan akun">{tabs.map((item, index) => <button key={item.id} id={`account-tab-${item.id}`} role="tab" type="button" aria-selected={tab === item.id} aria-controls="account-panel" tabIndex={tab === item.id ? 0 : -1} onClick={() => startTransition(() => setTab(item.id))} onKeyDown={event => { if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return; event.preventDefault(); const next = event.key === "Home" ? "profile" : event.key === "End" ? "password" : index === 0 ? "password" : "profile"; startTransition(() => setTab(next)); document.getElementById(`account-tab-${next}`)?.focus(); }}><item.Icon size={20} aria-hidden="true" />{item.label}</button>)}</div>

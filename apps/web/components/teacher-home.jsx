@@ -16,7 +16,7 @@ function LoadingRows({ label }) {
   return <div className="home-loading" role="status" aria-label={label}><span /><span /><span /></div>;
 }
 
-export default function TeacherHome({ teacherId, name }) {
+export default function TeacherHome({ teacherId, name, account }) {
   const router = useRouter();
   const [uploading, setUploading] = useState(false);
   const [folders, setFolders] = useState([]);
@@ -69,7 +69,7 @@ export default function TeacherHome({ teacherId, name }) {
     setAttempt(value => value + 1);
   };
 
-  return <TeacherWorkspace name={name} current="/beranda">
+  return <TeacherWorkspace name={name} account={account} current="/beranda">
     <main id="main" className="teacher-home">
       <section className="home-welcome" aria-labelledby="home-welcome-title">
         <div><p className="home-greeting">{greeting},</p><h1 id="home-welcome-title">{name?.trim()}</h1>{now && <time className="home-welcome-date">{now.toLocaleDateString("id-ID", { weekday:"long", day:"numeric", month:"long", year:"numeric" })}</time>}<button className="upload-button" type="button" onClick={() => setUploading(true)}><Upload size={20} aria-hidden="true" />Unggah materi</button></div>

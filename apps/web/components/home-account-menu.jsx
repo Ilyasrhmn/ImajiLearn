@@ -4,8 +4,9 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { UserRound } from "lucide-react";
 import LogoutButton from "./logout-button";
+import AccountAvatar from "@imajilearn/shared/components/account-avatar.jsx";
 
-export default function HomeAccountMenu({ name = "" }) {
+export default function HomeAccountMenu({ name = "", email = "", avatarUrl }) {
   const [open, setOpen] = useState(false);
   const container = useRef(null);
   const trigger = useRef(null);
@@ -28,12 +29,16 @@ export default function HomeAccountMenu({ name = "" }) {
     if (!event.currentTarget.contains(event.relatedTarget)) setOpen(false);
   }}>
     <button ref={trigger} className="home-account-trigger" type="button" aria-expanded={open} aria-controls="home-account-options" aria-label={`Menu akun ${name}`} onClick={() => setOpen(value => !value)}>
-      <span className="home-account-circle" aria-hidden="true">{name.trim().slice(0, 1).toLocaleUpperCase("id") || "?"}</span>
+      <AccountAvatar name={name} avatarUrl={avatarUrl} className="home-account-circle" />
       <span className="home-account-name">{name}</span>
     </button>
-    {open && <div id="home-account-options" className="home-account-options">
+    <div id="home-account-options" className={`home-account-options${open ? " is-open" : ""}`} role="dialog" aria-label="Akun" aria-hidden={!open} inert={!open}>
+      <div className="home-account-identity">
+        <AccountAvatar name={name} avatarUrl={avatarUrl} size={44} className="home-account-circle" />
+        <div><strong>{name}</strong><span>{email}</span></div>
+      </div>
       <Link href="/akun"><UserRound size={20} aria-hidden="true" />Profil</Link>
       <LogoutButton label="Keluar" />
-    </div>}
+    </div>
   </div>;
 }

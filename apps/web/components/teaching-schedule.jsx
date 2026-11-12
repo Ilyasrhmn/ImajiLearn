@@ -17,7 +17,7 @@ const weekdays = ["Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"];
 const makeId = () => globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2)}`;
 const blank = () => ({ key: makeId(), folderId: "", className: "", day: 1, start: "07:00", end: "08:00" });
 
-export default function TeachingSchedule({ teacherId, name }) {
+export default function TeachingSchedule({ teacherId, name, account }) {
   const [folders, setFolders] = useState([]), [terms, setTerms] = useState([]), [ready, setReady] = useState(false), [loadError, setLoadError] = useState(false);
   const [year, setYear] = useState(""), [semester, setSemester] = useState("1");
   const [draft, setDraft] = useState(null), [deleting, setDeleting] = useState(null), [showFolders, setShowFolders] = useState(false);
@@ -95,7 +95,7 @@ export default function TeachingSchedule({ teacherId, name }) {
     } catch (err) { setError(err.message); }
     finally { setBusy(false); }
   }
-  return <TeacherWorkspace name={name} current="/jadwal">
+  return <TeacherWorkspace name={name} account={account} current="/jadwal">
     <main id="main" className="teacher-home schedule-main">
       {!ready ? <div className="materials-skeleton" role="status" aria-label="Memuat jadwal"><span /><span /></div> : loadError ? <p role="alert">Jadwal tidak dapat dimuat. Muat ulang untuk mencoba lagi.</p> : <>
         <div className="schedule-page-heading"><h1>Jadwal mengajar</h1><div className="schedule-heading-actions"><button className="upload-button" type="button" disabled={!validYear || !term || Boolean(termError)} onClick={() => edit(blank())}><Plus size={20} />Tambah jadwal</button><Mascot kind="book" /></div></div>

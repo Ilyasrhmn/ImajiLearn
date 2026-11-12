@@ -11,5 +11,5 @@ export default async function Page({ searchParams }) {
   const { jenis } = await searchParams;
   const studio = mediaStudio(jenis === "visual" ? "mindmap" : jenis);
   if (studio) redirect(`${studio.route}?create=1`);
-  return <><SessionReload /><CreateMedia teacherId={teacher.id} name={teacher.name} /></>;
+  return <><SessionReload /><CreateMedia teacherId={teacher.id} name={teacher.name} account={{ email: teacher.email, avatarUrl: teacher.avatarUrl }} /></>;
 }

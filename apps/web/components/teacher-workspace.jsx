@@ -11,7 +11,7 @@ const links = [
   { href: "/buat-media", label: "Buat media", Icon: Sparkles },
   { href: "/jadwal", label: "Jadwal", Icon: CalendarDays },
 ];
-export default function TeacherWorkspace({ name, current, children }) {
+export default function TeacherWorkspace({ name, account = {}, current, children }) {
   const collapsed = useSyncExternalStore(subscribeSidebar, sidebarSnapshot, sidebarServerSnapshot);
   return <div className={`home-workspace${collapsed ? " is-collapsed" : ""}`}>
     <a className="skip-link" href="#main">Lewati ke isi</a>
@@ -20,7 +20,7 @@ export default function TeacherWorkspace({ name, current, children }) {
         <button className="home-menu-toggle" type="button" aria-label={collapsed ? "Perluas menu" : "Lipat menu"} aria-expanded={!collapsed} aria-controls="home-sidebar" onClick={toggleSidebar}><Menu size={24} aria-hidden="true" /></button>
         <Link className="brand" href="/beranda" aria-label="ImajiLearn, beranda"><Image src="/brand/imajilearn-mark.svg" width={52} height={52} alt="" /><Image src="/brand/imajilearn-wordmark.svg" width={153} height={33} alt="" className="brand-wordmark" /></Link>
       </div>
-      <HomeAccountMenu name={name} />
+      <HomeAccountMenu name={name} email={account.email} avatarUrl={account.avatarUrl} />
     </header>
     {!collapsed && <button type="button" className="home-sidebar-dismiss" aria-label="Tutup menu" onClick={() => setSidebarCollapsed(true)} />}
     <aside id="home-sidebar" className="home-sidebar"><nav aria-label="Navigasi studio">
