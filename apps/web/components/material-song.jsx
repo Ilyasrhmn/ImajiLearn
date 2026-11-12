@@ -33,7 +33,7 @@ function Karaoke({ song, audioUrl }) {
   const lines = song.sections.flatMap(section => section.lines);
   const active = cues.find(cue => position >= cue.start && position < cue.end)?.line ?? -1;
   const next = cues.find(cue => cue.start > position)?.line;
-  const focus = active >= 0 ? active : (next ?? lines.length - 1);
+  const focus = cues.length ? (active >= 0 ? active : (next ?? lines.length - 1)) : 0;
   const finished = cues.length > 0 && position >= cues.at(-1).end;
   const countdown = playing && cues[0]?.start > position ? Math.ceil(cues[0].start - position) : 0;
 
@@ -75,9 +75,9 @@ function Karaoke({ song, audioUrl }) {
     <section className="karaoke-stage" aria-label="Lirik karaoke">
       <p className="karaoke-cue" role="status">{finished ? "Selesai" : countdown ? `Mulai dalam ${countdown}…` : song.alignmentPending && !cues.length ? "Menyiapkan sorotan lirik…" : ""}</p>
       <div className="karaoke-lyric-window">
-        {cues.length ? lines.map((line, index) => Math.abs(index - focus) <= 1 && <p key={index}
+        {lines.map((line, index) => Math.abs(index - focus) <= 1 && <p key={index}
           className={`karaoke-line${active === index ? " is-current" : ""}${index < focus ? " is-past" : ""}`}
-          aria-current={active === index ? "true" : undefined}>{line}</p>) : <SongLyrics sections={song.sections} />}
+          aria-current={active === index ? "true" : undefined}>{line}</p>)}
       </div>
       <div className={`karaoke-buddy${playing ? " is-singing" : ""}`} aria-hidden="true"><Mascot kind="pencil" mood="happy" /></div>
     </section>
@@ -107,7 +107,7 @@ function Karaoke({ song, audioUrl }) {
       <button type="button" className="icon-button" aria-label="Ulang otomatis" title="Ulang otomatis" aria-pressed={loop} onClick={() => setLoop(value => !value)}><Repeat2 size={21} aria-hidden="true" /></button>
     </div>
     {audioError && <div className="song-error" role="alert"><p>{audioError}</p><button type="button" className="source-secondary" onClick={reloadAudio}>Coba muat ulang</button></div>}
-    {cues.length > 0 && <div className="karaoke-all-lyrics">
+    {lines.length > 0 && <div className="karaoke-all-lyrics">
       <button type="button" className="karaoke-lyrics-toggle" aria-expanded={expanded} aria-controls={lyricsId} onClick={() => setExpanded(value => !value)}>
         <FileText size={18} aria-hidden="true" />
         {expanded ? "Sembunyikan lirik" : "Lihat seluruh lirik"}
