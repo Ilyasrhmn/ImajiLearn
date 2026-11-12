@@ -30,7 +30,7 @@ const prompts = {
   song: "Buat lagu belajar?",
 };
 
-export default function MaterialDetail({ teacherId, material, format, parent }) {
+export default function MaterialDetail({ teacherId, material, format, parent, libraryHref = "/buat-media#materi", SourceSidebar }) {
   const panel = useRef(null);
   const router = useRouter();
   const search = useSearchParams();
@@ -236,7 +236,7 @@ export default function MaterialDetail({ teacherId, material, format, parent }) 
 
   if (!format) return <article className="material-panel material-source">
     <div className={picker ? "material-source-sections" : "material-source-inner"}>
-      {picker && <aside className="material-source-sidebar" aria-label="Bagian materi">{picker}</aside>}
+      {picker && (SourceSidebar ? <SourceSidebar label={sectionLabel}>{picker}</SourceSidebar> : <aside className="material-source-sidebar" aria-label="Bagian materi">{picker}</aside>)}
       <div className={picker ? "material-source-inner" : undefined}>
         <h1>{original.title}</h1>
         <div className="material-source-actions">
@@ -320,7 +320,7 @@ export default function MaterialDetail({ teacherId, material, format, parent }) 
 
   function sourceLink(inDialog = false) {
     return <Link className={inDialog ? "upload-button" : "material-return"} data-media-create={inDialog ? undefined : ""}
-      href={material.archived ? "/buat-media#materi" : detailHref}>
+      href={material.archived ? libraryHref : detailHref}>
       {material.archived ? "Kembali ke materi" : "Lihat sumber"}
     </Link>;
   }

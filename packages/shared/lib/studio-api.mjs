@@ -1,4 +1,4 @@
-import { navigateAfterSessionChange, sessionLoginPath } from "./session.mjs";
+import { apiPath, navigateAfterSessionChange, sessionLoginPath } from "./session.mjs";
 import { createId } from "./id.mjs";
 
 export async function studioRequest(teacherId, path, { method = "GET", body, version, key, signal, binary = false } = {}) {
@@ -7,7 +7,7 @@ export async function studioRequest(teacherId, path, { method = "GET", body, ver
   if (method === "POST") headers["Idempotency-Key"] = key ?? createId();
   const multipart = body instanceof FormData;
   if (body !== undefined && !multipart) headers["Content-Type"] = "application/json";
-  const response = await fetch(`/api/v1${path}`, {
+  const response = await fetch(apiPath(path), {
     method, headers, signal, cache: "no-store",
     body: multipart ? body : body === undefined ? undefined : JSON.stringify(body),
   }).catch(error => {

@@ -1,4 +1,5 @@
 "use client";
+import { apiPath } from "@imajilearn/shared/lib/session.mjs";
 
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
@@ -22,7 +23,7 @@ export default function MaterialSlides({ deck, teacherId, illustrationsPath, rev
   const visual = visuals[index];
   const imagePath = illustrationsPath + "/" + index + illustrationQuery;
   const statusPath = imagePath + "&view=status";
-  const imageUrl = "/api/v1" + imagePath + "&imageVersion=" + (imageVersions[index] ?? 0);
+  const imageUrl = apiPath(imagePath + "&imageVersion=" + (imageVersions[index] ?? 0));
 
   useEffect(() => () => {
     if (!currentSpeech.current) return;

@@ -1,4 +1,5 @@
 "use client";
+import { apiPath } from "@imajilearn/shared/lib/session.mjs";
 
 import { startTransition, useEffect, useId, useLayoutEffect, useRef, useState, ViewTransition } from "react";
 import Image from "next/image";
@@ -11,7 +12,7 @@ import "./material-reading.css";
 
 function ReadingIllustration({ path, title }) {
   return <div className="reading-illustration">
-    <Image src={"/api/v1" + path + "&imageVersion=0"} alt={"Ilustrasi " + title} width={1024} height={1024} unoptimized loading="eager" />
+    <Image src={apiPath(path + "&imageVersion=0")} alt={"Ilustrasi " + title} width={1024} height={1024} unoptimized loading="eager" />
   </div>;
 }
 

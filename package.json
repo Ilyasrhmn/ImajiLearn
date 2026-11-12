@@ -2,9 +2,7 @@
   "name": "imajilearn-logicodix",
   "version": "0.1.0",
   "private": true,
-  "engines": {
-    "node": ">=22.13.0"
-  },
+  "engines": { "node": ">=22.13.0" },
   "workspaces": [
     "apps/*",
     "packages/*"
@@ -17,6 +15,8 @@
     "lint": "eslint .",
     "test": "node --test --test-concurrency=1 tests/*.test.mjs apps/web/server/ai/config.test.mjs apps/web/server/ai/providers/openai-chat.test.mjs",
     "test:http": "node tests/backend-http-smoke.mjs",
+    "test:pwa:http": "node tests/pwa-http-smoke.mjs",
+    "test:pwa:production": "node tests/pwa-http-smoke.mjs --production",
     "postinstall": "prisma generate",
     "db:generate": "prisma generate",
     "db:validate": "prisma validate",

@@ -3,7 +3,7 @@
 Monorepo npm workspaces dengan dua aplikasi Next.js berbasis JavaScript/JSX:
 
 - `apps/web`: web guru di http://localhost:3000.
-- `apps/pwa`: fondasi tampilan aplikasi mobile di http://localhost:3002.
+- `apps/pwa`: aplikasi mobile di http://localhost:3002 (otomatis ke `/app`).
 
 ## Menjalankan
 
@@ -13,6 +13,33 @@ npm run dev
 ```
 
 Gunakan `npm run dev:web` atau `npm run dev:pwa` untuk menjalankan satu aplikasi. Port harus tersedia.
+
+## Integrasi PWA
+
+Jalankan `npm run dev`, lalu buka **http://localhost:3002/** untuk PWA.
+Web guru tetap di **http://localhost:3000/**. Kedua server perlu berjalan.
+Port 3002 otomatis mengarahkan ke `/app`. Login, data dan upload memakai
+`/app/api/v1` pada origin PWA, lalu diteruskan ke backend. Origin asing
+ditolak sebelum diteruskan; pemeriksaan Origin backend tetap aktif.
+
+Jika alamat berbeda, salin `apps/pwa/.env.example` ke `apps/pwa/.env.local`:
+
+- `PWA_PUBLIC_ORIGIN`: alamat publik PWA; default development `http://localhost:3002`.
+- `PWA_BACKEND_ORIGIN`: alamat backend yang dijangkau server PWA; default development `http://localhost:3000`.
+- `PWA_BACKEND_PUBLIC_ORIGIN`: sama dengan `APP_ORIGIN` backend; jika kosong mengikuti alamat backend.
+
+Produksi membutuhkan origin publik HTTPS yang dikonfigurasi eksplisit.
+API key dan database tetap di backend. Akses lama melalui port 3000/app
+masih didukung jika routing `PWA_INTERNAL_ORIGIN` pada web diaktifkan.
+Alamat development utama PWA adalah port 3002.
+
+Tes berikut memakai database sintetis terisolasi untuk sesi, profil, logout,
+aset, cookie dan penolakan origin asing, termasuk akses langsung ke server PWA:
+
+```sh
+npm run test:pwa:http
+npm run test:pwa:production
+```
 
 ```sh
 npm run lint
@@ -258,10 +285,11 @@ npm test
 npm run test:http
 ```
 
-Workflow `Backend verification` memakai PostgreSQL 17 UTF8 dan Node.js 24 pada
-push/pull request ke branch `backend`, serta dapat dipicu manual. Pipeline
+Workflow `Web and PWA verification` memakai PostgreSQL 17 UTF8 dan Node.js 24 pada
+push/pull request ke branch `backend` dan `pwa`, serta dapat dipicu manual. Pipeline
 memasang dependensi dari lockfile, memvalidasi schema, menguji migrate/replay,
-menjalankan seluruh tes, lint, build web/PWA, dan smoke HTTP produksi. Workflow
+menjalankan seluruh tes, lint, build web/PWA, dan smoke HTTP development serta
+integrasi dua server produksi dengan upstream PWA yang dikonfigurasi. Workflow
 ini hanya memeriksa kode; tidak melakukan deploy, push atau merge.
 
 Lingkup B1 backend adalah penyimpanan preferensi dan endpoint GET/PUT dengan

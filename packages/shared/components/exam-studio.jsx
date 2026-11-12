@@ -12,7 +12,7 @@ import { studioRequest } from "../lib/studio-api.mjs";
 import { createId } from "../lib/id.mjs";
 import "./exams.css";
 
-export default function ExamStudio({ teacherId, Frame, onNavigationBlock, compact = false }) {
+export default function ExamStudio({ teacherId, Frame, onNavigationBlock, compact = false, ActionMenu }) {
   const [materials, setMaterials] = useState([]), [folders, setFolders] = useState([]), [exams, setExams] = useState([]);
   const [ready, setReady] = useState(false), [loadError, setLoadError] = useState(false), [profile, setProfile] = useState(() => readProfile(null));
   const [opened, setOpened] = useState(null), [deleteId, setDeleteId] = useState(null), [saved, setSaved] = useState(true), [notice, setNotice] = useState(null);
@@ -136,7 +136,7 @@ export default function ExamStudio({ teacherId, Frame, onNavigationBlock, compac
   }
   return <>
     <Frame teacherId={teacherId}>
-      {!ready ? <div className="materials-skeleton" role="status" aria-label="Memuat ujian"><span /><span /></div> : loadError ? <p role="alert">Naskah tidak dapat dimuat. Muat ulang untuk mencoba lagi.</p> : opened ? <>{savingError && <p role="alert">{savingError} <button type="button" className="text-button" onClick={flush}>Coba simpan lagi</button></p>}<ExamDocumentViewer key={opened.id} exam={opened} saved={saved} onChange={update} onBack={() => open(null)} onRemedial={() => add(pathFor(opened.id) + "/remedial")} /></> : <ExamConfiguration compact={compact} busy={processing} materials={materials} folders={folders} exams={exams} profile={profile} onCreate={config => add("/exams", config)} onOpen={open} onDelete={id => { setDeleteError(""); setDeleteId(id); }} onDuplicate={exam => add(pathFor(exam.id) + "/duplicate")} onRename={rename} />}
+      {!ready ? <div className="materials-skeleton" role="status" aria-label="Memuat ujian"><span /><span /></div> : loadError ? <p role="alert">Naskah tidak dapat dimuat. Muat ulang untuk mencoba lagi.</p> : opened ? <>{savingError && <p role="alert">{savingError} <button type="button" className="text-button" onClick={flush}>Coba simpan lagi</button></p>}<ExamDocumentViewer key={opened.id} exam={opened} saved={saved} onChange={update} onBack={() => open(null)} onRemedial={() => add(pathFor(opened.id) + "/remedial")} /></> : <ExamConfiguration teacherId={teacherId} ActionMenu={ActionMenu} compact={compact} busy={processing} materials={materials} folders={folders} exams={exams} profile={profile} onCreate={config => add("/exams", config)} onOpen={open} onDelete={id => { setDeleteError(""); setDeleteId(id); }} onDuplicate={exam => add(pathFor(exam.id) + "/duplicate")} onRename={rename} />}
     </Frame>
     {deleteId && <Modal busy={processing} title="Hapus naskah" className="action-confirmation-dialog" onClose={() => setDeleteId(null)}>
       <ActionConfirmation title="Hapus naskah ini?" confirmLabel="Hapus naskah" error={deleteError} busy={processing} onCancel={() => closeModal(() => setDeleteId(null))} onConfirm={remove}>
