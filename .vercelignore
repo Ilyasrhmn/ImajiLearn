@@ -1,0 +1,16 @@
+**/node_modules/**
+**/.next/**
+**/.vercel/**
+**/.git/**
+**/.env
+**/.env.*
+!**/.env.example
+**/*.pem
+**/*.log
+apps/web/server/generated/**
+docs/**
+tests/**
+.github/**
+AGENTS.md
+DESIGN.md
+PWA-AUDIT.md
