@@ -136,6 +136,7 @@ model MediaDraft {
 }
 
 model MaterialReading {
+  imageReplacements Int @default(0)
   imagePlan Json? @db.JsonB
   zImageRequests Int @default(0)
   materialId String   @db.Uuid
@@ -187,6 +188,7 @@ model MaterialVisual {
 }
 
 model MaterialSlideDeck {
+  imageReplacements Int @default(0)
   imagePlan Json? @db.JsonB
   zImageRequests Int @default(0)
   materialId String    @db.Uuid

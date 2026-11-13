@@ -5,6 +5,7 @@ import { ApiError } from "../core/errors.mjs";
 import { consumeRateLimit } from "../core/rate-limit.mjs";
 import { canonicalMaterialId, getOwnedMaterial } from "./readers.mjs";
 import { budgetedImageGenerator } from "./image-routing.mjs";
+import { replacementStatus, reserveImageReplacement } from "./image-replacements.mjs";
 
 const missingMaterial = () => new ApiError(404, "MATERIAL_NOT_FOUND", "Materi tidak ditemukan.");
 const readingMissing = () => new ApiError(409, "READING_NOT_READY", "Buat bacaan dulu untuk menambahkan ilustrasi.");
@@ -29,14 +30,14 @@ export function createReadingIllustration(db, generateIllustration, generateJson
       if (!source) throw missingMaterial();
       const row = await db.materialReading.findUnique({
         where: { materialId_revision: { materialId: source.id, revision: source.revision } },
-        select: { content: true },
+        select: { content: true, imageReplacements: true },
       });
       if (!row?.content) return mode === "status" ? illustrationStatus(null) : null;
       const where = imageKey({ materialId: source.id, revision: source.revision, sectionIndex: chapterIndex(row.content, sectionIndex) });
       const image = await db.materialReadingIllustration.findUnique({ where, select: {
         bytes: true, sourceBytes: true, visualSkipped: true,
       } });
-      if (mode === "status") return illustrationStatus(image);
+      if (mode === "status") return { ...illustrationStatus(image), replacements: replacementStatus(row.imageReplacements) };
       return image?.sourceBytes ?? image?.bytes ?? null;
     },
 
@@ -57,6 +58,7 @@ export function createReadingIllustration(db, generateIllustration, generateJson
         if (stored?.leaseUntil > new Date()) {
           throw new ApiError(409, "ILLUSTRATION_IN_PROGRESS", "Ilustrasi sedang dibuat. Coba buka lagi sebentar.");
         }
+        if (replace && !stored?.providerTaskId) await reserveImageReplacement(tx, "materialReading", key);
         if (!preparation.budgeted) await consumeRateLimit(tx, "reading-illustration:" + userId, 10, 15 * 60_000);
         const lease = { leaseId: randomUUID(), leaseUntil: new Date(Date.now() + 180_000) };
         await tx.materialReadingIllustration.upsert({
