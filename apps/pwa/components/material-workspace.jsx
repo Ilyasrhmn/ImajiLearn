@@ -29,7 +29,7 @@ export default function MaterialWorkspace() {
   }, [teacherId, materialId, attempt, valid]);
   if (!valid) return <ErrorState message="Halaman tidak ditemukan." />;
   if (error) return <ErrorState message={error} onRetry={() => { setError(""); setAttempt(n => n + 1); }} />;
-  if (!context || context.material.id !== materialId) return <Loading label="Memuat materi" />;
+  if (!context || context.material.id !== materialId) return <Loading variant="lesson" label="Memuat materi" />;
   const { material, parent } = context, original = parent ?? material;
   return <section className="material-page pwa-material-workspace">
     <MaterialNavigation materialId={material.id} folderId={original.folderId} pdf={original.file?.mime === "application/pdf"}
