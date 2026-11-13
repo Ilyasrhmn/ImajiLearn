@@ -24,7 +24,7 @@ export async function proxyBackend(request, { params }, env = process.env, send 
   const url = new URL(`/api/v1/${path.map(encodeURIComponent).join("/")}`, backend);
   url.search = new URL(request.url).search;
   const headers = new Headers();
-  for (const key of ["content-type", "cookie", "if-match", "idempotency-key", "x-teacher-id", "range"]) {
+  for (const key of ["content-type", "cookie", "if-match", "idempotency-key", "x-teacher-id", "range", "x-ai-repair"]) {
     if (request.headers.has(key)) headers.set(key, request.headers.get(key));
   }
   if (unsafe) headers.set("origin", path.join("/") === "auth/google/pwa" ? publicPwa : publicBackend);
