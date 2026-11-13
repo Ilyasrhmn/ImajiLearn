@@ -18,7 +18,7 @@ function SongLyrics({ sections }) {
   </div>);
 }
 
-function Karaoke({ song, audioUrl }) {
+export function Karaoke({ song, audioUrl }) {
   const audio = useRef(null);
   const lyricsId = useId();
   const [position, setPosition] = useState(0);

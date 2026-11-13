@@ -33,10 +33,18 @@ function waitForProvider(milliseconds, signal) {
 export async function generateMaterialMedia(teacherId, path, libraryId, media, { signal, onProgress } = {}) {
   let data, progress;
   let retryBudget = 120_000;
+  let inProgressBudget = 300_000;
   do {
     try {
       ({ data } = await studioRequest(teacherId, path, { method: "POST", signal }));
     } catch (error) {
+      if (error.status === 409 && ["READING_IN_PROGRESS", "SLIDES_IN_PROGRESS", "LESSON_IN_PROGRESS"].includes(error.code) && inProgressBudget > 0) {
+        inProgressBudget -= 5000;
+        onProgress?.({ ...progress, waiting: true });
+        await waitForProvider(5000, signal);
+        data = { status: "preparing" };
+        continue;
+      }
       const delay = (error.retryAfterSeconds ?? 60) * 1000;
       if (!["reading", "slides"].includes(media) || error.status !== 429 || error.code !== "RATE_LIMITED" ||
           delay < 1000 || delay > retryBudget) throw error;

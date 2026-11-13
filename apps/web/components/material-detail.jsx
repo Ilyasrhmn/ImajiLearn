@@ -314,7 +314,7 @@ export default function MaterialDetail({ teacherId, material, format, parent, li
         <History size={18} aria-hidden="true" />Riwayat {format.action}
       </button>
       {format.id === "reading" && <MaterialReading reading={output.data} teacherId={teacherId}
-        illustrationPath={sourcePath + "/reading/illustration"} sourceHref={detailHref} />}
+        illustrationPath={sourcePath + "/reading/illustration"} />}
       {format.id === "mindmap" && <>
         {busy ? <p role="status">Membuat visual…</p>
           : <MaterialProjector><MaterialVisual key={output.version ?? 0} visual={output.data} /></MaterialProjector>}
@@ -323,8 +323,8 @@ export default function MaterialDetail({ teacherId, material, format, parent, li
           {error && <p className="source-error" role="alert">{error}</p>}
         </div>
       </>}
-      {format.id === "slides" && <MaterialProjector><MaterialSlides deck={output.data} teacherId={teacherId}
-        illustrationsPath={sourcePath + "/slides/illustrations"} revision={material.revision} /></MaterialProjector>}
+      {format.id === "slides" && <MaterialSlides deck={output.data} teacherId={teacherId}
+        illustrationsPath={sourcePath + "/slides/illustrations"} revision={material.revision} />}
       {format.id === "song" && <MaterialSong song={output.data} teacherId={teacherId} songPath={sourcePath + "/song"} revision={material.revision} />}
     </> : <MaterialMediaHistory format={format} history={history} error={historyError} loading={historyLoading}
       query={historyQuery} onSearch={setHistoryQuery}

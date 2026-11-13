@@ -211,8 +211,8 @@ function MediaSourceDialog({ teacherId, format, initial, onClose, onDraftSaved, 
 
 function StudioResult({ format, result, teacherId, materialId }) {
   const path = outputPath(format, materialId);
-  if (format.id === "reading") return <MaterialReading reading={result} illustrationPath={`${path}/illustration`} sourceHref={`/materi/${encodeURIComponent(materialId)}`} />;
-  if (format.id === "slides") return <MaterialProjector><MaterialSlides deck={result} teacherId={teacherId} illustrationsPath={`${path}/illustrations`} revision={result.revision} /></MaterialProjector>;
+  if (format.id === "reading") return <MaterialReading reading={result} illustrationPath={`${path}/illustration`} />;
+  if (format.id === "slides") return <MaterialSlides deck={result} teacherId={teacherId} illustrationsPath={`${path}/illustrations`} revision={result.revision} />;
   if (format.id === "song") return <MaterialSong song={result} teacherId={teacherId} songPath={path} revision={result.revision} />;
   return <MaterialProjector><MaterialVisual visual={result} /></MaterialProjector>;
 }

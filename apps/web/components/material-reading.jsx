@@ -3,16 +3,17 @@ import { apiPath } from "@imajilearn/shared/lib/session.mjs";
 
 import { startTransition, useEffect, useId, useLayoutEffect, useRef, useState, ViewTransition } from "react";
 import Image from "next/image";
-import Link from "next/link";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import Icon from "./icon";
 import { ProjectorButton } from "./material-projector";
 import Modal, { closeModal } from "./modal";
 import { Mascot } from "./mascot";
+import NarrationButton from "./narration-button";
 import "./material-reading.css";
 
-function ReadingIllustration({ path, title }) {
+function ReadingIllustration({ path, title, sampleImage }) {
   return <div className="reading-illustration">
-    <Image src={apiPath(path + "&imageVersion=0")} alt={"Ilustrasi " + title} width={1024} height={1024} unoptimized loading="eager" />
+    <Image src={sampleImage ?? apiPath(path + "&imageVersion=0")} alt={"Ilustrasi " + title} width={1024} height={1024} unoptimized loading="eager" />
   </div>;
 }
 
@@ -56,17 +57,15 @@ function ReadingQuestion({ item, onClose }) {
   </Modal>;
 }
 
-function ReadingFooter({ index, total, canGoBack, canGoNext, previous, next, finish, sourceHref }) {
+function ReadingFooter({ index, total, canGoBack, canGoNext, previous, next }) {
   return <div className="reading-footer">
       <div className="lesson-progress" role="progressbar" aria-label="Bagian bacaan" aria-valuemin={0} aria-valuemax={total} aria-valuenow={index + 1}>
         <span style={{ width: `${(index + 1) / total * 100}%` }} />
       </div>
       <div className="lesson-pagination">
-        <button className="text-button" type="button" disabled={!canGoBack} onClick={previous}><Icon name="back" />Sebelumnya</button>
+        <button className="icon-button source-secondary" type="button" aria-label="Bagian sebelumnya" disabled={!canGoBack} onClick={previous}><ChevronLeft size={20} aria-hidden="true" /></button>
         <span aria-live="polite">{index + 1} / {total}</span>
-        {canGoNext ? <button className="button" type="button" onClick={next}>Berikutnya<Icon name="arrow" /></button>
-          : sourceHref ? <Link className="button" href={sourceHref}>Kembali ke sumber<Icon name="arrow" /></Link>
-          : <button className="button" type="button" onClick={finish}>Keluar proyektor<Icon name="arrow" /></button>}
+        <button className="icon-button source-secondary" type="button" aria-label="Bagian berikutnya" disabled={!canGoNext} onClick={next}><ChevronRight size={20} aria-hidden="true" /></button>
       </div>
     </div>;
 }
@@ -77,7 +76,7 @@ function QuestionTriggers({ questions, onQuestion }) {
               </div>;
 }
 
-function Projector({ section, index, total, change, exit, illustration, questions, onQuestion }) {
+function Projector({ section, index, total, change, exit, illustration, questions, onQuestion, narration }) {
   const viewport = useRef(null);
   const columns = useRef(null);
   useLayoutEffect(() => {
@@ -131,6 +130,7 @@ function Projector({ section, index, total, change, exit, illustration, question
 
   return <>
     <header className="lesson-toolbar projector-toolbar">
+      {narration}
       <ProjectorButton active onClick={exit} />
     </header>
     <h2 className="projector-title">{section.heading}</h2>
@@ -146,11 +146,11 @@ function Projector({ section, index, total, change, exit, illustration, question
       {illustration}
     </div>
     <ReadingFooter index={index} total={total} canGoBack={index > 0} canGoNext={index < total - 1}
-      previous={() => move(-1)} next={() => move(1)} finish={exit} />
+      previous={() => move(-1)} next={() => move(1)} />
   </>;
 }
 
-export default function MaterialReading({ reading, illustrationPath, sourceHref }) {
+export default function MaterialReading({ reading, illustrationPath, sampleImages }) {
   const [index, setIndex] = useState(0);
   const [question, setQuestion] = useState(null);
   const [classroom, setClassroom] = useState(false);
@@ -160,7 +160,8 @@ export default function MaterialReading({ reading, illustrationPath, sourceHref 
   const { sections, quiz } = reading;
   const section = sections[index];
   const total = sections.length;
-  const hasIllustration = reading.illustrations?.[index]?.ready;
+  const sampleImage = sampleImages?.[index];
+  const hasIllustration = sampleImage || reading.illustrations?.[index]?.ready;
   const chapterIllustration = `${illustrationPath}?section=${index}`;
   const questions = quiz.some(item => item.sectionIndex !== undefined)
     ? quiz.filter((item, position) => (item.sectionIndex ?? Math.min(position, total - 1)) === index)
@@ -192,10 +193,14 @@ export default function MaterialReading({ reading, illustrationPath, sourceHref 
     }
   }
 
+  const narration = <NarrationButton key={index} title={section.heading} paragraphs={section.paragraphs}
+    label="Bacakan bagian" unavailable="Browser ini belum bisa membacakan bacaan." />;
+
   return <article ref={lesson} className={`immersive-reading lesson-page${classroom ? " classroom-mode" : ""}`} aria-label={reading.title}>
     {classroom ? <Projector section={section} index={index} total={total} change={setIndex} exit={toggleProjector}
-      questions={questions} onQuestion={setQuestion} illustration={hasIllustration ? <ReadingIllustration key={chapterIllustration} path={chapterIllustration} title={section.heading} /> : null} /> : <>
+      questions={questions} onQuestion={setQuestion} narration={narration} illustration={hasIllustration ? <ReadingIllustration key={chapterIllustration} path={chapterIllustration} title={section.heading} sampleImage={sampleImage} /> : null} /> : <>
     <div className="lesson-toolbar">
+      {narration}
       <ProjectorButton onClick={toggleProjector} />
     </div>
     <ViewTransition update="immersive-page" default="none">
@@ -208,12 +213,12 @@ export default function MaterialReading({ reading, illustrationPath, sourceHref 
               {i === Math.min(1, section.paragraphs.length - 1) && questions.length > 0 && <QuestionTriggers questions={questions} onQuestion={setQuestion} />}
             </div>)}
           </div>
-          {hasIllustration && <ReadingIllustration key={chapterIllustration} path={chapterIllustration} title={section.heading} />}
+          {hasIllustration && <ReadingIllustration key={chapterIllustration} path={chapterIllustration} title={section.heading} sampleImage={sampleImage} />}
         </div>
       </div>
     </ViewTransition>
     <ReadingFooter index={index} total={total} canGoBack={index > 0} canGoNext={index < total - 1}
-      previous={() => change(index - 1)} next={() => change(index + 1)} sourceHref={sourceHref} />
+      previous={() => change(index - 1)} next={() => change(index + 1)} />
     </>}
     {question && <ReadingQuestion item={question} onClose={() => setQuestion(null)} />}
   </article>;

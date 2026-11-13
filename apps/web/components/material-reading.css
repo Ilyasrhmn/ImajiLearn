@@ -87,11 +87,16 @@
   border-radius: 4px;
 }
 .immersive-reading .lesson-pagination {
-  display: flex;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
   align-items: center;
+  gap: 16px;
   margin-top: 24px;
 }
+.immersive-reading .lesson-pagination > button:first-child { justify-self: start; }
+.immersive-reading .lesson-pagination > button:last-child { justify-self: end; }
+.immersive-reading .lesson-pagination > button { padding: 0; }
+.immersive-reading .lesson-pagination > button:disabled { opacity: .45; cursor: default; }
 .immersive-reading .lesson-pagination > span {
   font-size: 16px;
   color: var(--muted);
@@ -317,8 +322,6 @@
   .immersive-reading .reading-illustration img { max-width: 410px; max-height: 290px; }
   .immersive-reading .reading-footer { margin-top: 34px; }
   .immersive-reading .lesson-pagination { gap: 10px; }
-  .immersive-reading .lesson-pagination > .button { font-size: 15px; padding: 13px 16px; min-height: 50px; }
-  .immersive-reading .lesson-pagination > .text-button { font-size: 14px; gap: 7px; }
   .immersive-reading .lesson-pagination > span { font-size: 13px; white-space: nowrap; }
   .immersive-quiz .quiz-layout { display: flex; flex-direction: column; gap: 10px; padding-top: 0; }
   .immersive-quiz .quiz-character { padding-top: 0; align-self: center; height: 120px; }
@@ -452,4 +455,18 @@ body:has(.immersive-reading.classroom-mode) {
 .immersive-reading .projector-stage:not(:has(.reading-illustration)) {
   grid-template-columns: minmax(0, 1fr);
   grid-template-rows: minmax(0, 1fr);
+}
+
+.immersive-reading .lesson-toolbar {
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.material-narration .source-error {
+  margin: 6px 0 0;
+  font-size: .875rem;
+}
+
+@media (max-width: 760px), (hover: none) and (pointer: coarse) {
+  .immersive-reading:not(.classroom-mode) > .lesson-toolbar:has(.material-narration) { display: flex; }
+  .immersive-reading:not(.classroom-mode) > .lesson-toolbar > .material-projector-button { display: none; }
 }

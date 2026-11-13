@@ -219,6 +219,9 @@
 .material-projector-toolbar {
   display: flex;
   justify-content: flex-end;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
   margin-bottom: 12px;
 }
 
@@ -294,6 +297,9 @@ body:has(.material-projector.is-active) .material-navigation { visibility: hidde
   .immersive-reading:not(.classroom-mode) > .lesson-toolbar {
     display: none;
   }
+
+  .material-projector:not(.is-active) > .material-projector-toolbar:has(.material-narration) { display: flex; }
+  .material-projector:not(.is-active) > .material-projector-toolbar:has(.material-narration) > .material-projector-button { display: none; }
 
   .material-output-page .immersive-reading > .reading-content { padding-top: 0; }
 }
