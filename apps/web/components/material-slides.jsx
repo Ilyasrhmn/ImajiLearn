@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { ChevronLeft, ChevronRight, Maximize2, Minimize2, RefreshCw } from "lucide-react";
 import { studioRequest } from "../lib/studio-api.mjs";
+import { studioAIRequest } from "@imajilearn/shared/lib/ai-request.mjs";
 import MaterialProjector from "./material-projector";
 import NarrationButton from "./narration-button";
 import "./material-slides.css";
@@ -46,7 +47,7 @@ export default function MaterialSlides({ deck, teacherId, illustrationsPath, rev
     setReplacing(true);
     setImageError("");
     try {
-      await studioRequest(teacherId, illustrationsPath + illustrationQuery, {
+      await studioAIRequest(teacherId, illustrationsPath + illustrationQuery, {
         method: "POST", body: { index, replace: true },
       });
       const { data } = await studioRequest(teacherId, statusPath);

@@ -3,7 +3,8 @@ import { apiPath } from "@imajilearn/shared/lib/session.mjs";
 
 import { useEffect, useId, useRef, useState } from "react";
 import { FileText, Music2, Pause, Play, RefreshCw, Repeat2, RotateCcw, Volume2, VolumeX } from "lucide-react";
-import { studioRequest } from "../lib/studio-api.mjs";
+import { studioAIRequest } from "@imajilearn/shared/lib/ai-request.mjs";
+import { waitForSong } from "../lib/song-polling.mjs";
 import MaterialProjector from "./material-projector";
 import { Mascot } from "./mascot";
 import "./material-song.css";
@@ -128,29 +129,20 @@ export default function MaterialSong({ song: initialSong, teacherId, songPath, r
   const retrying = useRef(false);
 
   useEffect(() => {
-    const controller = new AbortController(); let timer;
-    const deadline = Date.now() + 10 * 60_000;
-    async function poll() {
-      try {
-        const { data } = await studioRequest(teacherId, songPath, { signal: controller.signal });
-        if (controller.signal.aborted) return;
-        if (!data) { setError("Lagu belum tersedia. Kembali ke materi untuk membuat lagu."); return; }
-        setSong(data); setError("");
-        if (pending(data) || data.alignmentPending) {
-          if (Date.now() < deadline) timer = setTimeout(poll, 5000);
-          else setError("Lagu masih diproses. Kamu bisa kembali dan membukanya lagi nanti.");
-        }
-      } catch (error) { if (!controller.signal.aborted) setError(error.message); }
-    }
-    poll();
-    return () => { controller.abort(); clearTimeout(timer); };
+    const controller = new AbortController();
+    waitForSong(teacherId, songPath, { signal: controller.signal, immediate: true, includeAlignment: true,
+      onUpdate: data => {
+        if (!controller.signal.aborted) { setSong(data); setError(""); }
+      },
+    }).catch(failure => { if (!controller.signal.aborted) setError(failure.message); });
+    return () => controller.abort();
   }, [teacherId, songPath, attempt]);
 
   async function retry() {
     if (retrying.current) return;
     retrying.current = true; setBusy(true); setError("");
     try {
-      const { data } = await studioRequest(teacherId, songPath, { method: "POST" });
+      const { data } = await studioAIRequest(teacherId, songPath, { method: "POST" });
       setSong(data); setAttempt(value => value + 1);
     } catch (error) { setError(error.message); }
     finally { retrying.current = false; setBusy(false); }

@@ -1,5 +1,7 @@
 import { studioRequest } from "./studio-api.mjs";
+import { studioAIRequest } from "@imajilearn/shared/lib/ai-request.mjs";
 import { preloadLessonImages } from "./lesson-images.mjs";
+import { isTemporaryAIError, waitForAI } from "@imajilearn/shared/lib/ai-wait.mjs";
 
 export async function rememberMaterialMedia(teacherId, materialId, media) {
   const id = encodeURIComponent(materialId);
@@ -21,42 +23,30 @@ export async function rememberMaterialMedia(teacherId, materialId, media) {
   }
 }
 
-function waitForProvider(milliseconds, signal) {
-  signal?.throwIfAborted();
-  return new Promise((resolve, reject) => {
-    const cancel = () => { clearTimeout(timer); reject(signal.reason); };
-    const timer = setTimeout(() => { signal?.removeEventListener("abort", cancel); resolve(); }, milliseconds);
-    signal?.addEventListener("abort", cancel, { once: true });
-  });
-}
-
 export async function generateMaterialMedia(teacherId, path, libraryId, media, { signal, onProgress } = {}) {
   let data, progress;
-  let retryBudget = 120_000;
-  let inProgressBudget = 300_000;
   do {
     try {
-      ({ data } = await studioRequest(teacherId, path, { method: "POST", signal }));
+      ({ data } = await studioAIRequest(teacherId, path, { method: "POST", signal,
+        onRepair: state => onProgress?.({ ...progress, ...state }),
+      }));
     } catch (error) {
-      if (error.status === 409 && ["READING_IN_PROGRESS", "SLIDES_IN_PROGRESS", "LESSON_IN_PROGRESS"].includes(error.code) && inProgressBudget > 0) {
-        inProgressBudget -= 5000;
+      if (error.status === 409 && ["READING_IN_PROGRESS", "SLIDES_IN_PROGRESS", "LESSON_IN_PROGRESS", "VISUAL_IN_PROGRESS"].includes(error.code)) {
         onProgress?.({ ...progress, waiting: true });
-        await waitForProvider(5000, signal);
+        await waitForAI(signal);
         data = { status: "preparing" };
         continue;
       }
-      const delay = (error.retryAfterSeconds ?? 60) * 1000;
-      if (!["reading", "slides"].includes(media) || error.status !== 429 || error.code !== "RATE_LIMITED" ||
-          delay < 1000 || delay > retryBudget) throw error;
-      retryBudget -= delay;
+      if (!isTemporaryAIError(error)) throw error;
       onProgress?.({ ...progress, waiting: true });
-      await waitForProvider(delay, signal);
+      await waitForAI(signal, error.retryAfterSeconds ?? (error.status === 429 ? 60 : 5));
       data = { status: "preparing" };
       continue;
     }
     if (data?.status === "preparing") {
       progress = data;
       onProgress?.(data);
+      if (data.retryAfterSeconds) await waitForAI(signal, data.retryAfterSeconds);
     }
   } while (data?.status === "preparing");
   await preloadLessonImages(path, data, signal);

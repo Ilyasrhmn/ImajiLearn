@@ -14,6 +14,7 @@ import { Mascot } from "./mascot";
 import MaterialProjector from "./material-projector";
 import Modal, { closeModal } from "./modal";
 import { downloadMaterial } from "../lib/materials";
+import { waitForSong } from "../lib/song-polling.mjs";
 import { generateMaterialMedia } from "../lib/material-media.mjs";
 import { studioRequest } from "../lib/studio-api.mjs";
 import { preloadLessonImages } from "../lib/lesson-images.mjs";
@@ -161,24 +162,14 @@ export default function MaterialDetail({ teacherId, material, format, parent, li
   useEffect(() => {
     if (!showDialog || !songPending) return;
     const controller = new AbortController();
-    const deadline = Date.now() + 10 * 60_000;
-    let timer;
-
-    async function poll() {
-      try {
-        const { data } = await studioRequest(teacherId, outputPath, { signal: controller.signal });
+    waitForSong(teacherId, outputPath, { signal: controller.signal })
+      .then(data => {
         if (controller.signal.aborted) return;
-        if (data?.status === "ready") finishGeneration(data);
-        else if (data?.status === "failed" || data?.status === "uncertain") setOutput({ data });
-        else if (data && Date.now() < deadline) timer = setTimeout(poll, 5000);
-        else setSongCheckError(data ? "Lagu masih diproses." : "Status lagu belum tersedia.");
-      } catch (failure) {
-        if (!controller.signal.aborted) setSongCheckError(failure.message);
-      }
-    }
-
-    void poll();
-    return () => { controller.abort(); clearTimeout(timer); };
+        if (data.status === "ready") finishGeneration(data);
+        else setOutput({ data });
+      })
+      .catch(failure => { if (!controller.signal.aborted) setSongCheckError(failure.message); });
+    return () => controller.abort();
   }, [showDialog, songPending, songCheck, teacherId, outputPath, finishGeneration]);
 
   async function generate(regenerate = false) {

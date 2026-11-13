@@ -20,6 +20,7 @@ import { mediaStudio } from "../lib/media-studios.mjs";
 import { resolveVisualModel } from "../lib/visual-templates.mjs";
 import { getMaterial, listFolders, listMaterials, NO_SUBJECT_LABEL } from "../lib/materials";
 import { studioRequest } from "../lib/studio-api.mjs";
+import { waitForSong } from "../lib/song-polling.mjs";
 import { generateMaterialMedia } from "../lib/material-media.mjs";
 import { preloadLessonImages } from "../lib/lesson-images.mjs";
 import { sourceTextLimit, sourceTextLimitMessage } from "../lib/material-limits.mjs";
@@ -27,14 +28,6 @@ import "./media-studio.css";
 
 const outputPath = (format, id) => `/materials/${encodeURIComponent(id)}/${format.segment}`;
 const songPending = data => data && !["ready", "failed", "uncertain"].includes(data.status);
-function waitForSong(signal) {
-  return new Promise((resolve, reject) => {
-    const abort = () => { clearTimeout(timer); reject(signal.reason); };
-    const timer = setTimeout(() => { signal.removeEventListener("abort", abort); resolve(); }, 5000);
-    signal.addEventListener("abort", abort, { once: true });
-    if (signal.aborted) abort();
-  });
-}
 
 function MediaSourceDialog({ teacherId, format, initial, onClose, onDraftSaved, onComplete }) {
   const [stage, setStage] = useState(initial ? "parts" : "sources");
@@ -139,14 +132,10 @@ function MediaSourceDialog({ teacherId, format, initial, onClose, onDraftSaved, 
       setGenerating(true);
       let data = await generateMaterialMedia(teacherId, outputPath(format, source.id), material.parentId ?? material.id, format.id, { signal: controller.signal, onProgress: setPreparation });
       if (format.id === "song") {
-        const deadline = Date.now() + 10 * 60_000;
         working.current = false;
         setBusy(false);
-        while (songPending(data)) {
-          if (Date.now() >= deadline) throw new Error("Lagu masih diproses. Lanjutkan melalui Draf.");
-          await waitForSong(controller.signal);
-          ({ data } = await studioRequest(teacherId, outputPath(format, source.id), { signal: controller.signal }));
-        }
+        if (songPending(data)) data = await waitForSong(teacherId, outputPath(format, source.id),
+          { signal: controller.signal, onProgress: setPreparation });
         if (data?.status !== "ready") throw new Error(data?.error ?? "Lagu belum berhasil dibuat. Coba lagi.");
       }
       if (format.id === "mindmap" && !resolveVisualModel(data)) throw new Error("Visual belum lengkap. Coba lagi.");
