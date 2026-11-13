@@ -9,6 +9,7 @@ export function sessionLoginPath(pathname = window.location.pathname) {
 }
 
 export function announceSessionChange() {
+  if (typeof window !== "undefined") window.dispatchEvent(new Event(sessionChangeKey));
   try {
     localStorage.setItem(sessionChangeKey, `${Date.now()}:${Math.random()}`);
   } catch {

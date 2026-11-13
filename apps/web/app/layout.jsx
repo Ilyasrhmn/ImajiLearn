@@ -2,6 +2,7 @@ import "@fontsource-variable/nunito-sans";
 import "./globals.css";
 import "../components/icon-motion.css";
 import { brandAssets } from "@imajilearn/shared/assets";
+import MediaJobs from "../components/media-jobs";
 
 export const metadata = {
   title: "ImajiLearn",
@@ -11,7 +12,7 @@ export const metadata = {
 export default function RootLayout({ children }) {
   return (
     <html lang="id">
-      <body>{children}</body>
+      <body>{children}<MediaJobs /></body>
     </html>
   );
 }

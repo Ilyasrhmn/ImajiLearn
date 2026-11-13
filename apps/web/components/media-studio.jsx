@@ -20,14 +20,15 @@ import { mediaStudio } from "../lib/media-studios.mjs";
 import { resolveVisualModel } from "../lib/visual-templates.mjs";
 import { getMaterial, listFolders, listMaterials, NO_SUBJECT_LABEL } from "../lib/materials";
 import { studioRequest } from "../lib/studio-api.mjs";
-import { waitForSong } from "../lib/song-polling.mjs";
-import { generateMaterialMedia } from "../lib/material-media.mjs";
 import { preloadLessonImages } from "../lib/lesson-images.mjs";
 import { sourceTextLimit, sourceTextLimitMessage } from "../lib/material-limits.mjs";
+import { startMaterialJob } from "../lib/material-job.mjs";
+import { useMediaJobs } from "../lib/use-media-jobs.mjs";
+import { mediaJobs, mediaProgressTitle } from "@imajilearn/shared/lib/media-jobs.mjs";
+import MediaGeneration from "./media-generation";
 import "./media-studio.css";
 
 const outputPath = (format, id) => `/materials/${encodeURIComponent(id)}/${format.segment}`;
-const songPending = data => data && !["ready", "failed", "uncertain"].includes(data.status);
 
 function MediaSourceDialog({ teacherId, format, initial, onClose, onDraftSaved, onComplete }) {
   const [stage, setStage] = useState(initial ? "parts" : "sources");
@@ -38,7 +39,9 @@ function MediaSourceDialog({ teacherId, format, initial, onClose, onDraftSaved, 
   const [error, setError] = useState("");
   const [listError, setListError] = useState("");
   const [attempt, setAttempt] = useState(0);
-  const [preparation, setPreparation] = useState(null);
+  const [taskId, setTaskId] = useState(null);
+  const activeJob = useMediaJobs().find(job => job.id === taskId);
+  const preparation = activeJob?.progress;
   const [busy, setBusy] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [uploadBusy, setUploadBusy] = useState(false);
@@ -51,7 +54,7 @@ function MediaSourceDialog({ teacherId, format, initial, onClose, onDraftSaved, 
   const draftPath = `/media/${format.id}/drafts`;
   useEffect(() => {
     alive.current = true;
-    return () => { alive.current = false; generation.current?.abort(); };
+    return () => { alive.current = false; if (generation.current) mediaJobs.background(generation.current.id); };
   }, []);
   useEffect(() => {
     let active = true;
@@ -84,7 +87,6 @@ function MediaSourceDialog({ teacherId, format, initial, onClose, onDraftSaved, 
     working.current = true;
     setBusy(true);
     try {
-      if (generating) generation.current?.abort();
       if (!generating && stage === "parts" && material) {
         const selection = material.file?.mime === "application/pdf" ? await picker.current?.apply({ silent: true }) : material.id;
         if (selection !== null) await saveDraft(selection ?? material.id);
@@ -116,8 +118,6 @@ function MediaSourceDialog({ teacherId, format, initial, onClose, onDraftSaved, 
     setBusy(true);
     setError("");
     let completed = false;
-    const controller = new AbortController();
-    generation.current = controller;
     try {
       const selection = material.file?.mime === "application/pdf" ? await picker.current?.apply() : material.id;
       if (selection === null) return;
@@ -128,37 +128,35 @@ function MediaSourceDialog({ teacherId, format, initial, onClose, onDraftSaved, 
         throw new Error(source.extractionError === "SOURCE_TEXT_TOO_LONG" ? sourceTextLimitMessage : "Teks materi belum dapat dibaca. Pilih materi lain atau unggah teksnya.");
       }
       if (source.text.length > sourceTextLimit) throw new Error(sourceTextLimitMessage);
-      setPreparation(null);
+      if (!alive.current) return;
       setGenerating(true);
-      let data = await generateMaterialMedia(teacherId, outputPath(format, source.id), material.parentId ?? material.id, format.id, { signal: controller.signal, onProgress: setPreparation });
-      if (format.id === "song") {
-        working.current = false;
-        setBusy(false);
-        if (songPending(data)) data = await waitForSong(teacherId, outputPath(format, source.id),
-          { signal: controller.signal, onProgress: setPreparation });
-        if (data?.status !== "ready") throw new Error(data?.error ?? "Lagu belum berhasil dibuat. Coba lagi.");
-      }
-      if (format.id === "mindmap" && !resolveVisualModel(data)) throw new Error("Visual belum lengkap. Coba lagi.");
-      if (!data || ((format.id === "reading" || format.id === "slides") && !data[format.id === "reading" ? "sections" : "slides"]?.length)) {
-        throw new Error("Media belum lengkap. Coba lagi.");
-      }
-      if (!alive.current || controller.signal.aborted) return;
-      await studioRequest(teacherId, draftPath, { method: "DELETE", body: { materialId: source.id } }).catch(() => {});
-      if (!alive.current || controller.signal.aborted) return;
+      const task = startMaterialJob({ teacherId, format, source, libraryId: material.parentId ?? material.id,
+        path: outputPath(format, source.id), draftPath,
+        href: `${format.route}?hasil=${encodeURIComponent(source.id)}`,
+        resumeHref: `${format.route}?materi=${encodeURIComponent(source.id)}`,
+      });
+      generation.current = task;
+      setTaskId(task.id);
+      mediaJobs.foreground(task.id);
+      const outcome = await task.promise;
+      if (!alive.current || !mediaJobs.getSnapshot().find(job => job.id === task.id)?.foreground) return;
+      if (outcome.status === "cancelled") return;
+      if (outcome.status === "failed") { mediaJobs.remove(task.id); throw outcome.error; }
       completed = true;
       setBusy(true);
-      closeModal(() => onComplete(source.id, { ...data, revision: source.revision }));
+      mediaJobs.remove(task.id);
+      closeModal(() => onComplete(source.id, outcome.data));
     } catch (failure) {
-      if (alive.current && !controller.signal.aborted) {
+      if (alive.current) {
         setError(failure.message);
       }
     } finally {
       working.current = false;
-      if (alive.current && !completed && !controller.signal.aborted) { setBusy(false); setGenerating(false); }
+      if (alive.current && !completed) { setBusy(false); setGenerating(false); }
     }
   }
   const locked = busy || uploadBusy;
-  const title = generating ? (preparation?.waiting ? "Menunggu layanan AI\u2026" : `Membuat ${format.action}\u2026${preparation ? ` ${preparation.completed}/${preparation.total}` : ""}`) : stage === "sources" ? "Pilih materi" : stage === "upload" ? "Unggah materi" : "Pilih bagian";
+  const title = generating ? mediaProgressTitle(format.action, preparation) : stage === "sources" ? "Pilih materi" : stage === "upload" ? "Unggah materi" : "Pilih bagian";
   const matches = items?.filter(item => item.title.toLocaleLowerCase("id").includes(query.toLocaleLowerCase("id")));
   return <Modal title={title} wide className="studio-create" onClose={onClose} beforeClose={beforeClose} dismissible={!locked}>
     <div className="studio-create-heading">
@@ -194,7 +192,10 @@ function MediaSourceDialog({ teacherId, format, initial, onClose, onDraftSaved, 
         onChoose={saveDraft} onCreate={generate} creating={busy} actionLabel={`Buat ${format.action}`} />
         : <div className="source-actions"><button type="button" className="upload-button" disabled={busy} onClick={generate}>Buat {format.action}</button></div>}
     </div>}
-    {generating && <div className="studio-generation" role="status"><Mascot kind="book" /><div className="studio-generation-bar" aria-hidden="true" /></div>}
+    {generating && <MediaGeneration onMinimize={() => {
+      if (generation.current) mediaJobs.background(generation.current.id);
+      closeModal(onClose);
+    }} />}
     {error && <p className="source-error" role="alert">{error}</p>}
   </Modal>;
 }

@@ -14,13 +14,15 @@ import { Mascot } from "./mascot";
 import MaterialProjector from "./material-projector";
 import Modal, { closeModal } from "./modal";
 import { downloadMaterial } from "../lib/materials";
-import { waitForSong } from "../lib/song-polling.mjs";
-import { generateMaterialMedia } from "../lib/material-media.mjs";
 import { studioRequest } from "../lib/studio-api.mjs";
 import { preloadLessonImages } from "../lib/lesson-images.mjs";
 import { sourceTextLimitMessage } from "../lib/material-limits.mjs";
 import { sectionLabel as compactSectionLabel } from "../lib/material-section-label.mjs";
 import MaterialMediaHistory from "./material-media-history";
+import { startMaterialJob } from "../lib/material-job.mjs";
+import { useMediaJobs } from "../lib/use-media-jobs.mjs";
+import { mediaJobs, mediaProgressTitle } from "@imajilearn/shared/lib/media-jobs.mjs";
+import MediaGeneration from "./media-generation";
 import { recordMaterialOpen } from "../lib/home-dashboard.mjs";
 
 const prompts = {
@@ -53,13 +55,15 @@ export default function MaterialDetail({ teacherId, material, format, parent, li
   const [historyLoading, setHistoryLoading] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [requested, setRequested] = useState(() => search.get("resume") === "1" || search.get("make") === "1");
+  const resumeRequested = search.get("resume") === "1" || search.get("make") === "1";
   const working = useRef(false);
   const generation = useRef(null);
-  useEffect(() => () => generation.current?.abort(), []);
+  useEffect(() => () => { if (generation.current) mediaJobs.background(generation.current.id); }, []);
   const [output, setOutput] = useState(null);
   const [loadError, setLoadError] = useState(false);
   const [attempt, setAttempt] = useState(0);
-  const [preparation, setPreparation] = useState(null);
+  const activeJob = useMediaJobs().find(job => job.teacherId === teacherId && job.materialId === material.id && job.feature === format?.id);
+  const preparation = activeJob?.progress;
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [dismissed, setDismissed] = useState(false);
@@ -102,7 +106,7 @@ export default function MaterialDetail({ teacherId, material, format, parent, li
   const song = format?.id === "song" ? output?.data : null;
   const songPending = Boolean(song && !["ready", "failed", "uncertain"].includes(song.status));
   const songFailed = song?.status === "failed" || song?.status === "uncertain";
-  const showDialog = Boolean(format) && !dismissed && (requested || selecting || songPending || finishing);
+  const showDialog = Boolean(format) && (resumeRequested || (!dismissed && (requested || selecting || songPending || finishing)));
 
   const afterDialog = useCallback(() => {
     const url = new URL(window.location.href);
@@ -115,7 +119,7 @@ export default function MaterialDetail({ teacherId, material, format, parent, li
     setFinishing(false);
     setSelecting(false);
     setRequested(false);
-  }, []);
+  }, [setDismissed, setFinishing, setSelecting, setRequested]);
 
   useEffect(() => {
     if (!dismissed) return;
@@ -160,17 +164,27 @@ export default function MaterialDetail({ teacherId, material, format, parent, li
   }, [attempt, outputPath, sourceReady, teacherId]);
 
   useEffect(() => {
-    if (!showDialog || !songPending) return;
-    const controller = new AbortController();
-    waitForSong(teacherId, outputPath, { signal: controller.signal })
-      .then(data => {
-        if (controller.signal.aborted) return;
-        if (data.status === "ready") finishGeneration(data);
-        else setOutput({ data });
-      })
-      .catch(failure => { if (!controller.signal.aborted) setSongCheckError(failure.message); });
-    return () => controller.abort();
-  }, [showDialog, songPending, songCheck, teacherId, outputPath, finishGeneration]);
+    if (!showDialog || !songPending || busy) return;
+    const task = startMaterialJob({ teacherId, format, source: material, libraryId: original.id,
+      path: outputPath, pollSong: true, href: `${detailHref}/${format.segment}`,
+      resumeHref: `${detailHref}/${format.segment}?resume=1`,
+    });
+    generation.current = task;
+    mediaJobs.foreground(task.id);
+    let active = true;
+    task.promise.then(outcome => {
+      if (!panel.current?.isConnected || task.signal.aborted) return;
+      const foreground = active && mediaJobs.getSnapshot().find(job => job.id === task.id)?.foreground;
+      if (outcome.status === "ready") {
+        if (foreground) { mediaJobs.remove(task.id); finishGeneration(outcome.data); }
+        else { setOutput({ data: outcome.data }); setHistoryVersion(value => value + 1); }
+      } else if (outcome.status === "failed" && foreground) {
+        mediaJobs.remove(task.id);
+        setSongCheckError(outcome.error.message);
+      }
+    });
+    return () => { active = false; mediaJobs.background(task.id); };
+  }, [showDialog, songPending, songCheck, busy, teacherId, outputPath, finishGeneration, format, material, original.id, detailHref]);
 
   async function generate(regenerate = false) {
     if (working.current || !format || !sourceReady) return;
@@ -183,25 +197,30 @@ export default function MaterialDetail({ teacherId, material, format, parent, li
     setBusy(true);
     setError("");
     setSongCheckError("");
-    setPreparation(null);
-    const controller = new AbortController();
-    generation.current = controller;
+    const task = startMaterialJob({ teacherId, format, source: material, libraryId: original.id,
+      path: regenerate ? outputPath + "?regenerate=1" : outputPath,
+      href: `${detailHref}/${format.segment}`, resumeHref: `${detailHref}/${format.segment}?resume=1`,
+    });
+    generation.current = task;
+    mediaJobs.foreground(task.id);
     try {
-      const data = await generateMaterialMedia(teacherId, regenerate ? outputPath + "?regenerate=1" : outputPath, original.id, format.id,
-        { signal: controller.signal, onProgress: setPreparation });
-      if (!panel.current?.isConnected) return;
-      if (regenerate) {
-        setOutput(previous => ({ data, version: (previous?.version ?? 0) + 1 }));
-        setHistoryVersion(value => value + 1);
+      const outcome = await task.promise;
+      if (!panel.current?.isConnected || task.signal.aborted) return;
+      const foreground = mediaJobs.getSnapshot().find(job => job.id === task.id)?.foreground;
+      if (outcome.status === "failed") {
+        if (foreground) { mediaJobs.remove(task.id); setError(outcome.error.message); }
+        return;
       }
-      else if (format.id === "song" && data?.status !== "ready") setOutput({ data });
-      else finishGeneration(data);
-    } catch (failure) {
-      if (!controller.signal.aborted) setError(failure.message);
+      if (outcome.status !== "ready") return;
+      if (foreground) mediaJobs.remove(task.id);
+      if (regenerate || !foreground) {
+        setOutput(previous => ({ data: outcome.data, version: (previous?.version ?? 0) + 1 }));
+        setHistoryVersion(value => value + 1);
+      } else finishGeneration(outcome.data);
     } finally {
-      if (generation.current === controller) generation.current = null;
+      if (generation.current === task) generation.current = null;
       working.current = false;
-      setBusy(false);
+      if (panel.current?.isConnected) setBusy(false);
     }
   }
 
@@ -250,7 +269,7 @@ export default function MaterialDetail({ teacherId, material, format, parent, li
   const incomplete = search.get("resume") === "1" || history?.items.some(item => item.materialId === material.id && item.status !== "ready");
   const question = !sourceReady ? blockedTitle : loadError ? "Media tidak dapat dimuat"
     : incomplete ? `Lengkapi ${format.action}?` : prompts[format.id];
-  const title = generating ? (preparation?.waiting ? "Menunggu layanan AI\u2026" : `Membuat ${format.action}\u2026${preparation ? ` ${preparation.completed}/${preparation.total}` : ""}`) : question;
+  const title = generating ? mediaProgressTitle(format.action, preparation) : question;
   const hasResult = sourceReady && output?.data && (!song || song.status === "ready") && !showDialog && !showHistory;
 
   async function loadMoreHistory() {
@@ -331,6 +350,10 @@ export default function MaterialDetail({ teacherId, material, format, parent, li
           <p className="material-generate-source">{original.title}</p>
         </div>
       </div>
+      {generating && <MediaGeneration compact onMinimize={() => {
+        if (generation.current) mediaJobs.background(generation.current.id);
+        closeModal(afterDialog);
+      }} />}
       {selecting ? picker : picker && sourceReady && !generating && !loadError &&
         <div className="material-generation-scope">
           <span>{sectionLabel}</span>
@@ -343,7 +366,7 @@ export default function MaterialDetail({ teacherId, material, format, parent, li
       {dialogError && !generating && <p role="alert" className="material-generate-error">
         <AlertCircle size={18} aria-hidden="true" /><span>{dialogError}</span>
       </p>}
-      {!busy && !finishing && <div className="source-actions">
+      {!generating && <div className="source-actions">
           <button type="button" className="source-secondary" onClick={() => closeModal(afterDialog)}>Nanti</button>
           {selecting ? <button type="button" className="source-secondary" onClick={() => setSelecting(false)}>Kembali</button>
             : !sourceReady && picker ? <button type="button" className="upload-button" onClick={() => setSelecting(true)}>Pilih bagian</button>

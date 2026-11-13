@@ -48,6 +48,8 @@ ImajiLearn menyatukan pekerjaan tersebut: guru mengunggah sumber, memilih halama
 | Akun guru | Daftar/masuk dengan email dan kata sandi, profil, logout, serta login/penautan Google jika OAuth dikonfigurasi. |
 | PWA | Antarmuka mobile, pemasangan pada browser yang mendukung, dan halaman pemberitahuan saat offline. |
 
+Pembuatan bacaan, slide, lagu, dan visual dapat diminimalkan agar guru bisa berpindah halaman atau mengerjakan materi lain. Indikator progres serta pemberitahuan selesai/gagal tersedia di aplikasi selama tab tetap terbuka. Refresh atau menutup tab menghentikan kelanjutan proses dari browser; hasil yang sudah tersimpan tetap dapat dibuka kembali.
+
 Visual interaktif memakai katalog dan bentuk yang didukung aplikasi, bukan pembuatan model 3D bebas untuk seluruh topik. Pembacaan suara memakai Web Speech API sehingga suara dan dukungan bahasa bergantung pada browser/perangkat. PWA tetap memerlukan koneksi untuk halaman privat, data, dan generasi AI; service worker hanya menyimpan halaman fallback publik.
 
 ## Mencoba aplikasi

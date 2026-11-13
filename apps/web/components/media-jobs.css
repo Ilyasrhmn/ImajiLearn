@@ -1,0 +1,30 @@
+.media-generation { display:grid; justify-items:center; gap:20px; padding:20px 0 8px; }
+.media-generation-animation { display:grid; justify-items:center; gap:18px; padding:12px 0; }
+.media-generation-animation .mascot { width:100px; height:125px; }
+.media-generation > p { max-width:440px; margin:0; text-align:center; color:#526963; font-size:15px; line-height:1.6; }
+.media-generation > button { display:inline-flex; align-items:center; justify-content:center; gap:8px; min-height:44px; }
+.media-generation-bar { width:160px; height:5px; border-radius:5px; background:#f8e7dc; overflow:hidden; }
+.media-generation-bar::before { content:""; display:block; width:45%; height:100%; border-radius:inherit; background:#b64f38; animation:media-job-progress 1.4s ease-in-out infinite alternate; }
+.media-jobs { position:fixed; right:24px; bottom:24px; z-index:70; width:min(360px,calc(100vw - 32px)); max-height:45dvh; overflow:auto; display:grid; gap:12px; padding:4px; }
+.media-job { display:flex; align-items:flex-start; gap:12px; padding:18px; border:1px solid #d6dfd7; border-radius:18px; color:#243e43; background:#fffdf8; box-shadow:0 8px 28px #243e431f; animation:media-job-enter 180ms ease-out; }
+.media-job-icon { flex:none; margin-top:2px; color:#b64f38; }
+.media-job.is-running .media-job-icon { animation:media-job-spin 1.5s linear infinite; }
+.media-job.is-ready .media-job-icon { color:#397157; }
+.media-job.is-failed .media-job-icon { color:#a03825; }
+.media-job-copy { min-width:0; flex:1; display:grid; gap:6px; }
+.media-job-copy > strong { font-size:15px; line-height:1.4; }
+.media-job-copy > span { color:#526963; font-size:14px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.media-job-copy > p { margin:0; color:#853c2b; font-size:14px; line-height:1.5; overflow-wrap:anywhere; }
+.media-job-link { display:inline-flex; align-items:center; justify-self:start; gap:7px; min-height:36px; padding:4px 0; border:0; color:#94412e; background:transparent; font:inherit; font-size:14px; font-weight:750; text-decoration:none; cursor:pointer; }
+.media-job-link:hover { text-decoration:underline; }
+.media-job-dismiss { display:grid; place-items:center; width:32px; height:32px; margin:-4px -5px 0 0; border:0; border-radius:8px; color:#526963; background:transparent; cursor:pointer; flex:none; }
+.media-job-dismiss:hover { background:#f1ece1; }
+.media-jobs :is(button,a):focus-visible,.media-generation button:focus-visible { outline:3px solid #b64f38; outline-offset:3px; }
+.media-job-dialog h2 { margin:0; font-size:24px; }
+.media-job-source { margin:12px 0 0; color:#526963; overflow-wrap:anywhere; }
+@keyframes media-job-spin { to { transform:rotate(360deg); } }
+@keyframes media-job-progress { to { transform:translateX(125%); } }
+@keyframes media-job-enter { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
+@media(max-width:600px) { .media-jobs { right:12px; bottom:calc(84px + env(safe-area-inset-bottom)); width:calc(100vw - 24px); max-height:35dvh; } .media-job { padding:14px; } .media-job-dismiss { width:44px; height:44px; } .media-job-link { min-height:44px; } }
+@media(prefers-reduced-motion:reduce) { .media-job,.media-job.is-running .media-job-icon,.media-generation-bar::before { animation:none; } }
+@media print { .media-jobs { display:none; } }

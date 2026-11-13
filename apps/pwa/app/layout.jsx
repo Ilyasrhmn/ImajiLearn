@@ -1,5 +1,6 @@
 import "./globals.css";
 import "@fontsource-variable/nunito-sans";
+import MediaJobs from "../../web/components/media-jobs";
 
 export const metadata = {
   title: { default: "ImajiLearn", template: "%s · ImajiLearn" },
@@ -19,7 +20,7 @@ export const viewport = { width: "device-width", initialScale: 1, viewportFit: "
 export default function RootLayout({ children }) {
   return (
     <html lang="id">
-      <body>{children}</body>
+      <body>{children}<MediaJobs /></body>
     </html>
   );
 }
