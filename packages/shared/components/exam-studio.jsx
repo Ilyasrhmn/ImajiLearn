@@ -1,4 +1,5 @@
 "use client";
+import LoadingSkeleton from "./loading-skeleton.jsx";
 import { useCallback, useEffect, useRef, useState } from "react";
 import ExamConfiguration from "./exam-configuration";
 import ExamDocumentViewer from "./exam-document-viewer";
@@ -178,7 +179,7 @@ export default function ExamStudio({ teacherId, Frame, onNavigationBlock, compac
   }
   return <>
     <Frame teacherId={teacherId}>
-      {!ready ? <div className="materials-skeleton" role="status" aria-label="Memuat ujian"><span /><span /></div> : loadError ? <p role="alert">Naskah tidak dapat dimuat. Muat ulang untuk mencoba lagi.</p> : opened ? <>{savingError && <p role="alert">{savingError} <button type="button" className="text-button" onClick={flush}>Coba simpan lagi</button></p>}<ExamDocumentViewer key={opened.id} exam={opened} saved={saved}
+      {!ready ? <LoadingSkeleton variant="exam" label="Memuat ujian" /> : loadError ? <p role="alert">Naskah tidak dapat dimuat. Muat ulang untuk mencoba lagi.</p> : opened ? <>{savingError && <p role="alert">{savingError} <button type="button" className="text-button" onClick={flush}>Coba simpan lagi</button></p>}<ExamDocumentViewer key={opened.id} exam={opened} saved={saved}
         generation={generation} onGenerate={generateQuestions} onStop={() => generationRequest.current?.abort()}
         onChange={update} onBack={() => open(null)} onRemedial={() => add(pathFor(opened.id) + "/remedial")} /></> : <ExamConfiguration teacherId={teacherId} ActionMenu={ActionMenu} compact={compact} busy={processing} materials={materials} folders={folders} exams={exams} profile={profile} onCreate={config => add("/exams", config)} onOpen={open} onDelete={id => { setDeleteError(""); setDeleteId(id); }} onDuplicate={exam => add(pathFor(exam.id) + "/duplicate")} onRename={rename} />}
     </Frame>

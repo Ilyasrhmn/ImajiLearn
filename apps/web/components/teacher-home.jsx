@@ -1,4 +1,5 @@
 "use client";
+import LoadingSkeleton from "@imajilearn/shared/components/loading-skeleton.jsx";
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
@@ -13,7 +14,7 @@ import { currentTerm, recentMaterials, todayLessons } from "../lib/home-dashboar
 import "./teacher-home.css";
 
 function LoadingRows({ label }) {
-  return <div className="home-loading" role="status" aria-label={label}><span /><span /><span /></div>;
+  return <LoadingSkeleton variant={label.includes("jadwal") ? "schedule" : "list"} label={label} />;
 }
 
 export default function TeacherHome({ teacherId, name, account }) {

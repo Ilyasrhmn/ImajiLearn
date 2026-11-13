@@ -1,4 +1,5 @@
 "use client";
+import LoadingSkeleton from "@imajilearn/shared/components/loading-skeleton.jsx";
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
@@ -181,7 +182,7 @@ function MediaSourceDialog({ teacherId, format, initial, onClose, onDraftSaved, 
         <button type="button" className="source-secondary" disabled={locked} onClick={() => changeStage("upload")}><Upload size={18} aria-hidden="true" />Unggah</button>
       </div>
       {listError ? <div role="alert"><p>{listError}</p><button className="source-secondary" type="button" onClick={() => setAttempt(value => value + 1)}>Coba lagi</button></div>
-        : !items ? <div className="materials-skeleton" role="status" aria-label="Memuat materi"><span /><span /></div>
+        : !items ? <LoadingSkeleton variant="list" label="Memuat materi" />
           : !matches.length ? <div className="studio-source-empty"><Mascot kind="book" /><p>{items.length ? "Materi tidak ditemukan" : "Belum ada materi"}</p></div>
             : <ul className="studio-source-list">{matches.map(item => <li key={item.id}><button type="button" aria-label={item.title} aria-describedby={`studio-source-${item.id}`} disabled={locked} onClick={() => choose(item)}>
               <span className="studio-source-file-icon" aria-hidden="true">{item.file?.mime === "application/pdf" ? <FileText size={26} /> : <BookOpenText size={26} />}</span>
@@ -298,9 +299,8 @@ export default function MediaStudio({ teacherId, feature = "reading", startCreat
     if (!resultId) window.history.replaceState(null, "", format.route + (value === "drafts" ? "?tab=drafts" : ""));
   }
   async function openHistory(event, item) {
-    if (item.status === "ready" && (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey)) return;
+    if (item.status === "ready") return;
     event.preventDefault();
-    if (item.status === "ready") { router.push(resultHref(item), { scroll: false }); return; }
     if (openingRef.current) return;
     openingRef.current = true;
     setOpening(true);
@@ -322,7 +322,7 @@ export default function MediaStudio({ teacherId, feature = "reading", startCreat
       {resultId ? <>
         {resultError ? <div className="studio-result-error"><p role="alert">{resultError}</p><button type="button" className="source-secondary" onClick={() => setAttempt(value => value + 1)}>Coba lagi</button></div>
           : result?.id === resultId ? <StudioResult key={resultId} format={format} result={result.data} teacherId={teacherId} materialId={resultId} />
-            : <div className="materials-skeleton" role="status" aria-label={`Memuat ${format.action}`}><span /><span /></div>}
+            : <LoadingSkeleton variant="lesson" label={`Memuat ${format.action}`} />}
       </> : <>
         <div className="studio-library-toolbar">
           <div className="studio-library-tabs" role="group" aria-label={`Daftar ${format.action}`}>

@@ -1,0 +1,20 @@
+.loading-skeleton{width:100%;min-width:0;margin-block:20px;color:#667b75}.loading-shape{display:block;background:#e8e9df;animation:loading-skeleton-pulse 1.4s ease-in-out infinite alternate;border-radius:6px}.loading-line{height:14px;width:85%;margin-block:8px}.loading-line.is-short{width:55%}.loading-rows{display:grid;gap:16px}.loading-row{display:flex;align-items:center;gap:20px;min-height:104px;padding:20px;border:1px solid #d7ded4;border-radius:22px;background:#fff}.loading-row>div,.loading-account>div{flex:1;min-width:0}.loading-icon{display:grid;place-items:center;width:62px;height:62px;flex:none;border-radius:16px;background:#f8e7dc}.loading-rows.is-tiles{grid-template-columns:repeat(2,minmax(0,1fr))}.loading-rows.is-tiles .loading-row{flex-direction:column;align-items:stretch}.loading-rows.is-tiles .loading-icon{width:100%;height:100px}.loading-account{display:flex;align-items:center;gap:20px;margin-bottom:32px}.loading-account-icon{display:grid;place-items:center;width:64px;height:64px;border-radius:50%;background:#dce8e2;flex:none}.loading-fields{display:grid;gap:24px;grid-template-columns:repeat(2,minmax(0,1fr))}.loading-field{height:52px;border:1px solid #d7ded4;background:#f4f3eb;border-radius:12px}.loading-exam-columns,.loading-lesson-columns{display:grid;grid-template-columns:1fr 1fr;gap:48px}.loading-exam-columns>.loading-fields{grid-template-columns:1fr}.loading-search{display:flex;align-items:center;gap:14px;padding:12px 16px;border:1px solid #d7ded4;border-radius:12px;margin-bottom:20px}.loading-paragraph{margin-block:24px}.loading-image{min-height:280px;border-radius:20px}.loading-welcome{height:230px;margin-bottom:32px;border-radius:28px;background:#f1ecdc}.loading-schedule .loading-icon{background:#e2ebdf}.loading-session{max-width:360px;margin:40px auto}.loading-session .loading-account{margin:0}@keyframes loading-skeleton-pulse{to{opacity:.5}}@media(max-width:720px){.loading-exam-columns,.loading-lesson-columns{grid-template-columns:1fr;gap:24px}.loading-fields{grid-template-columns:1fr}.loading-row{min-height:90px;padding:16px;gap:14px}.loading-image{min-height:200px}.loading-rows.is-tiles{gap:12px}.loading-rows.is-tiles .loading-row{border-radius:16px}.loading-welcome{height:160px}}@media(prefers-reduced-motion:reduce){.loading-shape{animation:none}}
+.loading-schedule-page,.loading-schedule-days{margin-block:0}
+.loading-schedule-heading{display:flex;align-items:center;justify-content:space-between;gap:24px;min-height:120px;margin-bottom:36px}
+.loading-schedule-heading>.loading-shape:first-child{width:min(350px,50%);height:42px}
+.loading-schedule-heading>.loading-shape:last-child{width:210px;height:52px;border-radius:14px}
+.loading-schedule-filters{display:flex;align-items:flex-end;flex-wrap:wrap;gap:24px;margin-bottom:40px}
+.loading-schedule-filters>div{width:160px}
+.loading-schedule-filters>div:first-child{width:170px}
+.loading-schedule-filters>div:nth-child(2){width:110px}
+.loading-schedule-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:28px;align-items:start}
+.loading-day-title{width:100px;height:26px;margin-bottom:16px}
+.loading-schedule-card{display:grid;gap:18px;padding:22px;margin-bottom:14px;border:1px solid #dce2da;border-radius:20px;background:#fff;min-width:0}
+.loading-schedule-time{display:flex;align-items:center;gap:8px}
+.loading-schedule-time>.loading-shape{width:110px;height:14px}
+.loading-schedule-subject{width:75%;height:24px}
+.loading-schedule-bottom{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-top:8px;min-height:40px}
+.loading-schedule-bottom>.loading-shape{width:80px;height:16px}
+.loading-schedule-bottom>span:last-child{display:flex;align-items:center;gap:24px;padding-inline:8px}
+@media(max-width:1200px){.loading-schedule-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:600px){.loading-schedule-grid{grid-template-columns:1fr}.loading-schedule-heading{align-items:flex-start;flex-direction:column;justify-content:center;gap:24px}.loading-schedule-heading>.loading-shape:first-child{width:75%;height:34px}.loading-schedule-filters{gap:20px}}
