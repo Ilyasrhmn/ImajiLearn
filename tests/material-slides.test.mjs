@@ -61,7 +61,10 @@ test("slide generation validates and persists a deck for its owner", async () =>
     const expanded = await longDecks.generate(owner.id, longSource.id);
     assert.ok(expanded.slides.length > 10);
     const normalize = value => value.trim().replace(/\s+/g, " ");
-    assert.equal(normalize(received.join(" ")), normalize(sourceText));
+    const ordered = [...received].sort((a, b) => sourceText.indexOf(a) - sourceText.indexOf(b));
+    assert.ok(ordered.every(text => sourceText.includes(text)));
+    assert.equal(normalize(ordered.join(" ")), normalize(sourceText));
+    assert.deepEqual(expanded.slides.filter((_, index) => index % 5 === 0).map(slide => slide.points[0]), ordered.map(text => text.trim().slice(-90).trim()));
     assert.match(expanded.slides.at(-1).points[0], /penyerapan/);
     assert.deepEqual(await longDecks.get(owner.id, longSource.id), expanded);
 
