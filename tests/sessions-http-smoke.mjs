@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import { setTimeout } from "node:timers/promises";
+import { expectPageRedirect } from "./support/page-response.mjs";
 
 const base = process.env.TEST_BASE_URL, origin = process.env.TEST_APP_ORIGIN;
 if (!base || !origin) throw new Error("Set TEST_BASE_URL and TEST_APP_ORIGIN for an isolated test deployment.");
@@ -26,8 +27,7 @@ async function expectPrivateRedirect(path, cookie) {
   const response = await fetch(`${base}${path}`, {
     redirect: "manual", headers: cookie ? { cookie } : {},
   });
-  assert.equal(response.status, 307, path);
-  assert.equal(response.headers.get("location"), "/masuk", path);
+  await expectPageRedirect(response, "/masuk", path);
 }
 for (const path of privatePages) await expectPrivateRedirect(path);
 for (const path of ["/masuk", "/daftar"]) {
@@ -49,8 +49,8 @@ assert.equal(current.status, 200); assert.equal(current.headers.get("cache-contr
 assert.equal((await current.json()).data.user.email, body.email);
 for (const path of privatePages) {
   const response = await fetch(`${base}${path}`, { redirect: "manual", headers: { cookie } });
-  assert.equal(response.status, privateRedirects[path] ? 307 : 200, path);
-  if (privateRedirects[path]) assert.equal(response.headers.get("location"), privateRedirects[path], path);
+  if (privateRedirects[path]) await expectPageRedirect(response, privateRedirects[path], path);
+  else assert.equal(response.status, 200, path);
   assert.match(response.headers.get("cache-control"), /\bno-store\b/, path);
 }
 await expectPrivateRedirect("/dashboard", original);
