@@ -1,13 +1,14 @@
 "use client";
 import { useEffect, useRef, useState, useId, useImperativeHandle, useCallback } from "react";
-import { AlertCircle, LoaderCircle, X } from "lucide-react";
+import { AlertCircle, X } from "lucide-react";
 import { createPortal } from "react-dom";
 import Notice from "@imajilearn/shared/components/notice.jsx";
 import ThemedSelect from "@imajilearn/shared/components/themed-select.jsx";
 import { Mascot } from "@imajilearn/shared/components/mascot.jsx";
 import ActionConfirmation from "@imajilearn/shared/components/action-confirmation.jsx";
+import LoadingSkeleton from "@imajilearn/shared/components/loading-skeleton.jsx";
 
-export function Loading({ label = "Memuat" }) { return <div className="loading" role="status"><LoaderCircle size={22} className="spinner" /><span>{label}</span></div>; }
+export function Loading({ label = "Memuat", variant = "list" }) { return <LoadingSkeleton variant={variant} label={label} />; }
 export function ErrorState({ message, onRetry }) { return <div className="error-state"><p role="alert"><AlertCircle size={18} />{message}</p>{onRetry && <button className="secondary" onClick={onRetry}>Coba lagi</button>}</div>; }
 export function Feedback({ children, error = false }) { return children && <p className={error ? "feedback error" : "feedback"} role={error ? "alert" : "status"}>{children}</p>; }
 export function useNotice() {

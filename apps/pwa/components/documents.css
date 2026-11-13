@@ -40,8 +40,6 @@
   .mobile-document .exam-key-fields { grid-template-columns:minmax(0,1fr); }
   .mobile-document .exam-paper :is(input,textarea,select) { font-size:16px;min-width:0; }
   .mobile-document .field-error { color:#963d2d; }
-  .mobile-document .materials-skeleton { display:grid;gap:15px; }
-  .mobile-document .materials-skeleton>span { height:90px;border-radius:14px;background:#e8e9df; }
   .modal { position:fixed;inset:auto 0 0;margin:0 auto;width:min(480px,100%);max-width:100%;max-height:90dvh;overflow:auto;overscroll-behavior:contain;padding:28px 24px calc(24px + env(safe-area-inset-bottom));border:0;border-radius:24px 24px 0 0;background:#fdfaf3;color:#243e43;animation:sheet-in 180ms ease-out; }
   .modal::backdrop { background:#172a3066; }
   .modal-close { position:absolute;right:12px;top:12px; }

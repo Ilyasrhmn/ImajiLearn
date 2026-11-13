@@ -27,6 +27,6 @@ export default function SessionGate({ children }) {
     return () => { controller.abort(); window.removeEventListener("storage", storage); window.removeEventListener("pageshow", pageshow); window.removeEventListener("profile-updated", profileUpdated); };
   }, [attempt]);
   if (error) return <main className="entry-loading"><ErrorState message={error} onRetry={() => { setError(""); setAttempt(n => n + 1); }} /></main>;
-  if (!user) return <main className="entry-loading"><Loading label="Memuat sesi" /></main>;
+  if (!user) return <main className="entry-loading"><Loading variant="session" label="Memuat sesi" /></main>;
   return <Session.Provider value={user}><div key={user.id}>{children}</div></Session.Provider>;
 }
