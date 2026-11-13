@@ -1,6 +1,7 @@
 import { fileURLToPath } from "node:url";
 
 const nextConfig = { basePath: "/app", devIndicators: false,
+  logging: { incomingRequests: { ignore: [/\/api\/v1\/auth\/google\/pwa\/callback(?:[?/]|$)/] } },
   outputFileTracingRoot: fileURLToPath(new URL("../..", import.meta.url)),
   distDir: ["pwa-production", "pwa-http"].includes(process.env.IMAJILEARN_TEST_BUILD) ? `.next/${process.env.IMAJILEARN_TEST_BUILD}` : ".next",
   async headers() { return [{ source: "/sw.js", headers: [{ key: "Cache-Control", value: "no-store, max-age=0" }, { key: "Service-Worker-Allowed", value: "/app/" }] }]; },

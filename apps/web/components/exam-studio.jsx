@@ -12,6 +12,7 @@ import { readProfile } from "../lib/teacher-profile.mjs";
 import { requestAccount } from "../lib/account-client.mjs";
 import { studioRequest } from "../lib/studio-api.mjs";
 import { createId } from "../lib/id.mjs";
+import { generateExamQuestions } from "@imajilearn/shared/lib/exam-generation.mjs";
 import { isBlankExamQuestion } from "../lib/exams.mjs";
 import "./exams.css";
 import "./material-detail.css";
@@ -131,20 +132,15 @@ export default function ExamStudio({ teacherId }) {
     operation.current = true;
     setGeneration({ filled: 0, total });
     const path = pathFor(opened.id);
-    let remaining = total;
     try {
-      while (remaining && !controller.signal.aborted) {
-        const { data } = await studioRequest(teacherId, path + "/generate", {
-          method: "POST", version: persistedVersion.current, signal: controller.signal,
-        });
-        persistedVersion.current = data.resourceVersion;
-        remember(data);
-        setOpened(data);
-        const next = data.questions.filter(isBlankExamQuestion).length;
-        if (next >= remaining) break;
-        remaining = next;
-        setGeneration({ filled: total - remaining, total });
-      }
+      await generateExamQuestions(teacherId, { ...opened, resourceVersion: persistedVersion.current }, {
+        signal: controller.signal, onProgress: setGeneration,
+        onDocument(data) {
+          persistedVersion.current = data.resourceVersion;
+          remember(data);
+          setOpened(data);
+        },
+      });
     } catch (error) {
       if (controller.signal.aborted || error.status === 412) {
         try {

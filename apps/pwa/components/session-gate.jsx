@@ -1,6 +1,7 @@
 "use client";
 import { createContext, useContext, useEffect, useState } from "react";
-import { navigateAfterSessionChange, sessionChangeKey } from "@imajilearn/shared/lib/session.mjs";
+import { announceSessionChange, navigateAfterSessionChange, sessionChangeKey } from "@imajilearn/shared/lib/session.mjs";
+import { completeGoogleSession } from "@imajilearn/shared/lib/google-session.mjs";
 import { Loading, ErrorState } from "./ui";
 
 const Session = createContext(null);
@@ -9,6 +10,7 @@ export const useSession = () => useContext(Session);
 export default function SessionGate({ children }) {
   const [user, setUser] = useState(null), [error, setError] = useState(""), [attempt, setAttempt] = useState(0);
   useEffect(() => {
+    completeGoogleSession(window.location, window.history, announceSessionChange);
     const controller = new AbortController();
     fetch("/app/api/v1/auth/session", { cache: "no-store", signal: controller.signal }).then(async response => {
       if (controller.signal.aborted) return;

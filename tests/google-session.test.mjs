@@ -27,3 +27,13 @@ test("Google callback also completes on the teacher home page", () => {
   assert.equal(path, "/beranda");
   assert.equal(announcements, 1);
 });
+
+test("PWA Google callback removes its flag and refreshes other tabs once", () => {
+  const location = { href: "https://pwa.example.test/app/beranda?google=signed_in&folder=all#today" };
+  let announcements = 0;
+  const history = { replaceState(_state, _unused, path) { location.href = new URL(path, location.href).href; } };
+  completeGoogleSession(location, history, () => announcements++);
+  completeGoogleSession(location, history, () => announcements++);
+  assert.equal(location.href, "https://pwa.example.test/app/beranda?folder=all#today");
+  assert.equal(announcements, 1);
+});

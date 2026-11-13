@@ -35,3 +35,17 @@ test("web and PWA clients address their own API entrypoints", () => {
   assert.equal(apiPath("/me", "/akun"), "/api/v1/me");
   assert.equal(apiPath("/me", "/apple"), "/api/v1/me");
 });
+
+
+test("PWA OAuth preserves the validated browser origin and slow requests return an explicit timeout", async () => {
+  const oauth = { params: Promise.resolve({ path: ["auth", "google", "pwa"] }) };
+  const response = await proxyBackend(request("http://localhost:3002"), oauth, env, async (_url, options) => {
+    assert.equal(options.headers.get("origin"), "http://localhost:3002");
+    return Response.json({ data: {} });
+  });
+  assert.equal(response.status, 200);
+  const timedOut = await proxyBackend(request("http://localhost:3002"), context, env,
+    () => { throw new DOMException("deadline", "TimeoutError"); });
+  assert.equal(timedOut.status, 504);
+  assert.match((await timedOut.json()).error.message, /progres/);
+});

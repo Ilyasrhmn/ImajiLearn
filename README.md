@@ -108,8 +108,8 @@ semua request memakai satu bucket bersama. Hanya isi `TRUSTED_CLIENT_IP_HEADER`
 jika reverse proxy menghapus dan mengganti header tersebut; header kiriman
 client seperti X-Forwarded-For diabaikan secara default. Percobaan dibatasi
 sebelum hashing; input yang gagal validasi tidak memakai kuota registrasi.
-Batas tercapai menghasilkan 429 dengan Retry-After. Frontend registrasi belum
-dihubungkan ke API.
+Batas tercapai menghasilkan 429 dengan Retry-After. Form registrasi web dan
+PWA menggunakan API akun yang sama.
 
 ## Sesi guru
 
@@ -141,7 +141,7 @@ dalam 15 menit (`LOGIN_FAILURE_LIMIT`, `LOGIN_IP_LIMIT`). Throttle disimpan di
 database dan memberi 429+Retry-After; logout tidak dibatasi throttle login.
 Konfigurasi proxy tepercaya sama dengan registrasi. Semua write tetap memerlukan
 Origin yang benar dan semua respons auth memakai Cache-Control:no-store.
-Integrasi form frontend dan guard halaman privat belum termasuk tahap API ini.
+Form frontend dan guard halaman privat memakai sesi server ini.
 
 ## Materi teks milik guru
 
@@ -181,8 +181,8 @@ mengembalikan snapshot sumber atau null. Transaksi pemanggil harus tetap terbuka
 sampai operasi yang memakai sumber selesai. Lock materi tidak mengubah versi
 atau waktu pembaruan publik; arsip dan operasi berikutnya memakai lock yang sama.
 
-Upload PDF/TXT, ekstraksi, list/search, folder, file privat, penghapusan, integrasi
-frontend, dan penyimpanan preferensi media belum termasuk tahap materi teks ini.
+Upload PDF/TXT, ekstraksi, pencarian, folder, file privat, penghapusan,
+serta preferensi media tersedia melalui layanan workspace.
 
 ## Penyimpanan internal preferensi media
 
@@ -269,7 +269,7 @@ npm run test:http
 
 `test:http` menjalankan build produksi web pada port localhost yang tersedia,
 membuat schema tes acak, menerapkan migrasi, lalu menguji registrasi, sesi,
-materi, GET/PUT preferensi, dan endpoint dokumen LKPD. Data guru/sumber yang
+materi, GET/PUT preferensi, folder, jadwal, serta naskah ujian. Data guru/sumber yang
 digunakan seluruhnya sintetis. Setelah selesai atau gagal, proses server tes
 dihentikan dan schema tes dibersihkan. Build harus tersedia terlebih dahulu.
 Perintah ini memakai database tes terisolasi dan tidak memigrasikan
@@ -310,11 +310,23 @@ redirect URI must exactly equal `APP_ORIGIN` followed by `/api/v1/auth/google/ca
 - Local: `http://localhost:3000/api/v1/auth/google/callback`
 - Production: `https://imajilearn.ai.id/api/v1/auth/google/callback`
 
+For PWA sign-in, also set `PWA_PUBLIC_ORIGIN` on both the web backend and PWA
+server and register its separate exact callback URI:
+`PWA_PUBLIC_ORIGIN/app/api/v1/auth/google/pwa/callback`. For local development this
+is `http://localhost:3002/app/api/v1/auth/google/pwa/callback`. Production requires
+an HTTPS public origin. Google credentials remain on the web backend. The PWA
+starts through `POST /app/api/v1/auth/google/pwa`; its callback goes through the
+same PWA proxy, sets the session cookie on the PWA host and returns to
+`/app/beranda`. Flow cookies and state are bound to this callback independently
+of web sign-in. Installing this code does not configure Google Auth Platform or
+verify the deployed domain.
+
 The application requests only `openid email profile`. While the Google project is
 in testing mode, configure the intended test accounts in Google Auth Platform.
 Production deployment must configure its own environment and authorized origin.
 
-The sign-in/register pages show the Google action when configured. New verified
+The web sign-in/register pages show the Google action when configured. PWA pages
+also offer the action and report unavailability if backend configuration is missing. New verified
 Google identities create a teacher account. Existing email/password accounts must
 first sign in with their password, then explicitly connect the same Google email
 in account settings. Email matches never automatically merge accounts. Google-only

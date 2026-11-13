@@ -27,15 +27,18 @@ export async function proxyBackend(request, { params }, env = process.env, send 
   for (const key of ["content-type", "cookie", "if-match", "idempotency-key", "x-teacher-id", "range"]) {
     if (request.headers.has(key)) headers.set(key, request.headers.get(key));
   }
-  if (unsafe) headers.set("origin", publicBackend);
+  if (unsafe) headers.set("origin", path.join("/") === "auth/google/pwa" ? publicPwa : publicBackend);
   try {
     const response = await send(url, { method: request.method, headers, cache: "no-store", redirect: "manual",
       ...(request.body ? { body: request.body, duplex: "half" } : {}),
-      signal: AbortSignal.any([request.signal, AbortSignal.timeout(120000)]) });
+      signal: AbortSignal.any([request.signal, AbortSignal.timeout(300000)]) });
     const outgoing = new Headers(response.headers);
     for (const key of ["content-encoding", "content-length", "transfer-encoding", "connection", "set-cookie"]) outgoing.delete(key);
     for (const cookie of response.headers.getSetCookie()) outgoing.append("set-cookie", cookie);
     outgoing.set("cache-control", "no-store");
     return new Response(response.body, { status: response.status, headers: outgoing });
-  } catch { return error(502, "Layanan belum dapat dihubungi. Coba lagi."); }
+  } catch (failure) {
+    if (failure.name === "TimeoutError") return error(504, "Proses belum selesai. Buka kembali hasil untuk memeriksa progresnya.");
+    return error(502, "Layanan belum dapat dihubungi. Coba lagi.");
+  }
 }
