@@ -62,7 +62,7 @@ export function createSlideIllustrations(db, generateIllustration, generateJson)
         }
         if (replace && !row?.providerTaskId) await reserveImageReplacement(tx, "materialSlideDeck", key);
         if (!preparation.budgeted) await consumeRateLimit(tx, "slide-illustration:" + userId, 12, 15 * 60_000);
-        const lease = { leaseId: randomUUID(), leaseUntil: new Date(Date.now() + 180_000) };
+        const lease = { leaseId: randomUUID(), leaseUntil: new Date(Date.now() + 270_000) };
         await tx.materialSlideIllustration.upsert({ where, create: { ...imageKey, ...lease }, update: lease });
         return { source, slide, provider: preparation.provider ?? deck.imagePlan?.[slideIndex], outline: deck.content.slides.map(item => item.title), hadImage: Boolean(row?.bytes), providerTaskId: row?.providerTaskId, reservation: { ...imageKey, leaseId: lease.leaseId } };
       });

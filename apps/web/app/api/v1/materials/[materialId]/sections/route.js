@@ -5,6 +5,7 @@ import { endpoint } from "@/server/core/http.mjs";
 import { materialSections } from "@/server/materials/sections.mjs";
 
 export const runtime = "nodejs";
+export const maxDuration = 300;
 
 function route(method) {
   return (request, context) => endpoint(async () => {

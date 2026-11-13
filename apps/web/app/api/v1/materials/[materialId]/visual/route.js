@@ -6,6 +6,7 @@ import { endpoint } from "@/server/core/http.mjs";
 import { createMaterialVisual } from "@/server/materials/visual.mjs";
 
 export const runtime = "nodejs";
+export const maxDuration = 300;
 
 const visualRoute = action => (request, context) => endpoint(async () => {
   const config = sessionConfig();

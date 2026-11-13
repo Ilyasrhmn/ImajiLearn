@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { AIError } from "../ai/errors.mjs";
+import { aiCorrection } from "@imajilearn/shared/lib/ai-repair.mjs";
 import { ApiError } from "../core/errors.mjs";
 import { consumeRateLimit } from "../core/rate-limit.mjs";
 import { canonicalMaterialId, getOwnedMaterial } from "./readers.mjs";
@@ -93,6 +94,13 @@ export function createMaterialSongs(db, generateJson, music) {
         const uncertain = row?.status === "submitting" && (!(error instanceof AIError) || error.code === "MUSIC_REQUEST_UNKNOWN");
         await db.materialSong.updateMany({ where: { ...reservation, status: { in: ["writing", "submitting"] } }, data: { status: uncertain ? "uncertain" : "failed", errorCode: uncertain ? "MUSIC_REQUEST_UNKNOWN" : (error.code === "INVALID_SONG_LYRICS" ? error.code : error instanceof AIError ? error.code : "MUSIC_GENERATION_FAILED"), leaseUntil: null } });
         if (error instanceof ApiError && error.code === "SOURCE_CHANGED") throw error;
+        if (row?.status === "writing" && aiCorrection(error.code)) {
+          throw new ApiError(502, error.code, error.message);
+        }
+        if (row?.status === "writing" && error instanceof AIError &&
+            ["PROVIDER_TIMEOUT", "PROVIDER_UNAVAILABLE", "RATE_LIMITED"].includes(error.code)) {
+          throw new ApiError(error.code === "RATE_LIMITED" ? 429 : 503, error.code, error.message);
+        }
         if (!(error instanceof AIError) && !(error instanceof ApiError)) throw error;
       }
       return present(await read(key));

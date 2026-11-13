@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { AIError } from "../ai/errors.mjs";
 import { ApiError } from "../core/errors.mjs";
 import { consumeRateLimit } from "../core/rate-limit.mjs";
 import { getOwnedMaterial } from "./readers.mjs";
@@ -8,7 +9,7 @@ import { createSlideIllustrations } from "./slide-illustrations.mjs";
 import { planImageProviders, selectImageBatch } from "./image-routing.mjs";
 
 const changed = () => new ApiError(409, "SOURCE_CHANGED", "Materi berubah. Buka ulang materi lalu coba lagi.");
-const leaseDuration = 180_000;
+const leaseDuration = 270_000;
 
 export function createPreparedLesson(db, textService, feature, generateImage, generateJson) {
   const reading = feature === "reading";
@@ -42,9 +43,7 @@ export function createPreparedLesson(db, textService, feature, generateImage, ge
     return state.ready ? { ...content, revision: state.source.revision, illustrations: state.statuses } : null;
   }
 
-  return {
-    get,
-    async generate(userId, materialId) {
+  async function prepare(userId, materialId) {
       const existing = await textService.get(userId, materialId);
       const content = existing ?? await textService.generate(userId, materialId, { incremental: true });
       if (content?.status === "preparing") return content;
@@ -69,14 +68,15 @@ export function createPreparedLesson(db, textService, feature, generateImage, ge
         return { source, reservation: { ...key, leaseId } };
       });
       try {
-        let plan = await db[delegate].findUnique({
+        const plan = await db[delegate].findUnique({
           where: { materialId_revision: { materialId, revision: job.source.revision } }, select: { imagePlan: true },
         });
         if (!plan.imagePlan) {
           const imagePlan = await planImageProviders(generateJson, feature, entries(content));
           const saved = await db[delegate].updateMany({ where: job.reservation, data: { imagePlan } });
           if (!saved.count) throw changed();
-          plan = { imagePlan };
+          return { status: "preparing", phase: "images",
+            completed: state.statuses.filter(item => item.ready || item.skipped).length, total: state.statuses.length };
         }
         const topics = entries(content).map(entry => reading ? entry.heading : entry.title);
         const sourceFigures = await lessonSourceFigures(db, userId, job.source, topics);
@@ -108,6 +108,31 @@ export function createPreparedLesson(db, textService, feature, generateImage, ge
         await db[delegate].updateMany({
           where: job.reservation, data: { leaseId: null, leaseUntil: null },
         }).catch(() => {});
+      }
+  }
+
+  return {
+    get,
+    async generate(userId, materialId) {
+      try { return await prepare(userId, materialId); }
+      catch (error) {
+        const source = error.code === "ILLUSTRATION_UNAVAILABLE" && await db.material.findFirst({
+          where: { id: materialId, userId, archived: false }, select: { revision: true },
+        });
+        const pendingImage = source && await db[images].findFirst({
+          where: { materialId, revision: source.revision,
+            providerTaskId: { not: null }, NOT: { providerTaskId: "submitting" } },
+          select: { materialId: true },
+        });
+        if (["PROVIDER_TIMEOUT", "PROVIDER_UNAVAILABLE"].includes(error.code) || pendingImage) {
+          console.warn("[lesson-preparation] Continuing after temporary provider failure", { feature, code: error.code });
+          const content = await textService.get(userId, materialId);
+          const state = content ? await inspect(userId, materialId, content) : null;
+          return { status: "preparing", phase: content ? "images" : "text", waiting: true, retryAfterSeconds: 5,
+            ...(state ? { completed: state.statuses.filter(item => item.ready || item.skipped).length, total: state.statuses.length } : {}) };
+        }
+        if (error instanceof AIError) throw new ApiError(error.code === "RATE_LIMITED" ? 429 : 503, error.code, error.message);
+        throw error;
       }
     },
   };

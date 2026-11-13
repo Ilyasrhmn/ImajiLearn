@@ -10,19 +10,13 @@ function openPdf(bytes, options = {}) {
   });
 }
 
-function pdfTextError(error, expired) {
-  if (expired) return new ApiError(422, "SOURCE_EXTRACTION_TIMEOUT", "PDF membutuhkan waktu terlalu lama untuk dibaca.");
+function pdfTextError(error) {
   if (error instanceof ApiError) return error;
   return new ApiError(422, "SOURCE_TEXT_UNREADABLE", "PDF tidak dapat dibaca. Periksa file sumber.");
 }
 
 export async function extractPdf(bytes, range) {
   const loading = openPdf(bytes);
-  let expired = false;
-  const timer = setTimeout(() => {
-    expired = true;
-    void loading.destroy().catch(() => {});
-  }, 10000);
   try {
     const document = await loading.promise;
     if (document.numPages > 100) throw new ApiError(422, "SOURCE_TOO_MANY_PAGES", "PDF maksimal 100 halaman.");
@@ -59,9 +53,8 @@ export async function extractPdf(bytes, range) {
     }
     return source.trim();
   } catch (error) {
-    throw pdfTextError(error, expired);
+    throw pdfTextError(error);
   } finally {
-    clearTimeout(timer);
     await loading.destroy().catch(() => {});
   }
 }
@@ -143,8 +136,6 @@ function figuresOnPage(imageCoordinates, items, width, height) {
 // Prefer captioned figures. Large backgrounds and unlabelled decorative images are poor evidence.
 export async function findPdfFigures(bytes, topic, range) {
   const loading = openPdf(bytes, { maxImageSize: 16_000_000 });
-  let expired = false;
-  const timer = setTimeout(() => { expired = true; void loading.destroy().catch(() => {}); }, 30000);
   const terms = new Set(topic.toLowerCase().match(/\p{L}{4,}/gu) ?? []);
   const figures = [];
   try {
@@ -193,18 +184,14 @@ export async function findPdfFigures(bytes, topic, range) {
     return figures;
   } catch (error) {
     if (error instanceof ApiError) throw error;
-    throw new ApiError(422, "SOURCE_FIGURES_SCAN_FAILED", expired
-      ? "Pemeriksaan gambar sumber terlalu lama. Pilih bagian yang lebih kecil."
-      : "Gambar sumber belum dapat diperiksa. Coba lagi.");
+    throw new ApiError(422, "SOURCE_FIGURES_SCAN_FAILED", "Gambar sumber belum dapat diperiksa. Coba lagi.");
   } finally {
-    clearTimeout(timer);
     await loading.destroy().catch(() => {});
   }
 }
 
 export async function readPdfSourcePage(bytes, number) {
   const loading = openPdf(bytes, { maxImageSize: 16_000_000 });
-  const timer = setTimeout(() => { void loading.destroy().catch(() => {}); }, 15000);
   try {
     const pdf = await loading.promise;
     if (!Number.isInteger(number) || number < 1 || number > Math.min(pdf.numPages, 100)) {
@@ -226,18 +213,12 @@ export async function readPdfSourcePage(bytes, number) {
     if (error instanceof ApiError) throw error;
     throw new ApiError(422, "SOURCE_PAGE_UNREADABLE", "Halaman PDF tidak dapat ditampilkan.");
   } finally {
-    clearTimeout(timer);
     await loading.destroy().catch(() => {});
   }
 }
 
 export async function describePdfSections(bytes) {
   const loading = openPdf(bytes);
-  let expired = false;
-  const timer = setTimeout(() => {
-    expired = true;
-    void loading.destroy().catch(() => {});
-  }, 10000);
   try {
     const pdf = await loading.promise;
     if (pdf.numPages > 100) throw new ApiError(422, "SOURCE_TOO_MANY_PAGES", "PDF maksimal 100 halaman.");
@@ -327,9 +308,8 @@ export async function describePdfSections(bytes) {
       first, last, title: sectionLabel(title), ...(pageGroup ? { pageGroup } : {}), ...(unavailable ? { unavailable } : {}),
     })), maxTextLength: sourceTextLimit };
   } catch (error) {
-    throw pdfTextError(error, expired);
+    throw pdfTextError(error);
   } finally {
-    clearTimeout(timer);
     await loading.destroy().catch(() => {});
   }
 }

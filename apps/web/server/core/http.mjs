@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { ApiError, errorResponse } from "./errors.mjs";
+import { runWithAIRepair } from "../ai/repair-context.mjs";
 
 export function endpoint(handler, origin) {
   return async (request, ...args) => {
@@ -9,7 +10,7 @@ export function endpoint(handler, origin) {
           (request.headers.get("origin") !== origin || request.headers.get("sec-fetch-site") === "cross-site")) {
         throw new ApiError(403, "ORIGIN_REJECTED", "Asal permintaan tidak diizinkan.");
       }
-      const response = await handler(request, ...args);
+      const response = await runWithAIRepair(request, () => handler(request, ...args));
       response.headers.set("cache-control", "no-store");
       response.headers.set("x-request-id", requestId);
       return response;

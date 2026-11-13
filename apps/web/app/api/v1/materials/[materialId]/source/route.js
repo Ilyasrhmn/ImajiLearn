@@ -7,6 +7,7 @@ import { readPdfSourcePage } from "@/server/materials/pdf.mjs";
 import { createMaterialService } from "@/server/materials/service.mjs";
 
 export const runtime = "nodejs";
+export const maxDuration = 300;
 
 export const GET = (request, context) => endpoint(async () => {
   const db = database();

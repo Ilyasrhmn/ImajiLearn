@@ -7,6 +7,7 @@ import { etag, expectedVersion } from "@/server/core/version.mjs";
 import { createExamGeneration } from "@/server/exams/generation.mjs";
 
 export const runtime = "nodejs";
+export const maxDuration = 300;
 
 export const POST = (request, context) => endpoint(async () => {
   const config = sessionConfig(), db = database();

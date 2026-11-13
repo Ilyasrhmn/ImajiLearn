@@ -48,7 +48,7 @@ export function readFeatureConfig(feature, env = process.env) {
   const audio = feature === "music";
   const config = {
     feature, kind: audio ? "audio" : "text", baseUrl: url.href, model,
-    timeoutMs: number(env, prefix, "TIMEOUT_MS", audio ? 120000 : 45000, 1000, 120000),
+    timeoutMs: number(env, prefix, "TIMEOUT_MS", 120000, 1000, 120000),
   };
   if (!audio) {
     Object.assign(config, {

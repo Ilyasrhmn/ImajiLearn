@@ -19,7 +19,7 @@ test("loads independent profiles for all MVP text features without leaking enume
     assert.equal(JSON.stringify(config).includes("synthetic-test-key"), false);
     assert.equal(config.temperature, undefined);
     assert.equal(config.reasoningEffort, undefined);
-    assert.equal(config.timeoutMs, 45000);
+    assert.equal(config.timeoutMs, 120000);
     assert.equal(config.responseFormat, "json_object");
     assert.equal(config.tokenLimitField, "max_completion_tokens");
   }

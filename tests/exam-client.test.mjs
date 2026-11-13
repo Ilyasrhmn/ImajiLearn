@@ -7,6 +7,37 @@ function draft() {
   return { ...createExam({ ...initialExamConfig(), subject: "IPAS", summary: "Tumbuhan", counts: { multipleChoice: 2, shortAnswer: 1, essay: 1 } }), resourceVersion: 7 };
 }
 
+test("exam generation waits through provider timeouts and resumes the same saved batch", async t => {
+  const exam = draft(), versions = [];
+  t.mock.method(globalThis, "setTimeout", callback => { queueMicrotask(callback); return 0; });
+  let calls = 0;
+  t.mock.method(globalThis, "fetch", async (_, options) => {
+    versions.push(options.headers["If-Match"]);
+    if (++calls < 4) return Response.json({ error: { code: "PROVIDER_TIMEOUT", message: "Waiting" } }, { status: 503 });
+    return Response.json({ data: { ...exam, resourceVersion: 8, questions: exam.questions.map(q => ({ ...q, prompt: "Saved" })) } });
+  });
+  const result = await generateExamQuestions("teacher", exam, { signal: new AbortController().signal, onDocument() {}, onProgress() {} });
+  assert.equal(result.resourceVersion, 8);
+  assert.deepEqual(versions, ['"7"', '"7"', '"7"', '"7"']);
+});
+
+test("a gateway timeout reloads persisted exam progress before another batch", async t => {
+  const exam = draft(), saved = { ...draft(), id: exam.id, resourceVersion: 8 };
+  saved.questions[0].prompt = "Saved before gateway timeout";
+  const methods = [];
+  t.mock.method(globalThis, "setTimeout", callback => { queueMicrotask(callback); return 0; });
+  t.mock.method(globalThis, "fetch", async (_, options) => {
+    methods.push(options.method);
+    if (methods.length === 1) return new Response("Gateway timeout", { status: 504 });
+    if (options.method === "GET") return Response.json({ data: saved });
+    assert.equal(options.headers["If-Match"], '"8"');
+    return Response.json({ data: { ...saved, resourceVersion: 9, questions: saved.questions.map(q => ({ ...q, prompt: q.prompt || "Generated" })) } });
+  });
+  const result = await generateExamQuestions("teacher", exam, { signal: new AbortController().signal, onDocument() {}, onProgress() {} });
+  assert.deepEqual(methods, ["POST", "GET", "POST"]);
+  assert.equal(result.questions[0].prompt, saved.questions[0].prompt);
+});
+
 test("PWA generation fills successive batches with the latest version and keeps manual edits", async t => {
   const exam = draft();
   exam.questions[0].prompt = "Soal guru";

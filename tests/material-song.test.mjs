@@ -28,6 +28,19 @@ test("song lifecycle persists and resumes paid tasks without duplicate generatio
       return { content: plan };
     };
 
+    await t.test("a lyric timeout can resume before any paid music submission", async () => {
+      const material = await source();
+      let textCalls = 0, musicCalls = 0;
+      const service = createMaterialSongs(storage.db, async () => {
+        if (++textCalls === 1) throw new AIError("PROVIDER_TIMEOUT");
+        return { content: plan };
+      }, { create: async () => { musicCalls++; return randomUUID(); } });
+      await assert.rejects(service.start(owner.id, material.id), { code: "PROVIDER_TIMEOUT", status: 503 });
+      assert.equal(musicCalls, 0);
+      assert.equal((await service.start(owner.id, material.id)).status, "generating");
+      assert.equal(musicCalls, 1);
+    });
+
     await t.test("owner, concurrency, process restart, caching and protected audio", async () => {
       const material = await source(); const gate = Promise.withResolvers();
       let submitted = 0, downloads = 0;

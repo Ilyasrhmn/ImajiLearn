@@ -7,6 +7,67 @@ import { createMaterialSlides } from "../apps/web/server/materials/slides.mjs";
 import { createMaterialService } from "../apps/web/server/materials/service.mjs";
 import { syntheticPdf } from "./support/pdf.mjs";
 import { testDatabase } from "./support/database.mjs";
+import { AIError } from "../apps/web/server/ai/errors.mjs";
+import { ApiError } from "../apps/web/server/core/errors.mjs";
+
+test("provider authentication errors are actionable and never become an endless preparation", async () => {
+  const service = createPreparedLesson({}, {
+    get: async () => null,
+    generate: async () => { throw new AIError("PROVIDER_AUTH_ERROR"); },
+  }, "reading");
+  await assert.rejects(service.generate("teacher", "material"), { status: 503, code: "PROVIDER_AUTH_ERROR" });
+});
+
+test("temporary lesson provider failures remain resumable and never expose incomplete content", async () => {
+  const storage = await testDatabase();
+  try {
+    for (const migration of storage.migrations) await storage.migrate(migration);
+    const owner = await storage.db.teacher.create({ data: { name: "Guru", email: "resume-lesson@example.test" } });
+    const source = await createMaterialService(storage.db).create(owner.id,
+      { title: "Tata Surya", text: "Bumi mengelilingi Matahari." }, randomUUID());
+    let textCalls = 0, routeCalls = 0, planCalls = 0, imageCalls = 0;
+    const textService = createMaterialReading(storage.db, async () => {
+      if (++textCalls === 1) throw new AIError("PROVIDER_TIMEOUT");
+      return { content: { title: "Tata Surya", sections: [{ heading: "Bumi", paragraphs: ["Bumi mengelilingi Matahari."] }],
+        quiz: [{ question: "Bumi mengelilingi apa?", options: ["Matahari", "Bulan", "Mars"], answerIndex: 0, explanation: "Matahari." }] } };
+    });
+    const service = createPreparedLesson(storage.db, textService, "reading", async (_, task) => {
+      if (++imageCalls === 1) {
+        await task.onTask("confirmed-task-123");
+        throw new ApiError(503, "ILLUSTRATION_UNAVAILABLE", "Polling timed out");
+      }
+      assert.equal(task.taskId, "confirmed-task-123", "Resume the paid task instead of submitting another");
+      return Uint8Array.of(255, 216, 255, 217);
+    },
+      async (_, { messages }) => {
+        const input = JSON.parse(messages[1].content);
+        if (input.purpose === "illustration-routing") {
+          if (++routeCalls === 1) throw new AIError("PROVIDER_UNAVAILABLE");
+          return { content: { sections: [{ index: 0, complexity: "complex", priority: 100 }] } };
+        }
+        if (++planCalls === 1) throw new AIError("PROVIDER_TIMEOUT");
+        return { content: { figureId: null, generate: true, subject: "Earth orbiting the Sun",
+          composition: "Sun at the center and Earth on its orbit", details: "Recognizable Earth and Sun" } };
+      });
+    let result;
+    for (let step = 0; step < 6; step++) {
+      result = await service.generate(owner.id, source.id);
+      assert.equal(result.status, "preparing");
+      assert.equal(await service.get(owner.id, source.id), null);
+      if (![1, 3].includes(step)) {
+        assert.equal(result.waiting, true);
+        assert.ok(result.retryAfterSeconds >= 1);
+      }
+    }
+    result = await service.generate(owner.id, source.id);
+    assert.equal(result.sections.length, 1);
+    assert.equal(result.illustrations[0].ready, true);
+    assert.equal(textCalls, 2, "Completed text must not be generated again");
+    assert.equal(routeCalls, 2, "The saved routing plan must be reused");
+    assert.equal(planCalls, 2);
+    assert.equal(imageCalls, 2);
+  } finally { await storage.close(); }
+});
 
 test("a lesson stays hidden until every image is ready, resumes failures and reuses source figures", async () => {
   const storage = await testDatabase();
@@ -48,6 +109,7 @@ test("a lesson stays hidden until every image is ready, resumes failures and reu
     });
     assert.equal(await prepare.get(owner.id, source.id), null);
     assert.equal((await prepare.generate(owner.id, source.id)).status, "preparing");
+    assert.equal((await prepare.generate(owner.id, source.id)).status, "preparing");
     const pending = prepare.generate(owner.id, source.id);
     try {
       await Promise.race([started.promise, pending]);
@@ -88,6 +150,7 @@ test("a lesson stays hidden until every image is ready, resumes failures and reu
     const firstStep = await deck.generate(owner.id, source.id);
     assert.deepEqual(firstStep, { status: "preparing", completed: 0, total: 13 });
     assert.equal(await deck.get(owner.id, source.id), null);
+    assert.equal((await deck.generate(owner.id, source.id)).status, "preparing");
     const secondStep = await deck.generate(owner.id, source.id);
     assert.deepEqual(secondStep, { status: "preparing", completed: 2, total: 13 });
     assert.equal(await deck.get(owner.id, source.id), null);

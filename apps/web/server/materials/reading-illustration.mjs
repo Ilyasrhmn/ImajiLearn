@@ -60,7 +60,7 @@ export function createReadingIllustration(db, generateIllustration, generateJson
         }
         if (replace && !stored?.providerTaskId) await reserveImageReplacement(tx, "materialReading", key);
         if (!preparation.budgeted) await consumeRateLimit(tx, "reading-illustration:" + userId, 10, 15 * 60_000);
-        const lease = { leaseId: randomUUID(), leaseUntil: new Date(Date.now() + 180_000) };
+        const lease = { leaseId: randomUUID(), leaseUntil: new Date(Date.now() + 270_000) };
         await tx.materialReadingIllustration.upsert({
           where: imageWhere, create: { ...image, ...lease }, update: lease,
         });

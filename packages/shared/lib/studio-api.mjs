@@ -1,10 +1,12 @@
 import { apiPath, navigateAfterSessionChange, sessionLoginPath } from "./session.mjs";
 import { createId } from "./id.mjs";
+import { aiCorrection, aiRepairHeader } from "./ai-repair.mjs";
 
-export async function studioRequest(teacherId, path, { method = "GET", body, version, key, signal, binary = false } = {}) {
+export async function studioRequest(teacherId, path, { method = "GET", body, version, key, signal, binary = false, repairCode } = {}) {
   const headers = { "X-Teacher-Id": teacherId };
   if (version !== undefined) headers["If-Match"] = `"${version}"`;
   if (method === "POST") headers["Idempotency-Key"] = key ?? createId();
+  if (method === "POST" && aiCorrection(repairCode)) headers[aiRepairHeader] = repairCode;
   const multipart = body instanceof FormData;
   if (body !== undefined && !multipart) headers["Content-Type"] = "application/json";
   const response = await fetch(apiPath(path), {

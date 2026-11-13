@@ -4,6 +4,40 @@ import { generateLessonParts, generateLessonBatch } from "../apps/web/server/mat
 import { readPdfSourcePage } from "../apps/web/server/materials/pdf.mjs";
 import { syntheticPdf } from "./support/pdf.mjs";
 import { generateMaterialMedia } from "../apps/web/lib/material-media.mjs";
+import { extractPdf, describePdfSections, findPdfFigures } from "../apps/web/server/materials/pdf.mjs";
+
+test("PDF parsing and source preview are not destroyed by short application deadlines", async t => {
+  const original = globalThis.setTimeout;
+  const deadlines = [];
+  t.mock.method(globalThis, "setTimeout", (callback, milliseconds, ...args) => {
+    if ([10_000, 15_000, 30_000].includes(milliseconds)) deadlines.push(milliseconds);
+    return original(callback, milliseconds, ...args);
+  });
+  const bytes = Buffer.from(syntheticPdf({ figure: true }));
+  await extractPdf(bytes);
+  await describePdfSections(bytes);
+  await findPdfFigures(bytes, "tumbuhan");
+  await readPdfSourcePage(bytes, 1);
+  assert.deepEqual(deadlines, []);
+});
+
+test("visual generation retries provider timeouts but does not repeat an uncertain paid submission", async t => {
+  t.mock.method(globalThis, "setTimeout", callback => { queueMicrotask(callback); return 0; });
+  let calls = 0;
+  t.mock.method(globalThis, "fetch", async (_, options) => {
+    if (options.method !== "POST") return Response.json({ data: [] });
+    if (++calls < 3) return Response.json({ error: { code: "PROVIDER_TIMEOUT", message: "Waiting" } }, { status: 503 });
+    return Response.json({ data: { kind: "geometry", title: "Ready" } });
+  });
+  assert.equal((await generateMaterialMedia("teacher", "/materials/material/visual", "material", "mindmap")).title, "Ready");
+  calls = 0;
+  t.mock.method(globalThis, "fetch", async () => {
+    calls++;
+    return Response.json({ error: { code: "MUSIC_REQUEST_UNKNOWN", message: "Check status" } }, { status: 503 });
+  });
+  await assert.rejects(generateMaterialMedia("teacher", "/materials/material/song", "material", "song"), { code: "MUSIC_REQUEST_UNKNOWN" });
+  assert.equal(calls, 1);
+});
 
 test("lesson chunks run with bounded concurrency and retain source order", async () => {
   let active = 0, peak = 0;
@@ -80,21 +114,40 @@ test("preparation waits for a text-provider rate limit and resumes saved progres
   assert.equal(progress[1].completed, 23);
 });
 
-test("preparation bounds rate-limit waits and never retries uncertain or music requests", async t => {
+test("preparation waits through long rate limits but never retries authentication failures", async t => {
   t.mock.method(globalThis, "setTimeout", callback => { queueMicrotask(callback); return 0; });
   let posts = 0, status = 429, code = "RATE_LIMITED";
-  t.mock.method(globalThis, "fetch", async () => {
+  t.mock.method(globalThis, "fetch", async (_, options) => {
+    if (options.method !== "POST") return Response.json({ data: [] });
     posts++;
+    if (posts === 5) return Response.json({ data: { title: "Ready", slides: [] } });
     return Response.json({ error: { code, message: "Blocked" } }, { status });
   });
-  await assert.rejects(generateMaterialMedia("teacher", "/materials/material/slides", "material", "slides"), { status: 429 });
-  assert.equal(posts, 3);
-  posts = 0; status = 503; code = "PROVIDER_UNAVAILABLE";
+  assert.equal((await generateMaterialMedia("teacher", "/materials/material/slides", "material", "slides")).title, "Ready");
+  assert.equal(posts, 5);
+  posts = 0; status = 503; code = "PROVIDER_AUTH_ERROR";
   await assert.rejects(generateMaterialMedia("teacher", "/materials/material/slides", "material", "slides"), { status: 503 });
   assert.equal(posts, 1);
-  posts = 0; status = 429; code = "RATE_LIMITED";
-  await assert.rejects(generateMaterialMedia("teacher", "/materials/material/song", "material", "song"), { status: 429 });
+  posts = 0; status = 503; code = "MUSIC_REQUEST_UNKNOWN";
+  await assert.rejects(generateMaterialMedia("teacher", "/materials/material/song", "material", "song"), { status: 503 });
   assert.equal(posts, 1);
+});
+
+test("preparation honors a resumable provider delay without clearing the last progress", async t => {
+  let posts = 0;
+  const waits = [], progress = [];
+  t.mock.method(globalThis, "setTimeout", (callback, milliseconds) => {
+    waits.push(milliseconds); queueMicrotask(callback); return 0;
+  });
+  t.mock.method(globalThis, "fetch", async (_, options) => {
+    if (options.method !== "POST") return Response.json({ data: [] });
+    return Response.json({ data: ++posts === 1
+      ? { status: "preparing", phase: "images", completed: 3, total: 21, waiting: true, retryAfterSeconds: 5 }
+      : { title: "Ready", sections: [] } });
+  });
+  await generateMaterialMedia("teacher", "/materials/material/reading", "material", "reading", { onProgress: s => progress.push(s) });
+  assert.deepEqual(waits, [5000]);
+  assert.equal(progress[0].completed, 3);
 });
 
 test("canceling a rate-limit wait prevents a later generation request", async t => {
