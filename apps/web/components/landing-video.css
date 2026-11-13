@@ -1,0 +1,15 @@
+.landing-video-section { padding-block: 0 clamp(32px, 5vw, 72px); }
+.landing-video { max-width: 1120px; margin-inline: auto; border: 1px solid #d7ded4; border-radius: 26px; overflow: hidden; background: #f5f3e9; }
+.landing-video-controls { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 24px; border-bottom: 1px solid #d7ded4; background: #fff8e9; }
+.landing-video-controls button { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 10px 12px; border: 0; border-radius: 8px; background: transparent; color: #233f46; font: inherit; cursor: pointer; }
+.landing-video-controls button:hover { background: #f0ebdb; }
+.landing-video-controls button:disabled { opacity: .5; cursor: default; }
+.landing-video video { display: block; width: 100%; height: auto; aspect-ratio: 8 / 5; background: #fffdf8; object-fit: contain; }
+.landing-video-progress { display: flex; align-items: center; gap: 15px; padding: 14px 24px; background: #fff8e9; font-size: 14px; font-variant-numeric: tabular-nums; }
+.landing-video-progress input { flex: 1; min-width: 0; min-height: 26px; height: 26px; accent-color: #ba5036; padding: 0; border: 0; }
+.landing-video p { margin: 12px 24px; }
+@media (max-width: 760px) {
+  .landing-video-controls { padding: 7px 12px; }
+  .landing-video-controls button { padding: 6px; font-size: 12px; gap: 5px; }
+  .landing-video-progress { padding: 10px 15px; }
+}
