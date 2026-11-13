@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import { syntheticPdf } from "./support/pdf.mjs";
+import { expectPageRedirect, expectPageNotFound } from "./support/page-response.mjs";
 
 const base = process.env.TEST_BASE_URL, origin = process.env.TEST_APP_ORIGIN;
 if (!base || !origin) throw new Error("Set TEST_BASE_URL and TEST_APP_ORIGIN for an isolated test deployment.");
@@ -41,11 +42,10 @@ assert.equal(material.text, body.text); assert.match(material.revision, /^[a-f\d
 const materialPage = `${base}/materi/${material.id}`;
 assert.equal((await send("GET", `materials/${material.id}/slides/illustrations`, undefined, a)).status, 405);
 const anonymous = await fetch(materialPage, { redirect: "manual" });
-assert.equal(anonymous.status, 307);
-assert.equal(anonymous.headers.get("location"), "/masuk");
-assert.equal((await fetch(materialPage, { headers: { cookie: b } })).status, 404);
-assert.equal((await fetch(`${materialPage}/reading`, { headers: { cookie: b } })).status, 404);
-assert.equal((await fetch(`${materialPage}/unknown`, { headers: { cookie: a } })).status, 404);
+await expectPageRedirect(anonymous, "/masuk");
+await expectPageNotFound(await fetch(materialPage, { headers: { cookie: b } }));
+await expectPageNotFound(await fetch(`${materialPage}/reading`, { headers: { cookie: b } }));
+await expectPageNotFound(await fetch(`${materialPage}/unknown`, { headers: { cookie: a } }));
 const detailPage = await fetch(materialPage, { headers: { cookie: a } });
 assert.equal(detailPage.status, 200);
 assert.match(await detailPage.text(), /HTTP manual material/);
