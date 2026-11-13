@@ -19,3 +19,14 @@ export function googleConfig(env = process.env) {
 export function isGoogleAuthEnabled(env = process.env) {
   try { googleConfig(env); return true; } catch { return false; }
 }
+
+export function pwaGoogleConfig(env = process.env) {
+  const config = googleConfig(env);
+  try {
+    const value = env.PWA_PUBLIC_ORIGIN || (env.NODE_ENV !== "production" ? "http://localhost:3002" : "");
+    const origin = new URL(value);
+    if (!["http:", "https:"].includes(origin.protocol) || origin.origin !== value || origin.username || origin.password ||
+        (env.NODE_ENV === "production" && origin.protocol !== "https:")) throw new Error("Invalid PWA origin");
+    return { ...config, origin: origin.origin, redirectUri: `${origin.origin}/app/api/v1/auth/google/pwa/callback`, applicationPath: "/app", flowNamespace: "pwa_" };
+  } catch { throw new ApiError(503, "GOOGLE_UNAVAILABLE", "Masuk dengan Google belum tersedia. Gunakan email dan kata sandi."); }
+}

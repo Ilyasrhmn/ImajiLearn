@@ -6,7 +6,7 @@ import { hashPassword, verifyPassword } from "./password.mjs";
 import { issueSession } from "./session-issuer.mjs";
 import { createSessionHandlers } from "./sessions.mjs";
 
-const profileSelect = { id: true, name: true, email: true, school: true, grade: true };
+const profileSelect = { id: true, name: true, email: true, school: true, grade: true, avatarUrl: true };
 
 function parseProfile(body, email) {
   object(body, ["name", "email", "school", "grade"]);
@@ -43,7 +43,8 @@ export function createProfileHandlers(db, config) {
     const credentials = await db.teacher.findUnique({ where: { id: teacher.id }, select: {
       passwordHash: true, googleIdentity: { select: { sub: true } },
     } });
-    return { ...teacher, auth: { hasPassword: Boolean(credentials?.passwordHash),
+    const { avatarUrl, ...details } = teacher;
+    return { ...details, ...(avatarUrl ? { avatarUrl } : {}), auth: { hasPassword: Boolean(credentials?.passwordHash),
       googleLinked: Boolean(credentials?.googleIdentity), googleEnabled: Boolean(config.googleEnabled) } };
   }
   return {

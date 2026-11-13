@@ -33,7 +33,12 @@ test("history groups saved media by source and feature without regenerating or e
     let calls = 0;
     const reading = createMaterialReading(db, async () => { calls++; return { content }; });
     const prepared = createPreparedLesson(db, reading, "reading", () => assert.fail("No image needed"),
-      async () => ({ content: { generate: false, figureId: null } }));
+      async (_feature, { messages }) => {
+        const input = JSON.parse(messages[1].content);
+        return { content: input.purpose === "illustration-routing"
+          ? { sections: input.sections.map(({ index }) => ({ index, complexity: "simple", priority: 0 })) }
+          : { generate: false, figureId: null } };
+      });
     while ((await prepared.generate(owner.id, first.id)).status === "preparing") {}
     await reading.generate(owner.id, second.id);
     await reading.generate(owner.id, unrelated.id);
@@ -43,6 +48,8 @@ test("history groups saved media by source and feature without regenerating or e
     assert.equal(rows.items.length, 2);
     const complete = rows.items.find(row => row.materialId === first.id);
     assert.equal(complete.status, "ready");
+    assert.equal(complete.sourceTitle, "Tumbuhan");
+    assert.equal(complete.folderName, "IPAS");
     assert.deepEqual(complete.pages, [1, 3]);
     assert.ok(complete.generatedAt);
     const incomplete = rows.items.find(row => row.materialId === second.id);
@@ -91,5 +98,21 @@ test("history groups saved media by source and feature without regenerating or e
     assert.equal(pageOne.items.length, 20);
     assert.equal(pageTwo.items.length, 2);
     assert.equal(new Set([...pageOne.items, ...pageTwo.items].map(row => row.materialId)).size, 22);
+    const last = pageTwo.items.at(-1);
+    await db.materialSlideDeck.update({ where: { materialId_revision: { materialId: last.materialId,
+      revision: parts.find(part => part.id === last.materialId).revision } }, data: {
+      content: { title: "Judul Langka", slides: [{ title: "Daun", points: ["Daun menangkap cahaya."] }] },
+    } });
+    const found = await materialMediaHistory(db, owner.id, source.id, new URLSearchParams({ feature: "slides", q: "judul langka" }));
+    assert.deepEqual(found.items.map(item => item.materialId), [last.materialId]);
+    assert.equal(found.nextOffset, null);
+    const byFolder = await materialMediaHistory(db, owner.id, source.id, new URLSearchParams({ feature: "slides", q: "ipas" }));
+    assert.equal(byFolder.items.length, 20);
+    assert.equal(byFolder.nextOffset, 20);
+    assert.equal((await materialMediaHistory(db, owner.id, source.id,
+      new URLSearchParams({ feature: "reading", q: "Materi guru lain" }))).items.length, 0);
+    await assert.rejects(materialMediaHistory(db, owner.id, source.id,
+      new URLSearchParams({ feature: "reading", q: "x".repeat(201) })), { status: 422 });
+
   } finally { await storage.close(); }
 });

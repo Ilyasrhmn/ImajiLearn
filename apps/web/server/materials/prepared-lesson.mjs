@@ -45,7 +45,8 @@ export function createPreparedLesson(db, textService, feature, generateImage, ge
     get,
     async generate(userId, materialId) {
       const existing = await textService.get(userId, materialId);
-      const content = existing ?? await textService.generate(userId, materialId);
+      const content = existing ?? await textService.generate(userId, materialId, { incremental: true });
+      if (content?.status === "preparing") return content;
       const state = await inspect(userId, materialId, content);
       if (state.ready) return { ...content, revision: state.source.revision, illustrations: state.statuses };
       if (!existing) return { status: "preparing",

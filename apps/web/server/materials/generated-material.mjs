@@ -3,7 +3,7 @@ import { AIError } from "../ai/errors.mjs";
 import { ApiError } from "../core/errors.mjs";
 import { consumeRateLimit } from "../core/rate-limit.mjs";
 import { canonicalMaterialId, getOwnedMaterial } from "./readers.mjs";
-import { generateLessonParts } from "./lesson-content.mjs";
+import { generateLessonBatch, generateLessonParts } from "./lesson-content.mjs";
 
 const missingMaterial = () => new ApiError(404, "MATERIAL_NOT_FOUND", "Materi tidak ditemukan.");
 const sourceChanged = () => new ApiError(409, "SOURCE_CHANGED", "Materi berubah. Buka ulang materi lalu coba lagi.");
@@ -19,11 +19,11 @@ export function createGeneratedMaterial(db, generateJson, { delegate, feature, i
         where: { materialId_revision: { materialId: source.id, revision: source.revision } },
         select: { content: true },
       });
-      const content = row?.content ?? null;
+      const content = row?.content?.__lessonParts ? null : row?.content ?? null;
       return readContent ? readContent(content) : content;
     },
 
-    async generate(userId, materialId, { regenerate = false } = {}) {
+    async generate(userId, materialId, { regenerate = false, incremental = false } = {}) {
       const job = await db.$transaction(async tx => {
         const source = await getOwnedMaterial(tx, userId, materialId);
         if (!source) throw missingMaterial();
@@ -34,15 +34,18 @@ export function createGeneratedMaterial(db, generateJson, { delegate, feature, i
         const key = { materialId: source.id, revision: source.revision };
         const where = { materialId_revision: key };
         const existing = await tx[delegate].findUnique({ where, select: { content: true, leaseUntil: true } });
-        const cached = readContent ? readContent(existing?.content) : existing?.content;
+        const saved = existing?.content?.__lessonParts ? null : existing?.content;
+        const cached = readContent ? readContent(saved) : saved;
         if (cached && !regenerate) return { content: cached };
         if (existing?.leaseUntil > new Date()) {
           throw new ApiError(409, ...inProgress);
         }
-        await consumeRateLimit(tx, "material-" + feature + ":" + userId, 10, 15 * 60_000);
+        const checkpoint = existing?.content?.__lessonParts;
+        const rateKey = checkpoint ? `material-${feature}-continuation` : `material-${feature}`;
+        await consumeRateLimit(tx, `${rateKey}:${userId}`, checkpoint ? 60 : 10, 15 * 60_000);
         const lease = { leaseId: randomUUID(), leaseUntil: new Date(Date.now() + leaseDuration) };
         await tx[delegate].upsert({ where, create: { ...key, ...lease }, update: lease });
-        return { source, hasPrevious: Boolean(existing?.content), reservation: { ...key, leaseId: lease.leaseId } };
+        return { source, checkpoint, hasPrevious: Boolean(existing?.content), reservation: { ...key, leaseId: lease.leaseId } };
       });
 
       if (job.content) return job.content;
@@ -61,15 +64,28 @@ export function createGeneratedMaterial(db, generateJson, { delegate, feature, i
           });
           return validate(result.content, { ...job.source, text });
         }
-        async function renew() {
+        let content;
+        if (combineParts && (incremental || job.checkpoint)) {
+          const batch = await generateLessonBatch(job.source, generate, combineParts, job.checkpoint);
           const updated = await db[delegate].updateMany({
-            where: job.reservation, data: { leaseUntil: new Date(Date.now() + leaseDuration) },
+            where: job.reservation, data: { content: { __lessonParts: batch.state } },
           });
           if (!updated.count) throw sourceChanged();
-        }
-        const content = combineParts
-          ? await generateLessonParts(job.source, generate, combineParts, renew)
-          : await generate(job.source.text);
+          job.hasPrevious = true;
+          if (batch.failure) throw batch.failure;
+          if (!batch.done) {
+            await db[delegate].updateMany({ where: job.reservation, data: { leaseId: null, leaseUntil: null } });
+            return { status: "preparing", phase: "text",
+              completed: batch.state.chunks.filter(chunk => chunk.result !== null).length, total: batch.state.chunks.length };
+          }
+          content = batch.content;
+        } else if (combineParts) {
+          content = await generateLessonParts(job.source, generate, combineParts, async () => {
+            const updated = await db[delegate].updateMany({ where: job.reservation,
+              data: { leaseUntil: new Date(Date.now() + leaseDuration) } });
+            if (!updated.count) throw sourceChanged();
+          });
+        } else content = await generate(job.source.text);
         await db.$transaction(async tx => {
           const latest = await getOwnedMaterial(tx, userId, job.source.id);
           if (!latest || latest.archived || latest.revision !== job.source.revision) throw sourceChanged();

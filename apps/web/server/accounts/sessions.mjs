@@ -10,7 +10,7 @@ import { sessionToken, sessionCookie } from "./session-cookie.mjs";
 
 // Unknown emails still perform the same password derivation before the generic rejection.
 const dummyHash = `scrypt$32768$8$1$${"0".repeat(32)}$${"0".repeat(128)}`;
-const publicTeacher = ({ id, name, email, school, grade }) => ({ id, name, email, school, grade });
+const publicTeacher = ({ id, name, email, school, grade, avatarUrl }) => ({ id, name, email, school, grade, ...(avatarUrl ? { avatarUrl } : {}) });
 const minute = 60000;
 
 export function createSessionHandlers(db, config) {
@@ -26,10 +26,10 @@ export function createSessionHandlers(db, config) {
     });
     if (!touched.count) throw unauthorized();
     const row = await db.session.findUnique({ where: { tokenHash }, include: {
-      teacher: { select: { id: true, name: true, email: true, school: true, grade: true } },
+      teacher: { select: { id: true, name: true, email: true, school: true, grade: true, avatarUrl: true } },
     } });
     if (!row) throw unauthorized();
-    return { user: row.teacher, expiresAt: row.expiresAt.toISOString() };
+    return { user: publicTeacher(row.teacher), expiresAt: row.expiresAt.toISOString() };
   }
   return {
     requireTeacher: async request => {

@@ -192,9 +192,10 @@ test("material migration preserves existing teachers", async () => {
     const materialIndex = upgrade.migrations.findIndex(name => name.includes("owned_materials"));
     assert.ok(materialIndex > 0);
     for (const migration of upgrade.migrations.slice(0, materialIndex)) await upgrade.migrate(migration);
-    const teacher = await upgrade.db.teacher.create({ data: { name: "Upgrade", email: "material-upgrade@example.test", passwordHash: "synthetic-hash" } });
+    const teacher = await upgrade.db.teacher.create({ data: { name: "Upgrade", email: "material-upgrade@example.test", passwordHash: "synthetic-hash" }, select: { id: true, name: true, email: true, passwordHash: true, school: true, grade: true, createdAt: true } });
     for (const migration of upgrade.migrations.slice(materialIndex)) await upgrade.migrate(migration);
-    assert.deepEqual(await upgrade.db.teacher.findUnique({ where: { id: teacher.id } }), teacher);
+    assert.deepEqual(await upgrade.db.teacher.findUnique({ where: { id: teacher.id }, select: { id: true, name: true, email: true, passwordHash: true, school: true, grade: true, createdAt: true } }), teacher);
+    assert.equal((await upgrade.db.teacher.findUnique({ where: { id: teacher.id } })).avatarUrl, null);
     assert.equal(await upgrade.db.material.count(), 0);
   } finally { await upgrade.close(); }
 });

@@ -140,7 +140,7 @@ test("registration migration upgrades existing teachers without changing their d
   const upgrade = await testDatabase();
   try {
     await upgrade.migrate(upgrade.migrations[0]);
-    const seeded = await upgrade.db.teacher.create({ data: { name: "Existing", email: "old@example.test", passwordHash: "synthetic-existing-hash" } });
+    const seeded = await upgrade.db.teacher.create({ data: { name: "Existing", email: "old@example.test", passwordHash: "synthetic-existing-hash" }, select: { id: true, name: true, email: true, passwordHash: true, school: true, grade: true, createdAt: true } });
     for (const migration of upgrade.migrations.slice(1)) await upgrade.migrate(migration);
     const result = await upgrade.db.teacher.findUnique({ where: { id: seeded.id } });
     assert.equal(result.passwordHash, seeded.passwordHash);

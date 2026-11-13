@@ -57,3 +57,25 @@ export async function generateLessonParts(source, generate, combine, renew) {
   const parts = results.flat();
   return parts.length === 1 ? parts[0] : combine(parts, source.title);
 }
+
+export async function generateLessonBatch(source, generate, combine, checkpoint) {
+  const chunks = checkpoint?.chunks ?? chunksOf(source.text).map(text => ({ text, result: null }));
+  const pending = chunks.flatMap((chunk, index) => chunk.result === null ? [index] : []).slice(0, 2);
+  const results = await Promise.allSettled(pending.map(index => generate(chunks[index].text, chunks.length > 1)));
+  let failure;
+  for (let position = results.length - 1; position >= 0; position--) {
+    const index = pending[position];
+    const result = results[position];
+    if (result.status === "fulfilled") chunks[index].result = result.value;
+    else if (result.reason.code === "INCOMPLETE_OUTPUT" && chunks[index].text.length > retrySplitFloor) {
+      const text = chunks[index].text;
+      const boundary = splitAtBoundary(text, Math.floor(text.length / 2));
+      chunks.splice(index, 1, { text: text.slice(0, boundary).trimEnd(), result: null },
+        { text: text.slice(boundary).trimStart(), result: null });
+    } else failure ??= result.reason;
+  }
+  const state = { chunks };
+  const done = chunks.every(chunk => chunk.result !== null);
+  const parts = done ? chunks.map(chunk => chunk.result) : null;
+  return { state, failure, done, content: done ? parts.length === 1 ? parts[0] : combine(parts, source.title) : null };
+}
