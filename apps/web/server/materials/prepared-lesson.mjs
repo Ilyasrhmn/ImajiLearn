@@ -5,6 +5,7 @@ import { getOwnedMaterial } from "./readers.mjs";
 import { lessonSourceFigures } from "./lesson-illustration.mjs";
 import { createReadingIllustration } from "./reading-illustration.mjs";
 import { createSlideIllustrations } from "./slide-illustrations.mjs";
+import { planImageProviders, selectImageBatch } from "./image-routing.mjs";
 
 const changed = () => new ApiError(409, "SOURCE_CHANGED", "Materi berubah. Buka ulang materi lalu coba lagi.");
 const leaseDuration = 180_000;
@@ -68,6 +69,15 @@ export function createPreparedLesson(db, textService, feature, generateImage, ge
         return { source, reservation: { ...key, leaseId } };
       });
       try {
+        let plan = await db[delegate].findUnique({
+          where: { materialId_revision: { materialId, revision: job.source.revision } }, select: { imagePlan: true },
+        });
+        if (!plan.imagePlan) {
+          const imagePlan = await planImageProviders(generateJson, feature, entries(content));
+          const saved = await db[delegate].updateMany({ where: job.reservation, data: { imagePlan } });
+          if (!saved.count) throw changed();
+          plan = { imagePlan };
+        }
         const topics = entries(content).map(entry => reading ? entry.heading : entry.title);
         const sourceFigures = await lessonSourceFigures(db, userId, job.source, topics);
         const pending = state.statuses.flatMap((status, index) => status.ready || status.skipped ? [] : [index]);
@@ -76,11 +86,11 @@ export function createPreparedLesson(db, textService, feature, generateImage, ge
             where: job.reservation, data: { leaseUntil: new Date(Date.now() + leaseDuration) },
           });
           if (!renewal.count) throw changed();
-          const preparation = { budgeted: true, sourceFigures };
+          const preparation = { budgeted: true, sourceFigures, provider: plan.imagePlan[index] };
           if (reading) await imageService.generate(userId, materialId, false, index, preparation);
           else await imageService.generate(userId, materialId, job.source.revision, index, false, preparation);
         }
-        const results = await Promise.allSettled(pending.slice(0, 2).map(prepare));
+        const results = await Promise.allSettled(selectImageBatch(pending, plan.imagePlan).map(prepare));
         const failed = results.find(result => result.status === "rejected");
         if (failed) throw failed.reason;
         const progress = await inspect(userId, materialId, content);

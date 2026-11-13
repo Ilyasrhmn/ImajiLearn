@@ -4,6 +4,7 @@ import { ApiError } from "../core/errors.mjs";
 import { consumeRateLimit } from "../core/rate-limit.mjs";
 import { illustrationStatus, resolveLessonIllustration } from "./lesson-illustration.mjs";
 import { canonicalMaterialId, getOwnedMaterial } from "./readers.mjs";
+import { budgetedImageGenerator } from "./image-routing.mjs";
 
 const missing = () => new ApiError(404, "MATERIAL_NOT_FOUND", "Materi tidak ditemukan.");
 const slideMissing = () => new ApiError(404, "SLIDE_NOT_FOUND", "Slide tidak ditemukan.");
@@ -42,7 +43,7 @@ export function createSlideIllustrations(db, generateIllustration, generateJson)
         if (source.archived) throw new ApiError(409, "MATERIAL_ARCHIVED", "Pulihkan materi untuk membuat ilustrasi.");
         validIndex(slideIndex);
         const key = { materialId: source.id, revision: source.revision };
-        const deck = await tx.materialSlideDeck.findUnique({ where: { materialId_revision: key }, select: { content: true } });
+        const deck = await tx.materialSlideDeck.findUnique({ where: { materialId_revision: key }, select: { content: true, imagePlan: true } });
         const slide = deck?.content?.slides[slideIndex];
         if (!slide) throw slideMissing();
         const imageKey = { ...key, slideIndex };
@@ -55,12 +56,13 @@ export function createSlideIllustrations(db, generateIllustration, generateJson)
         if (!preparation.budgeted) await consumeRateLimit(tx, "slide-illustration:" + userId, 12, 15 * 60_000);
         const lease = { leaseId: randomUUID(), leaseUntil: new Date(Date.now() + 180_000) };
         await tx.materialSlideIllustration.upsert({ where, create: { ...imageKey, ...lease }, update: lease });
-        return { source, slide, outline: deck.content.slides.map(item => item.title), hadImage: Boolean(row?.bytes), providerTaskId: row?.providerTaskId, reservation: { ...imageKey, leaseId: lease.leaseId } };
+        return { source, slide, provider: preparation.provider ?? deck.imagePlan?.[slideIndex], outline: deck.content.slides.map(item => item.title), hadImage: Boolean(row?.bytes), providerTaskId: row?.providerTaskId, reservation: { ...imageKey, leaseId: lease.leaseId } };
       });
 
       if (!job) return;
       try {
-        const visual = await resolveLessonIllustration(db, generateJson, generateIllustration, {
+        const generateImage = budgetedImageGenerator(db, "slides", job.reservation, job.provider, generateIllustration);
+        const visual = await resolveLessonIllustration(db, generateJson, generateImage, {
           userId, source: job.source, feature: "slides", title: job.slide.title, lines: job.slide.points, scene: job.slide.scene,
           outline: job.outline, sourceFigures: preparation.sourceFigures,
           imageTask: { taskId: job.providerTaskId, onTask: async providerTaskId => {

@@ -4,6 +4,7 @@ import { illustrationStatus, resolveLessonIllustration } from "./lesson-illustra
 import { ApiError } from "../core/errors.mjs";
 import { consumeRateLimit } from "../core/rate-limit.mjs";
 import { canonicalMaterialId, getOwnedMaterial } from "./readers.mjs";
+import { budgetedImageGenerator } from "./image-routing.mjs";
 
 const missingMaterial = () => new ApiError(404, "MATERIAL_NOT_FOUND", "Materi tidak ditemukan.");
 const readingMissing = () => new ApiError(409, "READING_NOT_READY", "Buat bacaan dulu untuk menambahkan ilustrasi.");
@@ -62,12 +63,13 @@ export function createReadingIllustration(db, generateIllustration, generateJson
         });
         const chapter = row.content.sections[index];
         const scene = row.content.illustration?.sectionIndex === index ? row.content.illustration.scene : undefined;
-        return { source, chapter, scene, outline: row.content.sections.map(item => item.heading), previous: stored?.sourceBytes ?? stored?.bytes, providerTaskId: stored?.providerTaskId, reservation: { ...image, leaseId: lease.leaseId } };
+        return { source, chapter, scene, provider: preparation.provider ?? row.imagePlan?.[index], outline: row.content.sections.map(item => item.heading), previous: stored?.sourceBytes ?? stored?.bytes, providerTaskId: stored?.providerTaskId, reservation: { ...image, leaseId: lease.leaseId } };
       });
 
       if (job.cached) return job.illustration;
       try {
-        const visual = await resolveLessonIllustration(db, generateJson, generateIllustration, {
+        const generateImage = budgetedImageGenerator(db, "reading", job.reservation, job.provider, generateIllustration);
+        const visual = await resolveLessonIllustration(db, generateJson, generateImage, {
           userId, source: job.source, feature: "reading", title: job.chapter.heading, lines: job.chapter.paragraphs, scene: job.scene,
           outline: job.outline, sourceFigures: preparation.sourceFigures,
           imageTask: { taskId: job.providerTaskId, onTask: async providerTaskId => {

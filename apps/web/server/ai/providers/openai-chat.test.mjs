@@ -69,9 +69,10 @@ test("rejects invalid requests, caller credentials and audio profiles before net
   await assert.rejects(requestJson(music, request(), transport), { code: "UNSUPPORTED_MODALITY" });
 });
 
-test("maps HTTP failures without echoing response bodies or retrying charged requests", async () => {
+test("maps HTTP failures without echoing response bodies and bounds transient retries", async () => {
   for (const [status, code] of [[401, "PROVIDER_AUTH_ERROR"], [403, "PROVIDER_AUTH_ERROR"],
-    [429, "RATE_LIMITED"], [500, "PROVIDER_UNAVAILABLE"], [503, "PROVIDER_UNAVAILABLE"],
+    [429, "RATE_LIMITED"], [500, "PROVIDER_UNAVAILABLE"], [502, "PROVIDER_UNAVAILABLE"],
+    [503, "PROVIDER_UNAVAILABLE"], [504, "PROVIDER_UNAVAILABLE"],
     [400, "PROVIDER_REQUEST_REJECTED"], [404, "PROVIDER_REQUEST_REJECTED"]]) {
     let calls = 0;
     await assert.rejects(requestJson(config(), request(), async () => {
@@ -84,8 +85,64 @@ test("maps HTTP failures without echoing response bodies or retrying charged req
       assert.equal(error.cause, undefined);
       return true;
     });
-    assert.equal(calls, 1);
+    assert.equal(calls, [500, 502, 503, 504].includes(status) ? 2 : 1);
   }
+});
+
+test("recovers transient HTTP failures for every text feature without changing the request", async () => {
+  for (const feature of ["reading", "mindmap", "slides", "song", "exam"]) {
+    let calls = 0;
+    let firstBody;
+    const result = await requestJson({ ...config(), feature }, request(), async (url, options) => {
+      calls++;
+      if (calls === 1) { firstBody = options.body; return new Response("PRIVATE", { status: 503 }); }
+      assert.equal(options.body, firstBody);
+      return response();
+    });
+    assert.equal(calls, 2);
+    assert.equal(result.content.title, "Fotosintesis");
+  }
+});
+
+test("retries a failed connection once but never an interrupted socket", async () => {
+  for (const code of ["EAI_AGAIN", "ECONNREFUSED", "UND_ERR_CONNECT_TIMEOUT", "ECONNRESET", "UND_ERR_SOCKET"]) {
+    let calls = 0;
+    const run = requestJson(config(), request(), async () => {
+      calls++;
+      if (calls === 1) throw new TypeError("fetch failed", { cause: { code } });
+      return response();
+    });
+    if (["ECONNRESET", "UND_ERR_SOCKET"].includes(code)) {
+      await assert.rejects(run, { code: "PROVIDER_UNAVAILABLE" });
+      assert.equal(calls, 1);
+    } else {
+      assert.equal((await run).content.title, "Fotosintesis");
+      assert.equal(calls, 2);
+    }
+  }
+});
+
+test("canceling during backoff prevents a second request", async () => {
+  const abort = new AbortController();
+  let calls = 0;
+  await assert.rejects(requestJson(config(), { ...request(), signal: abort.signal }, async () => {
+    calls++;
+    setTimeout(() => abort.abort(), 20);
+    return new Response("unavailable", { status: 503 });
+  }), { code: "CANCELED" });
+  assert.equal(calls, 1);
+});
+
+test("transient retries share the original deadline", async () => {
+  let calls = 0;
+  const started = Date.now();
+  await assert.rejects(requestJson(config({ AI_READING_TIMEOUT_MS: "1000" }), request(), async (url, options) => {
+    calls++;
+    if (calls === 1) return new Response("unavailable", { status: 503 });
+    return new Promise((resolve, reject) => options.signal.addEventListener("abort", () => reject(options.signal.reason), { once: true }));
+  }), { code: "PROVIDER_TIMEOUT" });
+  assert.ok(calls <= 2);
+  assert.ok(Date.now() - started < 1800);
 });
 
 test("network exceptions are source-free and never trigger implicit retry", async () => {

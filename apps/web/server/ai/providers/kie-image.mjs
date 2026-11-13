@@ -95,5 +95,3 @@ export function createKieImage(env = process.env, transport = fetch, sleep = wai
     }
   };
 }
-
-export const generateIllustration = (prompt, task) => createKieImage()(prompt, task);

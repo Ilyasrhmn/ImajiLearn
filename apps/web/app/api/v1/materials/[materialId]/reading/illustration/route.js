@@ -1,6 +1,6 @@
 import { generateJson } from "@/server/ai/index.mjs";
 import { createSessionHandlers } from "@/server/accounts/sessions.mjs";
-import { generateIllustration } from "@/server/ai/providers/kie-image.mjs";
+import { generateIllustration } from "@/server/ai/providers/lesson-image.mjs";
 import { sessionConfig } from "@/server/core/config.mjs";
 import { database } from "@/server/core/database.mjs";
 import { endpoint } from "@/server/core/http.mjs";

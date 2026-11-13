@@ -72,5 +72,24 @@ export function alignedSongCues(alignment, plan) {
     cues.push({ line: cues.length, start: slice[0].start, end: slice.at(-1).end });
     offset += expected.length;
   }
-  return offset === measured.length ? cues : [];
+  const choruses = [];
+  let firstLine = 0;
+  for (const section of plan.sections) {
+    if (section.type === "chorus") choruses.unshift({ firstLine, lines: section.lines.map(tokens) });
+    firstLine += section.lines.length;
+  }
+  while (offset < measured.length) {
+    const chorus = choruses.find(section => {
+      const expected = section.lines.flat();
+      const remaining = measured.slice(offset, offset + expected.length);
+      return expected.length > 0 && remaining.length === expected.length && remaining.every((word, i) => word.token === expected[i]);
+    });
+    if (!chorus) return [];
+    for (const [index, expected] of chorus.lines.entries()) {
+      const slice = measured.slice(offset, offset + expected.length);
+      cues.push({ line: chorus.firstLine + index, start: slice[0].start, end: slice.at(-1).end });
+      offset += expected.length;
+    }
+  }
+  return cues;
 }

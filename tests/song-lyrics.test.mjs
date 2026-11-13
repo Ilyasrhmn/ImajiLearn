@@ -47,6 +47,18 @@ test("response sections must contain a question and an actual answer, not just a
   assert.doesNotThrow(() => validateSongLyrics({ ...songPlan, sections }));
 });
 
+test("karaoke preserves measured timing when the singer repeats a complete closing chorus", () => {
+  const chorus = songPlan.sections[1];
+  const lines = [...songPlan.sections.flatMap(section => section.lines), ...chorus.lines, ...chorus.lines];
+  const alignment = lines.flatMap(line => line.split(/\s+/)).map((word, i) => ({ word, start: i + 3, end: i + 3.8 }));
+  const cues = alignedSongCues(alignment, songPlan);
+  assert.deepEqual(cues.map(cue => cue.line), [0, 1, 2, 3, 4, 5, 2, 3, 2, 3]);
+  assert.equal(cues.at(-1).end, alignment.at(-1).end);
+  assert.ok(cues[6].start > cues[5].end);
+  assert.deepEqual(alignedSongCues(alignment.slice(0, -1), songPlan), []);
+  assert.deepEqual(alignedSongCues([...alignment, { word: "tambahan", start: 100, end: 101 }], songPlan), []);
+});
+
 test("a sing-along can repeat its chorus and develop across six sections without a forced quiz", () => {
   const verse = songPlan.sections[0], chorus = songPlan.sections[1];
   const plan = { ...songPlan, sections: [verse, chorus, verse, chorus, verse, chorus] };

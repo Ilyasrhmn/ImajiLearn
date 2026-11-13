@@ -1,6 +1,9 @@
 import { AIError } from "../errors.mjs";
+import { setTimeout as delay } from "node:timers/promises";
 
 const byteLimit = 256 * 1024;
+const transientStatuses = new Set([500, 502, 503, 504]);
+const connectionFailures = new Set(["ENOTFOUND", "EAI_AGAIN", "ECONNREFUSED", "UND_ERR_CONNECT_TIMEOUT"]);
 const isObject = value => value !== null && typeof value === "object" && !Array.isArray(value);
 
 function buildBody(config, request) {
@@ -85,10 +88,28 @@ export async function requestJson(config, request, transport = fetch) {
   let timedOut = false;
   const timer = setTimeout(() => { timedOut = true; controller.abort(); }, config.timeoutMs);
   try {
-    const response = await transport(new URL("chat/completions", config.baseUrl), {
-      method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${config.apiKey}` },
-      body, signal: controller.signal, redirect: "error", cache: "no-store",
-    });
+    let response;
+    for (let attempt = 0; attempt < 2; attempt++) {
+      controller.signal.throwIfAborted();
+      let connectionCode;
+      try {
+        response = await transport(new URL("chat/completions", config.baseUrl), {
+          method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${config.apiKey}` },
+          body, signal: controller.signal, redirect: "error", cache: "no-store",
+        });
+      } catch (error) {
+        // Retry only failures before connection; an interrupted response may already be billed.
+        if (attempt || !connectionFailures.has(error.cause?.code)) throw error;
+        connectionCode = error.cause.code;
+      }
+      if (response && (attempt || !transientStatuses.has(response.status))) break;
+      console.warn("[ai-provider] Retrying transient failure", {
+        feature: config.feature, status: response?.status ?? null, transport: connectionCode ?? null,
+      });
+      await response?.body?.cancel().catch(() => {});
+      response = undefined;
+      await delay(750 + Math.floor(Math.random() * 250), undefined, { signal: controller.signal });
+    }
     if (!response.ok) {
       await response.body?.cancel().catch(() => {});
       const code = [401, 403].includes(response.status) ? "PROVIDER_AUTH_ERROR" : response.status === 429 ? "RATE_LIMITED" :
@@ -101,8 +122,16 @@ export async function requestJson(config, request, transport = fetch) {
   } catch (error) {
     if (request.signal?.aborted) throw new AIError("CANCELED");
     if (timedOut) throw new AIError("PROVIDER_TIMEOUT");
+    if (!(error instanceof AIError) || error.code === "PROVIDER_UNAVAILABLE") {
+      const transportCode = error.cause?.code;
+      console.warn("[ai-provider] Request failed", {
+        feature: config.feature,
+        status: error instanceof AIError ? error.status ?? null : null,
+        transport: typeof transportCode === "string" && /^[A-Z0-9_]{1,40}$/.test(transportCode) ? transportCode : null,
+      });
+    }
     if (error instanceof AIError) throw error;
-    // An interrupted request may already have been billed; retry belongs to the job budget.
+    // Do not retry uncertain outcomes, malformed output, or rejected requests.
     throw new AIError("PROVIDER_UNAVAILABLE");
   } finally {
     clearTimeout(timer);
