@@ -66,7 +66,7 @@ test("slide images use scene descriptions and keep successful images across retr
     assert.equal(prompts.length, 4);
     await images.generate(...args, 2);
     await images.generate(...args, 2);
-    assert.deepEqual(await images.get(...args, 2, "status"), { ready: false, skipped: true });
+    assert.deepEqual(await images.get(...args, 2, "status"), { ready: false, skipped: true, replacements: { used: 1, limit: 3, remaining: 2 } });
     assert.deepEqual(await images.get(...args, 0), bytes[0]);
     assert.deepEqual(await images.get(...args, 1), bytes[1]);
     assert.equal(prompts.length, 4);

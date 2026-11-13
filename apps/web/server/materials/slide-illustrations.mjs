@@ -5,6 +5,7 @@ import { consumeRateLimit } from "../core/rate-limit.mjs";
 import { illustrationStatus, resolveLessonIllustration } from "./lesson-illustration.mjs";
 import { canonicalMaterialId, getOwnedMaterial } from "./readers.mjs";
 import { budgetedImageGenerator } from "./image-routing.mjs";
+import { replacementStatus, reserveImageReplacement } from "./image-replacements.mjs";
 
 const missing = () => new ApiError(404, "MATERIAL_NOT_FOUND", "Materi tidak ditemukan.");
 const slideMissing = () => new ApiError(404, "SLIDE_NOT_FOUND", "Slide tidak ditemukan.");
@@ -31,7 +32,10 @@ export function createSlideIllustrations(db, generateIllustration, generateJson)
         where: { materialId_revision_slideIndex: { ...key, slideIndex } },
         select: { bytes: true, sourceBytes: true, visualSkipped: true },
       });
-      if (mode === "status") return illustrationStatus(row);
+      if (mode === "status") {
+        const deck = await db.materialSlideDeck.findUnique({ where: { materialId_revision: key }, select: { imageReplacements: true } });
+        return { ...illustrationStatus(row), replacements: replacementStatus(deck?.imageReplacements) };
+      }
       return row?.sourceBytes ?? row?.bytes ?? null;
     },
 
@@ -56,6 +60,7 @@ export function createSlideIllustrations(db, generateIllustration, generateJson)
         if (row?.leaseUntil > new Date()) {
           throw new ApiError(409, "ILLUSTRATION_IN_PROGRESS", "Ilustrasi sedang dibuat. Coba buka lagi sebentar.");
         }
+        if (replace && !row?.providerTaskId) await reserveImageReplacement(tx, "materialSlideDeck", key);
         if (!preparation.budgeted) await consumeRateLimit(tx, "slide-illustration:" + userId, 12, 15 * 60_000);
         const lease = { leaseId: randomUUID(), leaseUntil: new Date(Date.now() + 180_000) };
         await tx.materialSlideIllustration.upsert({ where, create: { ...imageKey, ...lease }, update: lease });
