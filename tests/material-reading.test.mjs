@@ -91,3 +91,39 @@ test("reading creation validates, serializes duplicate requests, and reopens onl
     await assert.rejects(reading.generate(owner.id, archived.id), { code: "MATERIAL_ARCHIVED" });
   } finally { await storage.close(); }
 });
+
+
+test("incremental reading keeps completed chunks across failures without exposing partial output", async () => {
+  const storage = await testDatabase();
+  try {
+    for (const migration of storage.migrations) await storage.migrate(migration);
+    const owner = await storage.db.teacher.create({ data: { name: "Batch owner", email: "batch@example.test" } });
+    const other = await storage.db.teacher.create({ data: { name: "Other", email: "other-batch@example.test" } });
+    const source = await createMaterialService(storage.db).create(owner.id,
+      { title: "Pelajaran panjang", text: "Tumbuhan memakai cahaya. ".repeat(520) }, randomUUID());
+    const received = [];
+    let fail = true;
+    const reading = createMaterialReading(storage.db, async (_, { messages }) => {
+      const { text } = JSON.parse(messages[1].content);
+      received.push(text);
+      if (received.length === 2 && fail) throw new Error("temporary failure");
+      return { content: { title: "Tumbuhan", sections: [{ heading: "Cahaya", paragraphs: ["Tumbuhan memakai cahaya."] }],
+        quiz: [{ question: "Apa yang dipakai?", options: ["Cahaya", "Batu", "Garam"], answerIndex: 0, explanation: "Cahaya." }] } };
+    });
+    await assert.rejects(reading.generate(owner.id, source.id, { incremental: true }), /temporary failure/);
+    assert.equal(received.length, 2);
+    assert.equal(await reading.get(owner.id, source.id), null);
+    await assert.rejects(reading.generate(other.id, source.id, { incremental: true }), { status: 404 });
+    const saved = await storage.db.materialReading.findFirst({ where: { materialId: source.id } });
+    assert.equal(saved.content.__lessonParts.chunks.filter(chunk => chunk.result).length, 1);
+    await storage.db.rateLimit.updateMany({ data: { count: 10 } });
+    fail = false;
+    let result;
+    do { result = await reading.generate(owner.id, source.id, { incremental: true }); } while (result.status === "preparing");
+    const chunks = saved.content.__lessonParts.chunks;
+    assert.equal(received.length, chunks.length + 1);
+    assert.equal(result.sections.length, chunks.length);
+    assert.equal(result.__lessonParts, undefined);
+    assert.deepEqual(await reading.get(owner.id, source.id), result);
+  } finally { await storage.close(); }
+});

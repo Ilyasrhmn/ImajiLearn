@@ -24,6 +24,9 @@ export async function studioRequest(teacherId, path, { method = "GET", body, ver
   if (!response.ok || !result || !Object.hasOwn(result, "data")) {
     const error = new Error(result?.error?.message || "Permintaan belum berhasil. Coba lagi.");
     error.status = response.status;
+    error.code = result?.error?.code;
+    const retryAfter = response.headers.get("retry-after");
+    if (retryAfter && /^\d+$/.test(retryAfter)) error.retryAfterSeconds = Number(retryAfter);
     throw error;
   }
   return result;

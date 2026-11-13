@@ -1,0 +1,28 @@
+.landing-lesson {
+  --primary: #a84430;
+  margin-inline: auto;
+}
+.landing-lesson .demo-panel { min-height: min(65vh, 700px); }
+.landing-lesson .material-source-text img { max-width: min(100%, 420px); height: auto; margin-inline: auto; display: block; }
+@media (max-width: 720px) {
+  .landing-lesson { width: calc(100% - 16px); }
+  .landing-lesson .material-tabs { gap: 0; }
+  .landing-lesson .material-tabs a { min-width: 0; }
+}
+
+.landing-lesson .material-source-text img.material-pdf-preview { max-width: 100%; }
+.landing-lesson .material-source-page { scroll-margin-top: 130px; }
+.demo-source-link {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  color: var(--ink);
+  text-decoration: none;
+}
+.demo-source-link:hover { background: var(--material-gutter); }
+@media (max-width: 660px) {
+  .landing-lesson .source-section-picker ul { display: flex; flex-wrap: wrap; }
+}

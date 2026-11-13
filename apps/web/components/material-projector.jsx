@@ -10,7 +10,7 @@ export function ProjectorButton({ active = false, onClick, ref }) {
   </button>;
 }
 
-export default function MaterialProjector({ children, enabled = true }) {
+export default function MaterialProjector({ children, enabled = true, toolbar }) {
   const screen = useRef(null);
   const frame = useRef(null);
   const content = useRef(null);
@@ -71,6 +71,7 @@ export default function MaterialProjector({ children, enabled = true }) {
 
   return <section ref={screen} className={`material-projector${active ? " is-active" : ""}`} aria-label={active ? "Mode proyektor" : undefined}>
     {enabled && <div className="material-projector-toolbar">
+      {toolbar}
       <ProjectorButton active={active} ref={control} onClick={active ? exit : enter} />
     </div>}
     <div className="material-projector-frame" ref={frame}><div className="material-projector-content" ref={content}>{children}</div></div>

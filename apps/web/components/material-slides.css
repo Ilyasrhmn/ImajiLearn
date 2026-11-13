@@ -73,17 +73,55 @@
 }
 
 .material-slide-controls,
-.material-slide-pagination {
+.material-slide-actions {
   display: flex;
   align-items: center;
   gap: 10px;
 }
 
 .material-slide-controls {
-  flex-wrap: wrap;
-  justify-content: space-between;
-  margin-top: 16px;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 16px;
+  margin-top: 20px;
 }
+
+.material-slide-actions {
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.material-slide-actions .source-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+}
+
+.material-slide-actions svg { flex-shrink: 0; }
+
+@media (max-width: 620px) {
+  .material-slide-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: 100%;
+    gap: 12px;
+  }
+  .material-slide-actions .source-secondary { padding: 10px 12px; line-height: 1.35; }
+  .material-slide-actions > :only-child { grid-column: 1 / -1; }
+}
+
+.material-slide-pagination {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 16px;
+}
+
+.material-slide-pagination > button:first-child { justify-self: start; }
+.material-slide-pagination > button:last-child { justify-self: end; }
 
 .material-slide-pagination output {
   min-width: 46px;
@@ -117,7 +155,6 @@
   grid-template-columns: minmax(0, 1fr);
 }
 
-.material-projector.is-active .material-slides > [data-output-heading],
 .material-projector.is-active .material-slide-regenerate {
   display: none;
 }

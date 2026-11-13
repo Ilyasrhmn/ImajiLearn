@@ -16,8 +16,8 @@ const tools = [
   { id: "exam", label: "Soal & ujian", Icon: ClipboardCheck, tone: "lilac" },
 ];
 
-export default function CreateMedia({ teacherId, name }) {
-  return <TeacherWorkspace name={name} current="/buat-media">
+export default function CreateMedia({ teacherId, name, account }) {
+  return <TeacherWorkspace name={name} account={account} current="/buat-media">
     <main id="main" className="teacher-home create-media">
       <section className="create-media-welcome" aria-labelledby="create-media-title">
         <h1 id="create-media-title">Kelola materi dan buat media ajar bersama AI.</h1>

@@ -168,7 +168,7 @@ function MediaSourceDialog({ teacherId, format, initial, onClose, onDraftSaved, 
     }
   }
   const locked = busy || uploadBusy;
-  const title = generating ? `Membuat ${format.action}…${preparation ? ` ${preparation.completed}/${preparation.total}` : ""}` : stage === "sources" ? "Pilih materi" : stage === "upload" ? "Unggah materi" : "Pilih bagian";
+  const title = generating ? (preparation?.waiting ? "Menunggu layanan AI\u2026" : `Membuat ${format.action}\u2026${preparation ? ` ${preparation.completed}/${preparation.total}` : ""}`) : stage === "sources" ? "Pilih materi" : stage === "upload" ? "Unggah materi" : "Pilih bagian";
   const matches = items?.filter(item => item.title.toLocaleLowerCase("id").includes(query.toLocaleLowerCase("id")));
   return <Modal title={title} wide className="studio-create" onClose={onClose} beforeClose={beforeClose} dismissible={!locked}>
     <div className="studio-create-heading">
@@ -211,8 +211,8 @@ function MediaSourceDialog({ teacherId, format, initial, onClose, onDraftSaved, 
 
 function StudioResult({ format, result, teacherId, materialId }) {
   const path = outputPath(format, materialId);
-  if (format.id === "reading") return <MaterialReading reading={result} illustrationPath={`${path}/illustration`} sourceHref={`/materi/${encodeURIComponent(materialId)}`} />;
-  if (format.id === "slides") return <MaterialProjector><MaterialSlides deck={result} teacherId={teacherId} illustrationsPath={`${path}/illustrations`} revision={result.revision} /></MaterialProjector>;
+  if (format.id === "reading") return <MaterialReading reading={result} illustrationPath={`${path}/illustration`} />;
+  if (format.id === "slides") return <MaterialSlides deck={result} teacherId={teacherId} illustrationsPath={`${path}/illustrations`} revision={result.revision} />;
   if (format.id === "song") return <MaterialSong song={result} teacherId={teacherId} songPath={path} revision={result.revision} />;
   return <MaterialProjector><MaterialVisual visual={result} /></MaterialProjector>;
 }
@@ -333,13 +333,13 @@ export default function MediaStudio({ teacherId, feature = "reading", startCreat
           </div>
           <button type="button" className="upload-button" onClick={create} disabled={opening}><Plus size={18} aria-hidden="true" />Buat {format.action}</button>
         </div>
-        <label className="studio-source-search studio-library-search"><Search size={20} aria-hidden="true" />
+        <label className="material-history-search"><Search size={20} aria-hidden="true" />
           <input aria-label={`Cari nama materi atau ${format.action}`} placeholder={`Cari nama materi atau ${format.action}`} value={query} maxLength={200} onChange={event => setQuery(event.target.value)} />
         </label>
         <MaterialMediaHistory format={format} history={visibleHistory} error={historyError} creating={opening} hideHeading
           listLabel={`${tab === "drafts" ? "Draf" : "Riwayat"} ${format.action}`}
           emptyLabel={filter ? `${format.label} tidak ditemukan` : `Belum ada ${tab === "drafts" ? "draf " : ""}${format.action}`}
-          onOpen={openHistory} onRetry={() => setVersion(value => value + 1)} hrefFor={resultHref} variant="files" />
+          onOpen={openHistory} onRetry={() => setVersion(value => value + 1)} hrefFor={resultHref} resumeInDialog />
         {visibleHistory?.pages > 1 && <nav className="studio-library-pagination" aria-label={`Halaman daftar ${format.action}`}>
           <button type="button" className="icon-button" aria-label="Halaman sebelumnya" disabled={visibleHistory.page <= 1} onClick={() => setPage(visibleHistory.page - 1)}><ChevronLeft size={20} /></button>
           <span aria-live="polite">{visibleHistory.page} / {visibleHistory.pages}</span>

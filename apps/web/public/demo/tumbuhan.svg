@@ -1,0 +1,53 @@
+<svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 480 360"
+      role="img"
+      aria-label="Tumbuhan menerima cahaya matahari, menyerap air melalui akar, dan mengambil karbon dioksida melalui daun"
+    >
+      <rect x="6" y="6" width="468" height="348" rx="34" fill="#F0F3DF" />
+      <g stroke="#E8B55A" stroke-width="3" stroke-linecap="round">
+        <circle cx="85" cy="76" r="24" fill="#F2CA76" stroke="none" />
+        <path d="M85 37v-9" transform="rotate(0 85 76)" />
+<path d="M85 37v-9" transform="rotate(45 85 76)" />
+<path d="M85 37v-9" transform="rotate(90 85 76)" />
+<path d="M85 37v-9" transform="rotate(135 85 76)" />
+<path d="M85 37v-9" transform="rotate(180 85 76)" />
+<path d="M85 37v-9" transform="rotate(225 85 76)" />
+<path d="M85 37v-9" transform="rotate(270 85 76)" />
+<path d="M85 37v-9" transform="rotate(315 85 76)" />
+      </g>
+      <path d="M64 249Q240 216 416 249l-22 63Q242 341 86 312Z" fill="#BD9267" />
+      <path
+        d="M64 249q180-28 352 0"
+        stroke="#A37F57"
+        stroke-width="7"
+        fill="none"
+        stroke-linecap="round"
+      />
+      <g fill="none" stroke="#EAD9AB" stroke-width="3" stroke-linecap="round">
+        <path d="M242 243v53m0-25-38 20-23 17m61-47 31 22 31 12m-62-8-13 18m37-40 32-8 31 11m-112 3-31-12-35 10m93-19 14 11" />
+      </g>
+      <g stroke="#5E8260" stroke-width="7" stroke-linecap="round" fill="none">
+        <path d="M242 244V113m0 80-47-40m47 22 47-45m-47 88 57-39m-57 48-53-25" />
+      </g>
+      <g fill="#719969">
+        <path d="M242 137q-49-8-24-54 37 12 24 54Z" />
+        <path d="M242 126q-5-50 42-49 5 36-42 49Z" />
+        <path d="M210 166q-66 8-63-42 44-9 63 42Z" />
+        <path d="M270 151q12-56 61-46-2 42-61 46Z" />
+        <path d="M287 192q21-58 70-34-13 43-70 34Z" />
+        <path d="M207 213q-66 2-67-45 44-9 67 45Z" />
+      </g>
+      <g fill="#8EA978">
+        <path d="M243 173q-49-13-44-51 42 0 44 51Z" />
+        <path d="M242 216q-12-54 35-61 20 39-35 61Z" />
+      </g>
+      <g fill="#8FBFCB">
+        <path d="M123 276q-13 19 0 20 13-1 0-20Z" />
+        <path d="M333 286q-12 18 0 19 12-1 0-19Z" />
+        <path d="M184 285q-11 17 0 18 11-1 0-18Z" />
+      </g>
+      <g stroke="#99BFC7" stroke-width="3" fill="none" stroke-linecap="round">
+        <path d="M355 82q20 14 39 8m-40 11q24 13 42 5m-263 7 34 15m-26-30 29 16" />
+      </g>
+    </svg>

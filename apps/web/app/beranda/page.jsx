@@ -6,5 +6,5 @@ export const metadata = { title: "Beranda · ImajiLearn" };
 
 export default async function HomePage() {
   const teacher = await requirePageTeacher();
-  return <><SessionReload /><TeacherHome key={teacher.id} teacherId={teacher.id} name={teacher.name} /></>;
+  return <><SessionReload /><TeacherHome key={teacher.id} teacherId={teacher.id} name={teacher.name} account={{ email: teacher.email, avatarUrl: teacher.avatarUrl }} /></>;
 }
