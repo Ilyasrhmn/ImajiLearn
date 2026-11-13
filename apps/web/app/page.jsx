@@ -49,7 +49,6 @@ export default function Home() {
         </div>
         <CharacterGroup />
       </section>
-      <LandingVideo />
       <section className="landing-example" id="contoh-materi" aria-labelledby="landing-example-title">
         <div className="landing-shell">
           <div className="landing-example-art">
@@ -66,6 +65,7 @@ export default function Home() {
           </ul>
         </div>
       </section>
+      <LandingVideo />
       <section className="landing-workflow" id="cara-kerja" aria-labelledby="landing-workflow-title">
         <h2 className="landing-shell" id="landing-workflow-title">Dari bahan ajar ke kelas.</h2>
         <ol>
