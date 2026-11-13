@@ -44,7 +44,10 @@ export function createSlideIllustrations(db, generateIllustration, generateJson)
         validIndex(slideIndex);
         const key = { materialId: source.id, revision: source.revision };
         const deck = await tx.materialSlideDeck.findUnique({ where: { materialId_revision: key }, select: { content: true, imagePlan: true } });
-        const slide = deck?.content?.slides[slideIndex];
+        if (deck?.content && !Array.isArray(deck.content.slides)) {
+          throw new ApiError(409, "SLIDES_NOT_READY", "Slide masih disusun. Coba lagi setelah selesai.");
+        }
+        const slide = deck?.content?.slides?.[slideIndex];
         if (!slide) throw slideMissing();
         const imageKey = { ...key, slideIndex };
         const where = { materialId_revision_slideIndex: imageKey };

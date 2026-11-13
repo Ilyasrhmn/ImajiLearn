@@ -40,6 +40,18 @@ test("PWA exam documents number each form separately while giving fields distinc
   assert.match(answers, /aria-label="Pedoman penskoran Uraian 1"/);
 });
 
+test("saved AI options keep their existing labels without adding duplicate letters", () => {
+  const exam = createExam({ ...initialExamConfig(), subject: "IPAS", summary: "Tumbuhan", counts: { multipleChoice: 1, shortAnswer: 0, essay: 0 } });
+  exam.questions[0].options = ["A. Akar", "B) Batang", "Kloroplas", "Vitamin D. membantu"];
+  const markup = render("questions", { exam });
+  assert.match(markup, /<span><\/span><label[^]*?A\. Akar/);
+  assert.match(markup, /<span><\/span><label[^]*?B\) Batang/);
+  assert.match(markup, /<span>C\.<\/span>/);
+  assert.match(markup, /<span>D\.<\/span>/);
+  assert.doesNotMatch(markup, /<span>A\.<\/span>/);
+  assert.deepEqual(exam.questions[0].options, ["A. Akar", "B) Batang", "Kloroplas", "Vitamin D. membantu"]);
+});
+
 test("PWA generation shows its progress and disables editing, printing, copying and back", () => {
   const markup = render("questions", { generation: { filled: 2, total: 5 } });
   assert.match(markup, /Soal terisi 2\/5/);

@@ -33,7 +33,7 @@ test("exam generation fills batches of blank slots while preserving manual edits
       assert.ok(payload.slots.length <= 5 && payload.slots.every(slot => slot.number > 1));
       const questions = payload.slots.map(slot => ({
         number: slot.number, prompt: "Pertanyaan " + slot.number,
-        options: slot.optionCount ? ["Daun", "Akar", "Bunga"] : [],
+        options: slot.optionCount ? ["A. Daun", "B) Akar", "C. Bunga"] : [],
         answer: slot.optionCount ? "B" : "Akar",
         explanation: "Akar menyerap air.", topic: "Tumbuhan",
         learningOutcome: "Mengenali bagian tumbuhan.", indicator: "Menjelaskan fungsi akar.",
@@ -55,6 +55,7 @@ test("exam generation fills batches of blank slots while preserving manual edits
     const partial = await pending;
     const complete = await generation.fill(owner.id, exam.id, partial.resourceVersion);
     assert.deepEqual(complete.questions[0], manual.questions[0]);
+    assert.deepEqual(complete.questions[1].options, ["Daun", "Akar", "Bunga"]);
     assert.ok(complete.questions.every(question => question.prompt));
     assert.ok(complete.questions.slice(1).every(question => question.answer && question.indicator));
     assert.deepEqual(complete.questions.map(question => [question.id, question.difficulty, question.maxScore]),

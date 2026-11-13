@@ -61,6 +61,7 @@ test("duplicate normalized email returns a safe 409 and adds no teacher/session"
 test("registration rejects invalid boundaries and injected fields before persisting", async () => {
   const before = await storage.db.teacher.count();
   for (const body of [null, [], {}, { ...account(), name: " " }, { ...account(), name: "a".repeat(61) },
+    { ...account(), name: "A\u0000B" },
     { ...account(), email: "invalid" }, { ...account(), email: "a".repeat(255) },
     { ...account(), password: "a".repeat(7) }, { ...account(), password: "a".repeat(129) },
     { ...account(), password: null }, { ...account(), userId: "forged" }, { ...account(), school: "Injected" }]) {

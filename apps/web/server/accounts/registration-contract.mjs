@@ -11,5 +11,8 @@ export function parseEmail(value) {
 export function parseRegistration(body) {
   object(body, ["name", "email", "password"]);
   const name = text(body.name, "name", 60), email = parseEmail(body.email);
+  if (name.includes("\0")) {
+    throw new ContractError("Nama tidak valid.", { name: "Isi nama tanpa karakter NUL." });
+  }
   return { name, email, password: text(body.password, "password", 128, { min: 8, trim: false }) };
 }

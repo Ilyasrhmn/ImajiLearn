@@ -1,6 +1,9 @@
 import { createId } from "./id.mjs";
 export const EXAMS_KEY = "imajilearn-exams-v1";
 export const EXAM_LIMIT = 20;
+export function examOptionText(option, index) {
+  return option.replace(new RegExp(`^\\s*${String.fromCharCode(65 + index)}[.)]\\s+`), "");
+}
 export const EXAM_TYPES = { daily: "Ulangan Harian", midterm: "PTS / UTS", final: "PAS / UAS", remedial: "Remedial" };
 export const DIFFICULTIES = { easy: "Mudah", medium: "Sedang", hard: "Sulit", mixed: "Campuran" };
 export const QUESTION_FORMS = { multipleChoice: "Pilihan ganda", shortAnswer: "Isian singkat", essay: "Uraian" };

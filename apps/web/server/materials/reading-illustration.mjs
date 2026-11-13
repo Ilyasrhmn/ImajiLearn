@@ -13,6 +13,7 @@ const clearLease = { leaseId: null, leaseUntil: null };
 const imageKey = key => ({ materialId_revision_sectionIndex: key });
 
 function chapterIndex(content, sectionIndex) {
+  if (!Array.isArray(content.sections)) throw readingMissing();
   const index = sectionIndex ?? content.illustration?.sectionIndex ?? 0;
   if (!Number.isInteger(index) || !content.sections[index]) {
     throw new ApiError(404, "READING_SECTION_NOT_FOUND", "Bagian bacaan tidak ditemukan.");

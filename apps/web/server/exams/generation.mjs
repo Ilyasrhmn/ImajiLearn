@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { COGNITIVE_LEVELS, isBlankExamQuestion } from "../../lib/exams.mjs";
+import { COGNITIVE_LEVELS, isBlankExamQuestion, examOptionText } from "../../lib/exams.mjs";
 import { AIError } from "../ai/errors.mjs";
 import { ApiError } from "../core/errors.mjs";
 import { consumeRateLimit } from "../core/rate-limit.mjs";
@@ -20,6 +20,7 @@ const instructions = [
   "Jangan ulang pertanyaan yang sudah ada. Berikan pembahasan, materi, capaian pembelajaran, indikator, dan level kognitif.",
   "Kembalikan satu objek JSON dengan questions. Setiap soal berisi number, prompt, options, answer, explanation, topic, learningOutcome, indicator, cognitiveLevel, rubric.",
   "Jawaban pilihan ganda adalah satu huruf A–D sesuai opsi. Untuk isian dan uraian options adalah array kosong. Rubric hanya untuk uraian.",
+  "Isi options hanya teks pilihan, tanpa awalan label A., B., C., atau D.; label ditambahkan aplikasi.",
   "Gunakan C1, C2, C3, atau C4 untuk cognitiveLevel. Buat semua teks ringkas, maksimal 500 karakter per kolom.",
 ].join("\n");
 
@@ -59,7 +60,7 @@ function mergeQuestions(content, slots, exam) {
     if (used.has(normalized(prompt)) || !Array.isArray(item.options) || item.options.length !== slot.options.length ||
         !Object.hasOwn(COGNITIVE_LEVELS, item.cognitiveLevel)) throw invalid();
     used.add(normalized(prompt));
-    const options = item.options.map(option => requiredText(option, 180));
+    const options = item.options.map((option, index) => requiredText(examOptionText(requiredText(option, 180), index), 180));
     const answer = requiredText(item.answer);
     if (options.length && (!"ABCD".slice(0, options.length).split("").includes(answer) ||
         new Set(options.map(normalized)).size !== options.length)) throw invalid();

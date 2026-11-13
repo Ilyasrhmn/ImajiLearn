@@ -4,7 +4,7 @@ import { useState, startTransition, ViewTransition } from "react";
 import { flushSync } from "react-dom";
 import { ArrowLeft, FileText, TableProperties, KeyRound, Printer, Copy } from "lucide-react";
 import { studioAlert } from "./studio-alert";
-import { EXAM_TYPES, QUESTION_FORMS, COGNITIVE_LEVELS, DIFFICULTIES, finalGrade, isBlankExamQuestion } from "../lib/exams.mjs";
+import { EXAM_TYPES, QUESTION_FORMS, COGNITIVE_LEVELS, DIFFICULTIES, finalGrade, isBlankExamQuestion, examOptionText } from "../lib/exams.mjs";
 
 const tabs = [{ id: "questions", label: "Naskah soal", Icon: FileText }, { id: "blueprint", label: "Kisi-kisi", Icon: TableProperties }, { id: "answers", label: "Kunci & skor", Icon: KeyRound }];
 
@@ -41,7 +41,7 @@ function Questions({ exam, updateQuestion }) {
       return questions.length > 0 && <section className="exam-question-group" key={form}><h3>{label}</h3>{questions.map(q => <div className="exam-question" key={q.id}>
         <span className="exam-question-number">{q.sectionNumber}.</span><div>
           <Edit label={questionLabel(q)} value={q.prompt} placeholder="Tulis soal…" onChange={value => updateQuestion(q.id, { prompt: value })} />
-          {q.form === "multipleChoice" ? <div className="exam-choices">{q.options.map((option, index) => <div key={index}><span>{String.fromCharCode(65 + index)}.</span><Edit label={`${questionLabel(q)} pilihan ${String.fromCharCode(65 + index)}`} value={option} placeholder="Tulis pilihan…" onChange={value => updateQuestion(q.id, { options: q.options.map((old, i) => i === index ? value : old) })} /></div>)}</div> : <div className="exam-answer-space" aria-hidden="true">
+          {q.form === "multipleChoice" ? <div className="exam-choices">{q.options.map((option, index) => <div key={index}><span>{examOptionText(option, index) === option ? `${String.fromCharCode(65 + index)}.` : ""}</span><Edit label={`${questionLabel(q)} pilihan ${String.fromCharCode(65 + index)}`} value={option} placeholder="Tulis pilihan…" onChange={value => updateQuestion(q.id, { options: q.options.map((old, i) => i === index ? value : old) })} /></div>)}</div> : <div className="exam-answer-space" aria-hidden="true">
             <div className="exam-answer-line" />
             {q.form === "essay" && <div className="exam-answer-line" />}
           </div>}

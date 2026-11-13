@@ -145,6 +145,7 @@
  @scope (body:has(.exam-main)) {
   :scope { background: white !important; color: black !important; height: auto !important; overflow: visible !important; }
   :scope > .skip-link, .exam-editor-heading, .exam-viewer-title, .exam-print-actions, .exam-tabs, dialog { display: none !important; }
+  .exam-main { padding: 0; min-height: 0; }
   .exam-workspace { animation: none !important; transform: none !important; overflow: visible !important; }
   .exam-paper { page: exam; padding: 15mm 0 0; border: 0; border-radius: 0; width: 100%; max-width: none; box-shadow: none; color: black; font: 12pt/1.5 Arial, sans-serif; }
   .exam-paper { -webkit-box-decoration-break: clone; box-decoration-break: clone; }
