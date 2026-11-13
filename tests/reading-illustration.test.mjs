@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import { test } from "node:test";
 import { createMaterialReading } from "../apps/web/server/materials/reading.mjs";
 import { createReadingIllustration } from "../apps/web/server/materials/reading-illustration.mjs";
+import { endpoint } from "../apps/web/server/core/http.mjs";
 import { createMaterialService } from "../apps/web/server/materials/service.mjs";
 import { testDatabase } from "./support/database.mjs";
 import { syntheticPdf } from "./support/pdf.mjs";
@@ -58,6 +59,9 @@ test("an illustration is private, retryable, and generated once per saved readin
     try {
       await started.promise;
       await assert.rejects(illustration.generate(owner.id, source.id), { code: "ILLUSTRATION_IN_PROGRESS" });
+      const response = await endpoint(() => illustration.generate(owner.id, source.id))(new Request("http://localhost/illustration"));
+      assert.equal(response.status, 409);
+      assert.equal((await response.json()).error.code, "ILLUSTRATION_IN_PROGRESS");
     } finally { finish.resolve(bytes); }
     assert.deepEqual(await pending, bytes);
     assert.deepEqual(await illustration.get(owner.id, source.id), bytes);

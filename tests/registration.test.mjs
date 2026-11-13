@@ -67,6 +67,11 @@ test("registration rejects invalid boundaries and injected fields before persist
     assert.equal((await handler(request(body))).status, 422);
   }
   assert.equal(await storage.db.teacher.count(), before);
+  const invalidEmail = await handler(request({ ...account(), email: "invalid" }));
+  const error = (await invalidEmail.json()).error;
+  assert.equal(invalidEmail.status, 422);
+  assert.equal(error.code, "VALIDATION_ERROR");
+  assert.equal(error.fields.email, "Isi alamat email yang valid.");
 });
 
 test("exact name/password/email limits succeed with distinct password salts", async () => {

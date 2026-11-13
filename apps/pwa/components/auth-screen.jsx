@@ -36,7 +36,12 @@ export default function AuthScreen({ register = false, googleNotice }) {
     try {
       const response = await fetch(register ? "/app/api/v1/auth/register" : "/app/api/v1/auth/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
       const result = await response.json().catch(() => null);
-      if (!response.ok || !result?.data?.user?.id) throw new Error(result?.error?.message || "Belum dapat masuk. Coba lagi.");
+      if (!response.ok || !result?.data?.user?.id) {
+        const fields = result?.error?.fields;
+        const field = fields && Object.keys(fields).find(key => ["name", "email", "password"].includes(key));
+        const labels = { name: "Nama", email: "Email", password: "Kata sandi" };
+        throw new Error(field ? `${labels[field]}: ${fields[field]}` : result?.error?.message || "Belum dapat masuk. Coba lagi.");
+      }
       navigateAfterSessionChange("/app/beranda");
     } catch (err) { setError(err instanceof TypeError ? "Layanan akun belum dapat dihubungi. Periksa koneksi dan coba lagi." : err.message); pending.current = false; setBusy(false); }
   }

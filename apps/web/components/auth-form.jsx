@@ -36,7 +36,10 @@ export default function AuthForm({ register = false, googleEnabled = false, goog
       });
       if (!response.ok) {
         const payload = await response.json().catch(() => null);
-        setNotice(payload?.error?.message || fallback);
+        const fields = payload?.error?.fields;
+        const field = fields && Object.keys(fields).find(key => ["name", "email", "password"].includes(key));
+        const labels = { name: "Nama", email: "Email", password: "Kata sandi" };
+        setNotice(field ? `${labels[field]}: ${fields[field]}` : payload?.error?.message || fallback);
         return;
       }
       navigateAfterSessionChange("/beranda");

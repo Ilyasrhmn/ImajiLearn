@@ -160,12 +160,12 @@ export default function ExamStudio({ teacherId }) {
     }
   }
   async function rename(id, title) {
-    if (operation.current) return;
+    if (operation.current) return false;
     const item = exams.find(exam => exam.id === id);
-    if (!item) return;
+    if (!item) return false;
     operation.current = true;
-    try { remember((await studioRequest(teacherId, pathFor(id), { method: "PATCH", body: { title }, version: item.resourceVersion })).data); }
-    catch (error) { report(error); }
+    try { remember((await studioRequest(teacherId, pathFor(id), { method: "PATCH", body: { title }, version: item.resourceVersion })).data); return true; }
+    catch (error) { return { error: error.message || "Nama belum dapat disimpan." }; }
     finally { operation.current = false; }
   }
   async function remove() {
