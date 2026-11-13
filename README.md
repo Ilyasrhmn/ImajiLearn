@@ -1,342 +1,431 @@
 # ImajiLearn
 
-Monorepo npm workspaces dengan dua aplikasi Next.js berbasis JavaScript/JSX:
+**Mengubah bahan ajar menjadi media pembelajaran interaktif bagi guru SD.**
 
-- `apps/web`: web guru di http://localhost:3000.
-- `apps/pwa`: aplikasi mobile di http://localhost:3002 (otomatis ke `/app`).
+ImajiLearn membantu guru memilih bagian materi dari PDF atau teks, lalu mengolahnya menjadi bacaan bergambar, slide, lagu belajar, visual interaktif, dan soal ujian. Materi dan hasilnya tersimpan sehingga dapat digunakan kembali saat mengajar.
 
-## Menjalankan
+| Informasi | Keterangan |
+| --- | --- |
+| Kompetisi | Logicodix 2026 |
+| Tim | YOSLO |
+| Institusi | Universitas Amikom Yogyakarta, Fakultas Ilmu Komputer |
+| Kategori | **Web**; PWA merupakan antarmuka pendamping pada perangkat mobile |
+| Subtema | Smart & Fun Education |
+| Aplikasi | [imajilearn.ai.id](https://imajilearn.ai.id/) |
+| Demo publik | [Coba materi fotosintesis](https://imajilearn.ai.id/demo) |
+| PWA | [pwa.imajilearn.ai.id/app](https://pwa.imajilearn.ai.id/app) |
+| Repository | [Ilyasrhmn/ImajiLearn](https://github.com/Ilyasrhmn/ImajiLearn) |
+
+## Tim dan kontribusi
+
+| Anggota | Peran dan kontribusi |
+| --- | --- |
+| **Ilyas Nur Rohman** | **Team Lead, Frontend & AI Engineer**: Menginisiasi ide, menentukan arah produk, dan mengoordinasikan pengembangan. Menangani frontend utama: landing page, demo interaktif, dashboard guru, studio media, viewer pembelajaran, dan editor ujian. Mengerjakan konfigurasi provider AI, generasi bacaan/kuis, slide, ilustrasi, visual interaktif, serta soal ujian; mengintegrasikan Z-Image/Cloudflare dan menyempurnakan variasi lagu Suno serta sinkronisasi karaoke. Turut menangani penyimpanan draf/riwayat, integrasi API, perbaikan PWA/backend, dan pengujian lintas fitur. |
+| **Iqbal Maulana Mufid** | **PWA & Backend Engineer**: Mengembangkan struktur dan navigasi PWA, alur akun, pustaka serta unggahan materi, workspace media/ujian, jadwal, dan agenda harian. Mengintegrasikan PWA dengan backend dan komponen bersama, menangani pemasangan aplikasi, fallback offline, pemulihan koneksi, serta pengujian integrasi dan konfigurasi CI PWA. |
+| **M Yusril Mubarok** | **Backend & AI Integration Engineer**: Mengembangkan fondasi database, registrasi dan sesi guru, pemeriksaan kepemilikan materi, serta penyimpanan dan API preferensi media. Mengimplementasikan login/penautan Google beserta pengujiannya, serta integrasi awal generasi lagu yang mencakup lirik, pemrosesan tugas, penyimpanan hasil, dan akses audio. |
+| **Maulana Adib Sultoni** | **Product Researcher & Ideation Contributor**: Mendukung pengembangan ide melalui riset permasalahan dan kebutuhan pengguna, eksplorasi pendekatan solusi, serta diskusi konsep bersama tim untuk memperjelas pengguna sasaran dan manfaat ImajiLearn. |
+
+Kontribusi saling melengkapi dan tidak terbatas pada satu lapisan aplikasi. Pengembangan teknis dapat ditelusuri melalui riwayat commit dan branch `frontend`, `backend`, `ai-integration`, serta `pwa`.
+
+## Masalah, solusi, dan pengguna
+
+Guru sering sudah memiliki bahan ajar, tetapi menyiapkan bacaan, ilustrasi, presentasi, lagu, dan soal dari sumber yang sama membutuhkan pekerjaan berulang. Materi panjang juga perlu dipilih cakupannya sebelum disampaikan kepada anak SD. Konsep yang abstrak membutuhkan bantuan visual dan interaksi agar lebih mudah dijelaskan.
+
+ImajiLearn menyatukan pekerjaan tersebut: guru mengunggah sumber, memilih halaman atau bagian, membuat media yang diperlukan, meninjau hasil, lalu memakainya di kelas. Pengguna utama adalah **guru SD**; murid menerima pembelajaran melalui layar, proyektor, dan pendampingan guru. MVP berpusat pada akun guru, tanpa akun murid atau pengumpulan data individual siswa.
+
+## Fitur yang diimplementasikan
+
+| Fitur | Fungsi |
+| --- | --- |
+| Sumber materi | Unggah PDF/TXT atau masukkan teks; pratinjau PDF dan pilih rentang halaman yang relevan. |
+| Bacaan bergambar | Penjelasan bertahap, ilustrasi, kuis dengan pembahasan, pembacaan suara, dan mode proyektor. |
+| Slide | Ringkasan berpoin dan ilustrasi; navigasi slide, zoom, pembacaan suara, dan mode proyektor. |
+| Lagu belajar | Pembuatan lirik, musik dan vokal, pemutar, variasi hasil, serta tampilan lirik/karaoke. |
+| Visual interaktif | Penjelasan berbasis sumber pada model yang didukung, termasuk eksplorasi fotosintesis, daun dan kloroplas, model geometri, serta perakitan objek. |
+| Soal dan ujian | Pilihan ganda, isian, dan uraian; pengisian AI, penyuntingan tersimpan, kunci, pembahasan, rubrik, kisi-kisi, duplikasi, remedial, serta cetak. |
+| Pustaka | Folder mata pelajaran, pencarian, sematkan, arsip/pulihkan, draf, dan riwayat hasil. |
+| Jadwal dan beranda | Jadwal semester, validasi benturan, agenda harian, dan akses kembali ke materi. |
+| Akun guru | Daftar/masuk dengan email dan kata sandi, profil, logout, serta login/penautan Google jika OAuth dikonfigurasi. |
+| PWA | Antarmuka mobile, pemasangan pada browser yang mendukung, dan halaman pemberitahuan saat offline. |
+
+Visual interaktif memakai katalog dan bentuk yang didukung aplikasi, bukan pembuatan model 3D bebas untuk seluruh topik. Pembacaan suara memakai Web Speech API sehingga suara dan dukungan bahasa bergantung pada browser/perangkat. PWA tetap memerlukan koneksi untuk halaman privat, data, dan generasi AI; service worker hanya menyimpan halaman fallback publik.
+
+## Mencoba aplikasi
+
+1. Buka [demo publik](https://imajilearn.ai.id/demo) untuk mencoba materi fotosintesis tanpa login. Demo memakai konten dan media tersimpan; membuka demo tidak membuat permintaan generasi AI baru.
+2. Masuk melalui [halaman akun guru](https://imajilearn.ai.id/masuk).
+3. Buka **Buat media**, unggah PDF/TXT atau masukkan teks, kemudian pilih sumber dan cakupan halaman.
+4. Pilih bacaan, slide, lagu, visual, atau soal dan ujian. Jalankan pembuatan, tunggu prosesnya, lalu tinjau hasilnya.
+5. Buka kembali hasil melalui pustaka/riwayat, gunakan mode proyektor, atau cetak naskah ujian sesuai kebutuhan.
+
+### Akun demonstrasi juri
+
+Akun berikut disediakan tim untuk demonstrasi dan pengujian juri:
+
+| Isian | Nilai |
+| --- | --- |
+| Halaman masuk | [Web](https://imajilearn.ai.id/masuk) / [PWA](https://pwa.imajilearn.ai.id/app/masuk) |
+| Email | `admin@imajilearn.com` |
+| Kata sandi | `admin123` |
+
+Akun dapat dipakai untuk mencoba area guru dan membuka hasil yang telah tersimpan. Generasi baru memakai layanan dan kuota provider yang dikonfigurasi tim.
+
+## Teknologi
+
+| Lapisan | Teknologi dan perannya |
+| --- | --- |
+| Frontend | Next.js 16.4.5, React 19.3.1, JavaScript/JSX, dan CSS; npm workspaces untuk monorepo. |
+| Backend | Next.js Route Handlers, modul layanan di `apps/web/server`, Node.js, dan validasi kontrak sisi server. |
+| Database | PostgreSQL melalui Prisma 7.10.1, `@prisma/adapter-pg`, dan `pg`; deployment tim memakai Neon. |
+| Hosting | Vercel untuk deployment aplikasi tim. |
+| AI teks | Gemini melalui endpoint Google yang kompatibel dengan OpenAI; konfigurasi model terpisah per fitur. |
+| Ilustrasi | Z-Image melalui Kie.ai dan FLUX.1 Schnell melalui Cloudflare Workers AI. |
+| Musik | Suno V6 melalui Kie.ai untuk musik/vokal dan timestamp lirik. |
+| Visual | Three.js serta renderer SVG/isometrik untuk objek dan interaksi yang didukung. |
+| PDF | PDF.js (`pdfjs-dist`) untuk membaca sumber dan pratinjau PDF; cetak dokumen melalui browser. |
+| Identitas | Sesi cookie HttpOnly dan hash kata sandi scrypt; Google OpenID Connect menggunakan `jose`. |
+| Antarmuka | Lucide React untuk ikon; Nunito Sans; Google Sans pada kontrol Google. |
+| Pengujian | Node.js test runner, PGlite atau PostgreSQL khusus tes, ESLint, dan GitHub Actions. |
+
+## Arsitektur dan alur data
+
+```mermaid
+flowchart TD
+    Guru[Guru SD] --> Web[Web guru / apps/web]
+    Guru --> PWA[PWA pendamping / apps/pwa]
+    PWA --> Proxy[Proxy API pada origin PWA]
+    Proxy --> API[Next.js API / apps/web]
+    Web --> API
+    API --> Auth[Validasi sesi, pemilik, input, dan versi]
+    Auth --> Services[Layanan materi, AI, ujian, dan jadwal]
+    Services --> DB[(PostgreSQL / Neon via Prisma)]
+    Services --> Text[Gemini: keluaran JSON terstruktur]
+    Services --> Image[Kie Z-Image / Cloudflare FLUX]
+    Services --> Music[Kie / Suno V6]
+    Text --> Services
+    Image --> Services
+    Music --> Services
+    Services --> Results[Validasi dan simpan hasil]
+    Results --> DB
+    DB --> Services
+    Services -->|Respons hasil| API
+    API --> View[Viewer bacaan, slide, lagu, visual, dan ujian]
+    View --> Guru
+```
+
+**Alur materi:** unggahan atau teks masuk ke backend, kepemilikan diverifikasi, teks sumber diekstrak dan disimpan, lalu guru memilih cakupan yang diproses. Backend menyusun permintaan AI sesuai fitur, memvalidasi bentuk hasil, dan menyimpan keluaran beserta revisi sumber. Ilustrasi/audio dibuat melalui adapter khusus. Membuka hasil tersimpan menggunakan data yang sudah ada; membuat ulang merupakan tindakan terpisah.
+
+Visual dirender dari deskripsi terstruktur yang cocok dengan katalog aplikasi. File sumber dan keluaran media disimpan melalui database sesuai model Prisma; kode tidak membutuhkan bucket objek eksternal untuk alur yang ada.
+
+Web dan PWA berbagi komponen/model browser melalui `packages/shared`. Backend database dan provider AI berada pada web server. PWA meneruskan permintaan melalui origin PWA agar sesi dan pemeriksaan origin tetap berlaku pada host yang sesuai.
+
+```text
+apps/
+  web/                 Web guru, halaman demo, API, layanan, dan aset publik
+  pwa/                 Antarmuka mobile, proxy API, manifest, dan service worker
+packages/
+  shared/              Komponen, model, API client, dan aset bersama
+  contracts/           Validasi kontrak yang dipakai server
+prisma/                Schema dan migrasi SQL
+tests/                Pengujian unit, layanan, dan integrasi HTTP
+.github/workflows/     Pemeriksaan otomatis
+```
+
+## Penggunaan AI
+
+| Keluaran | Profil/provider | Peran AI |
+| --- | --- | --- |
+| Bacaan dan kuis | `AI_READING_*`, Gemini | Menyusun bagian bacaan dan pertanyaan berdasarkan sumber. |
+| Slide | `AI_SLIDES_*`, Gemini | Menyusun urutan slide dan poin pembelajaran. |
+| Lirik | `AI_SONG_*`, Gemini | Mengolah materi menjadi lirik dan arahan musik. |
+| Musik dan vokal | `AI_MUSIC_*` + `KIE_API_KEY`, Suno V6 melalui Kie.ai | Membuat audio dan memperoleh informasi waktu lirik. |
+| Visual | `AI_MINDMAP_*`, Gemini | Memilih/mendeskripsikan model interaktif yang cocok dan menghubungkan penjelasan dengan kutipan sumber. Nama profil internal `MINDMAP` dipertahankan untuk kompatibilitas konfigurasi. |
+| Ujian | `AI_EXAM_*`, Gemini | Mengisi slot soal, opsi, jawaban, pembahasan, indikator, dan rubrik berdasarkan materi. |
+| Ilustrasi | `KIE_API_KEY` atau kredensial Cloudflare | Menghasilkan ilustrasi sesuai arahan visual dan rencana provider dari layanan aplikasi. |
+
+Contoh konfigurasi memakai `gemini-3.1-flash-lite` untuk lima profil teks dan `V6` untuk audio. Model teks dibaca dari environment per fitur; adapter gambar menggunakan `z-image` dan `@cf/black-forest-labs/flux-1-schnell`. Gemini diakses melalui protokol yang kompatibel dengan OpenAI; penggunaan protokol ini bukan berarti model teksnya GPT.
+
+**Pengembangan dan aset:** tim memakai bantuan AI, termasuk OpenAI Codex, untuk implementasi, pemeriksaan kode, pengujian, dan dokumentasi. Logo/maskot dibuat tim dengan bantuan generasi AI. Ide produk, keputusan desain, pengarahan implementasi, integrasi, dan peninjauan hasil dikerjakan tim.
+
+**Data dan batas hasil:** bagian sumber yang dipilih diproses layanan AI eksternal sesuai fitur. API key tetap di server. Guru perlu memeriksa kesesuaian fakta, bahasa, jawaban, serta kelayakan media sebelum dipakai mengajar. Materi demonstrasi memakai contoh fotosintesis, bukan data pribadi siswa. Model tidak dilatih sendiri oleh tim.
+
+## Rincian integrasi API dan layanan
+
+<details>
+<summary>Gemini: bacaan, slide, visual, lirik, dan ujian</summary>
+
+Backend menggunakan adapter HTTP pada [`openai-chat.mjs`](apps/web/server/ai/providers/openai-chat.mjs). Base URL contoh `https://generativelanguage.googleapis.com/v1beta/openai/` digabung dengan `chat/completions`, sehingga permintaan dikirim ke:
+
+```text
+POST https://generativelanguage.googleapis.com/v1beta/openai/chat/completions
+Authorization: Bearer <API key pada server>
+```
+
+Body berisi `model`, `messages`, batas token, `response_format`, dan `stream: false`. Konfigurasi mendukung `json_object` atau `json_schema`; contoh proyek memakai `json_object`. Respons diurai menjadi JSON lalu diperiksa kembali oleh validator fitur sebelum disimpan. Batas token, timeout, temperature, dan reasoning dibaca melalui [`config.mjs`](apps/web/server/ai/config.mjs).
+
+Profil teks dipisah agar model dan batas setiap pekerjaan dapat diatur sendiri:
+
+| Profil | Model contoh | Batas output contoh | Keluaran |
+| --- | --- | --- | --- |
+| `AI_READING_*` | `gemini-3.1-flash-lite` | 4.096 token | Bagian bacaan dan kuis. |
+| `AI_SLIDES_*` | `gemini-3.1-flash-lite` | 4.096 token | Judul dan poin slide. |
+| `AI_MINDMAP_*` | `gemini-3.1-flash-lite` | 3.072 token | Deskripsi visual terstruktur, pemilihan model, dan kutipan sumber. |
+| `AI_SONG_*` | `gemini-3.1-flash-lite` | 2.048 token | Lirik dan arahan lagu. |
+| `AI_EXAM_*` | `gemini-3.1-flash-lite` | 4.096 token | Soal, jawaban, pembahasan, indikator, dan rubrik. |
+
+Pada bacaan/slide, AI juga membantu merencanakan ilustrasi sesuai isi. Rencana membedakan visual sederhana dan kompleks; alokasi provider diatur oleh [`image-routing.mjs`](apps/web/server/materials/image-routing.mjs).
+
+</details>
+
+<details>
+<summary>Gambar: Kie Z-Image dan Cloudflare FLUX.1 Schnell</summary>
+
+| Layanan | Endpoint yang dipanggil | Autentikasi dan pekerjaan |
+| --- | --- | --- |
+| Kie.ai / Z-Image | `POST https://api.kie.ai/api/v1/jobs/createTask` | Bearer `KIE_API_KEY`; body memakai `model: "z-image"`, prompt, dan rasio `16:9`. |
+| Status tugas Kie | `GET https://api.kie.ai/api/v1/jobs/recordInfo?taskId=...` | Polling hasil menggunakan ID tugas yang disimpan. |
+| Cloudflare Workers AI | `POST https://api.cloudflare.com/client/v4/accounts/{accountId}/ai/run/@cf/black-forest-labs/flux-1-schnell` | Bearer `CLOUDFLARE_API_TOKEN`, account dari `CLOUDFLARE_ACCOUNT_ID`; body memuat prompt dan `steps: 4`. |
+
+Visual kompleks diprioritaskan ke Z-Image; visual sederhana dan kelebihan alokasi memakai Cloudflare. Implementasi membatasi reservasi Z-Image per keluaran. Byte hasil diperiksa sebelum disimpan. Jika status submit berbayar belum pasti, adapter mempertahankan status tugas agar tidak otomatis mengirim submit baru yang berpotensi menggandakan biaya.
+
+Implementasi: [`lesson-image.mjs`](apps/web/server/ai/providers/lesson-image.mjs), [`kie-image.mjs`](apps/web/server/ai/providers/kie-image.mjs), dan [`cloudflare-image.mjs`](apps/web/server/ai/providers/cloudflare-image.mjs).
+
+</details>
+
+<details>
+<summary>Musik: Suno V6 melalui Kie.ai</summary>
+
+Lirik disusun melalui profil Gemini `AI_SONG_*`. Musik dan vokal memakai adapter Kie yang berbeda, [`kie-music.mjs`](apps/web/server/ai/providers/kie-music.mjs):
+
+1. `POST /jobs/createTask` pada `https://api.kie.ai/api/v1`, dengan task model `ai-music-api/generate`, `custom_mode: true`, `instrumental: false`, dan pilihan model musik `V6`.
+2. `GET /jobs/recordInfo?taskId=...` untuk membaca status dan variasi audio yang dikembalikan provider.
+3. `POST /jobs/createTask` dengan task model `ai-music-api/timeStamped-lyrics` untuk informasi waktu lirik berdasarkan task/audio yang dipilih.
+4. Audio hasil diunduh dari host yang diizinkan adapter, diperiksa ukurannya, lalu disimpan untuk diputar kembali.
+
+Kredensialnya `KIE_API_KEY`. `AI_MUSIC_DURATION_SECONDS` memberi arahan durasi; contoh konfigurasi meminta 120 detik, sedangkan durasi akhir mengikuti hasil provider. Pemutar dan karaoke menggunakan hasil audio serta metadata waktu yang tersedia.
+
+</details>
+
+<details>
+<summary>Login Google: OAuth 2.0 dan OpenID Connect</summary>
+
+Login menggunakan **Google Identity melalui OAuth 2.0 Authorization Code Flow + OpenID Connect**, dengan PKCE `S256`. Integrasi ditulis pada layanan akun aplikasi dan menggunakan pustaka `jose` untuk verifikasi ID token.
+
+| Endpoint Google | Fungsi |
+| --- | --- |
+| `https://accounts.google.com/o/oauth2/v2/auth` | Mengarahkan browser ke persetujuan/pemilihan akun Google. |
+| `https://oauth2.googleapis.com/token` | Backend menukar authorization code menggunakan client ID, client secret, redirect URI, dan PKCE verifier. |
+| `https://www.googleapis.com/oauth2/v3/certs` | Mengambil kunci publik JWKS untuk memverifikasi tanda tangan ID token. |
+
+Scope yang diminta hanya `openid email profile`. Backend memeriksa state, nonce, tanda tangan RS256, issuer, audience, waktu berlaku token, serta `email_verified`. Identitas Google ditautkan melalui `sub`; nama, email, dan foto profil dipakai untuk identitas akun sesuai data yang tersedia. Setelah verifikasi, aplikasi menerbitkan sesi gurunya sendiri melalui cookie HttpOnly.
+
+Akun email/password yang sudah ada harus masuk dan mengonfirmasi kata sandi untuk menautkan Google dengan email yang sama. Flow sementara dan callback web/PWA dipisahkan agar cookie terikat pada origin masing-masing.
+
+```mermaid
+sequenceDiagram
+    participant B as Browser guru
+    participant A as Backend akun ImajiLearn
+    participant G as Google Identity
+    participant D as PostgreSQL
+    B->>A: Mulai login Google
+    A->>D: Simpan hash state/nonce dan flow PKCE
+    A-->>B: URL otorisasi dan cookie flow
+    B->>G: Pilih akun dan izinkan scope
+    G-->>B: Redirect ke callback dengan code/state
+    B->>A: Callback pada origin yang sesuai
+    A->>G: Tukar code dengan token
+    A->>G: Verifikasi ID token memakai JWKS
+    A->>D: Temukan/buat identitas dan terbitkan sesi
+    A-->>B: Cookie sesi dan redirect ke beranda
+```
+
+Sumber implementasi: [`handlers.mjs`](apps/web/server/accounts/google/handlers.mjs), [`provider.mjs`](apps/web/server/accounts/google/provider.mjs), dan [`config.mjs`](apps/web/server/accounts/google/config.mjs). Penyiapan client dan callback dijelaskan pada bagian instalasi.
+
+</details>
+
+<details>
+<summary>Database, hosting, PDF, dan pembacaan suara</summary>
+
+* **Neon/PostgreSQL:** aplikasi mengakses PostgreSQL melalui Prisma dan adapter `pg`, menggunakan `DATABASE_URL`. Prisma CLI memakai `DATABASE_URL_UNPOOLED` bila disediakan untuk migrasi. Koneksi database hanya dibuat oleh backend; browser memanggil API aplikasi. Struktur tabel dan relasi ada di [`schema.prisma`](prisma/schema.prisma).
+* **Vercel:** menjalankan deployment aplikasi web/PWA beserta environment server. Domain web dan PWA memiliki origin masing-masing; proxy PWA meneruskan API ke backend web dan menjaga pemeriksaan origin/cookie.
+* **PDF.js:** membaca teks serta menampilkan halaman dari file PDF. Pemilihan rentang halaman menentukan sumber yang diproses. PDF berbasis gambar tanpa teks yang dapat diekstrak memerlukan sumber teks yang sesuai; proyek tidak memasang layanan OCR eksternal pada alur ini.
+* **Web Speech API:** pembacaan suara bacaan/slide melalui `window.speechSynthesis` dan `SpeechSynthesisUtterance`. Suara disediakan browser/perangkat, bukan task generasi musik Kie.
+* **Three.js dan SVG/isometrik:** merender model interaktif dari struktur yang divalidasi aplikasi; geometri dan interaksi disiapkan dalam kode, sedangkan AI mengisi konteks berdasarkan sumber.
+
+</details>
+
+## Ringkasan API aplikasi
+
+Base path backend adalah `/api/v1`. Browser PWA memakai `/app/api/v1` pada host PWA, kemudian permintaan diteruskan ke layanan backend yang sama. Daftar route lengkap terdapat di [`apps/web/app/api/v1`](apps/web/app/api/v1).
+
+<details>
+<summary>Katalog endpoint dan kontrak respons API</summary>
+
+| Kelompok | Route utama | Fungsi |
+| --- | --- | --- |
+| Akun | `/auth/register`, `/auth/login`, `/auth/logout`, `/auth/session` | Registrasi, masuk, pencabutan dan pembacaan sesi. |
+| Google | `/auth/google`, `/auth/google/callback`, `/auth/google/pwa`, `/auth/google/pwa/callback`, `/me/google/link` | Memulai/menerima OAuth dan menautkan identitas. |
+| Profil | `/me`, `/me/password` | Membaca/memperbarui profil dan mengganti kata sandi sesuai kontrak. |
+| Materi | `/materials`, `/materials/{materialId}`, `/materials/{materialId}/file`, `/materials/{materialId}/source`, `/materials/{materialId}/sections` | Membuat/mengelola sumber, mengakses file, dan memilih cakupan materi. |
+| Bacaan | `/materials/{materialId}/reading`, `/materials/{materialId}/reading/illustration` | Membaca/membuat bacaan dan mengelola ilustrasinya. |
+| Slide | `/materials/{materialId}/slides`, `/materials/{materialId}/slides/illustrations` | Membaca/membuat slide dan ilustrasi. |
+| Lagu | `/materials/{materialId}/song`, `/materials/{materialId}/song/audio` | Pembuatan lagu, status/hasil, dan akses audio. |
+| Visual | `/materials/{materialId}/visual` | Memilih/membuat visual interaktif berbasis sumber. |
+| Draf/riwayat | `/media/{feature}/drafts`, `/media/{feature}/history`, `/readings/drafts`, `/readings/history`, `/materials/{materialId}/history` | Menyimpan pekerjaan dan menemukan hasil sebelumnya. |
+| Folder/preferensi | `/folders`, `/folders/{folderId}`, `/media-preferences`, `/media-preferences/{materialId}` | Pengelompokan dan pilihan media per guru. |
+| Jadwal | `/schedule`, `/schedule/slots`, `/schedule/slots/{slotId}` | Agenda semester dan slot mengajar. |
+| Ujian | `/exams`, `/exams/{id}`, `/exams/{id}/generate`, `/exams/{id}/duplicate`, `/exams/{id}/remedial` | Pustaka naskah, penyuntingan, generasi, duplikasi, dan remedial. |
+
+Route privat memerlukan sesi valid. Operasi tulis memeriksa `Origin` dan kontrak payload. Route yang menerapkan optimistic concurrency menerima `If-Match`; route pembuatan yang memakai idempotensi menerima `Idempotency-Key`. Header tersebut dipakai sesuai kontrak route, bukan sebagai persyaratan universal semua endpoint.
+
+Respons JSON lazim memakai `{data: ...}` atau `{error: {code, message, fields?, requestId}}`. Status penting meliputi `401` tanpa sesi, `403` origin tidak sesuai, `404` objek tidak ditemukan/tidak dimiliki, `409` benturan status/proses, `412` versi usang, `422` isian tidak valid, dan `429` pembatasan permintaan. Respons auth/data privat memakai `Cache-Control: no-store`.
+
+</details>
+
+## Instalasi lokal
+
+### Prasyarat
+
+* Node.js **22.13 atau lebih baru**; workflow CI memakai Node.js 24.
+* npm dan PostgreSQL 17+ dengan encoding UTF8; Neon dapat dipakai sebagai layanan PostgreSQL.
+* Kredensial provider sesuai fitur yang ingin dijalankan. Membaca kode, menjalankan pengujian sintetis, atau membuka demo tersimpan tidak membutuhkan panggilan AI berbayar.
+
+### 1. Pasang dependensi dan siapkan konfigurasi
 
 ```sh
-npm install
+git clone https://github.com/Ilyasrhmn/ImajiLearn.git
+cd ImajiLearn
+npm ci
+```
+
+Salin berkas contoh berikut tanpa menimpa konfigurasi yang sudah ada:
+
+| Contoh | Salinan lokal | Isi |
+| --- | --- | --- |
+| `.env.example` | `.env` di root | Koneksi untuk Prisma CLI/migrasi dan nilai konfigurasi backend. |
+| `apps/web/.env.example` | `apps/web/.env.local` | Profil AI dan konfigurasi proses web. Tambahkan `DATABASE_URL` dan `APP_ORIGIN` seperti pada `.env` root. |
+| `apps/pwa/.env.example` | `apps/pwa/.env.local` | Origin publik PWA dan tujuan backend. |
+
+`npm ci` juga menghasilkan Prisma Client melalui postinstall. Sesudah schema berubah, jalankan `npm run db:generate`.
+
+### 2. Isi environment
+
+Daftar lengkap beserta nilai contoh tersedia di [konfigurasi root](.env.example), [konfigurasi web/AI](apps/web/.env.example), dan [konfigurasi PWA](apps/pwa/.env.example).
+
+<details>
+<summary>Daftar variabel environment dan kegunaannya</summary>
+
+| Variabel | Kegunaan |
+| --- | --- |
+| `DATABASE_URL` | Koneksi PostgreSQL runtime; isi pada root untuk CLI dan environment proses web. |
+| `DATABASE_URL_UNPOOLED` | Opsional: koneksi langsung untuk migrasi Neon. Prisma CLI memakainya jika terisi. |
+| `APP_ORIGIN` | Origin web, lokal `http://localhost:3000`; produksi origin HTTPS web. |
+| `PWA_PUBLIC_ORIGIN` | Origin PWA, lokal `http://localhost:3002`; samakan di web dan PWA bila memakai login Google PWA. |
+| `PWA_BACKEND_ORIGIN` | Alamat backend yang dapat dijangkau server PWA; lokal `http://localhost:3000`. |
+| `PWA_BACKEND_PUBLIC_ORIGIN` | Nilai origin publik backend; harus sama dengan `APP_ORIGIN`. |
+| `PWA_INTERNAL_ORIGIN` | Opsional: alamat server PWA untuk jalur kompatibilitas `/app` melalui web; dikonfigurasi sebelum build web. |
+| `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | Opsional: login Google; hanya dipasang pada backend web. |
+| `GOOGLE_START_LIMIT` | Opsional: batas memulai flow Google per bucket IP; default 20 percobaan per 15 menit. |
+| `AI_{READING,MINDMAP,SLIDES,SONG,EXAM}_BASE_URL` | Endpoint teks; contoh `https://generativelanguage.googleapis.com/v1beta/openai/`. |
+| `AI_{READING,MINDMAP,SLIDES,SONG,EXAM}_API_KEY` | API key teks masing-masing fitur. |
+| `AI_{READING,MINDMAP,SLIDES,SONG,EXAM}_MODEL` | Model teks masing-masing fitur. |
+| `AI_{READING,MINDMAP,SLIDES,SONG,EXAM}_*` lainnya | Protokol, batas output, timeout, temperature/reasoning, dan format respons; lihat contoh web. |
+| `KIE_API_KEY` | Kredensial Kie untuk Suno dan Z-Image. |
+| `AI_MUSIC_BASE_URL`, `AI_MUSIC_MODEL` | Konfigurasi Suno/Kie, contoh endpoint Kie dan model `V6`. |
+| `AI_MUSIC_TIMEOUT_MS`, `AI_MUSIC_DURATION_SECONDS` | Batas waktu permintaan musik dan durasi yang diminta. |
+| `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_API_TOKEN` | Layanan ilustrasi Cloudflare Workers AI. |
+| `SESSION_ABSOLUTE_SECONDS`, `SESSION_IDLE_SECONDS` | Masa berlaku absolut dan waktu tidak aktif sesi. |
+| `REGISTER_IP_LIMIT`, `LOGIN_FAILURE_LIMIT`, `LOGIN_IP_LIMIT` | Pembatasan percobaan akun. |
+| `TRUSTED_CLIENT_IP_HEADER` | Opsional, hanya untuk header yang diganti oleh reverse proxy tepercaya. |
+| `TEST_DATABASE_URL` | Opsional: PostgreSQL khusus pengujian konkurensi. |
+
+</details>
+
+Gunakan database pengembangan terpisah dari produksi. Berkas `.env`/`.env.local` dan API key tidak masuk Git maupun variabel `NEXT_PUBLIC_*`.
+
+### 3. Terapkan migrasi dan jalankan aplikasi
+
+```sh
+npm run db:validate
+npm run db:migrate
 npm run dev
 ```
 
-Gunakan `npm run dev:web` atau `npm run dev:pwa` untuk menjalankan satu aplikasi. Port harus tersedia.
+* Web: `http://localhost:3000`.
+* PWA: `http://localhost:3002/app`; kedua server perlu berjalan untuk alur PWA lengkap.
+* Jalankan hanya satu aplikasi dengan `npm run dev:web` atau `npm run dev:pwa` bila diperlukan.
 
-## Integrasi PWA
+### 4. Konfigurasi login Google (opsional)
 
-Jalankan `npm run dev`, lalu buka **http://localhost:3002/** untuk PWA.
-Web guru tetap di **http://localhost:3000/**. Kedua server perlu berjalan.
-Port 3002 otomatis mengarahkan ke `/app`. Login, data dan upload memakai
-`/app/api/v1` pada origin PWA, lalu diteruskan ke backend. Origin asing
-ditolak sebelum diteruskan; pemeriksaan Origin backend tetap aktif.
+<details>
+<summary>Penyiapan OAuth client dan callback web/PWA</summary>
 
-Jika alamat berbeda, salin `apps/pwa/.env.example` ke `apps/pwa/.env.local`:
+Daftarkan OAuth Web client dan authorized redirect URI yang sama persis dengan origin deployment:
 
-- `PWA_PUBLIC_ORIGIN`: alamat publik PWA; default development `http://localhost:3002`.
-- `PWA_BACKEND_ORIGIN`: alamat backend yang dijangkau server PWA; default development `http://localhost:3000`.
-- `PWA_BACKEND_PUBLIC_ORIGIN`: sama dengan `APP_ORIGIN` backend; jika kosong mengikuti alamat backend.
+* Web lokal: `http://localhost:3000/api/v1/auth/google/callback`.
+* PWA lokal: `http://localhost:3002/app/api/v1/auth/google/pwa/callback`.
+* Web produksi: `https://imajilearn.ai.id/api/v1/auth/google/callback`.
+* PWA produksi: `https://pwa.imajilearn.ai.id/app/api/v1/auth/google/pwa/callback`.
 
-Produksi membutuhkan origin publik HTTPS yang dikonfigurasi eksplisit.
-API key dan database tetap di backend. Akses lama melalui port 3000/app
-masih didukung jika routing `PWA_INTERNAL_ORIGIN` pada web diaktifkan.
-Alamat development utama PWA adalah port 3002.
+Isi `GOOGLE_CLIENT_ID` dan `GOOGLE_CLIENT_SECRET` pada backend serta `PWA_PUBLIC_ORIGIN` pada kedua proses. Scope yang diminta adalah `openid email profile`. Akun dengan email yang sudah terdaftar memakai alur penautan setelah login dengan kata sandi, bukan penggabungan akun otomatis.
 
-Tes berikut memakai database sintetis terisolasi untuk sesi, profil, logout,
-aset, cookie dan penolakan origin asing, termasuk akses langsung ke server PWA:
+</details>
+
+### 5. Build dan deployment
 
 ```sh
+npm run build
+npm run start --workspace=@imajilearn/web
+```
+
+Jalankan PWA pada proses/terminal lain dengan `npm run start --workspace=@imajilearn/pwa`. Untuk deployment Vercel, gunakan workspace/root aplikasi yang sesuai dan pasang konfigurasi produksi pada environment masing-masing proyek. Aktifkan HTTPS, samakan origin publik, arahkan PWA ke backend, serta terapkan migrasi database sebelum memakai versi aplikasi yang membutuhkannya. Kredensial database dan provider tidak dicantumkan di repository.
+
+## Pengujian
+
+```sh
+npm test
+npm run lint
+npm run build
+npm run test:http
 npm run test:pwa:http
 npm run test:pwa:production
 ```
 
-```sh
-npm run lint
-npm run build
-```
+Tes database secara default memakai PGlite terisolasi. `TEST_DATABASE_URL` mengaktifkan pengujian PostgreSQL penuh, termasuk kasus konkurensi yang dilewati jika hanya PGlite tersedia. Gunakan database khusus tes: harness membuat dan menghapus schema acak sehingga role tes memerlukan izin `CREATE SCHEMA`.
 
-## Fondasi database backend
+Smoke HTTP memeriksa sesi, kepemilikan, materi, folder, jadwal, serta ujian dengan data sintetis. `test:pwa:production` membangun kedua aplikasi lalu memeriksa routing, aset, cookie, dan integrasi backend pada mode produksi. Pemeriksaan CI terdapat pada [workflow Web and PWA verification](.github/workflows/backend.yml), dengan PostgreSQL 17 dan branch `main`, `frontend`, `backend`, `ai-integration`, serta `pwa`.
 
-Gunakan Node.js 22.13 atau lebih baru dan PostgreSQL 17 atau lebih baru dengan
-database ber-encoding UTF8 agar nama/password Unicode dapat disimpan. Salin
-`.env.example` ke `.env` di root lalu isi koneksi database pengembangan Anda.
-Jangan gunakan database produksi untuk pengembangan atau tes.
+Pengujian sintetis tidak memanggil provider AI berbayar dan tidak membuktikan ketersediaan provider saat deployment. Pengujian AI nyata merupakan pemeriksaan terpisah menggunakan kredensial dan kuota provider yang aktif.
 
-```sh
-npm ci
-npm run db:validate
-npm run db:migrate
-npm test
-```
+## Keamanan dan privasi
 
-`npm ci` menghasilkan Prisma Client; jalankan `npm run db:generate` setelah
-mengubah schema. `npm run db:migrate` menerapkan migrasi SQL yang tersimpan di
-Git dan melewati migrasi yang sudah diterapkan. Prisma Client hasil generate
-dan file `.env` tidak disimpan di Git.
+* Backend memverifikasi sesi dan kepemilikan data; URL atau ID milik guru lain ditolak.
+* Kata sandi disimpan sebagai hash scrypt, token sesi dalam database sebagai hash, dan cookie sesi memakai HttpOnly/SameSite; produksi HTTPS memakai Secure.
+* Operasi tulis memeriksa origin. Operasi yang memerlukannya memakai versi sumber, idempotency key, dan lease proses agar retry serta permintaan bersamaan ditangani.
+* Respons error tidak mengirim kata sandi, API key, stack, atau rincian database ke frontend.
+* Service worker tidak menyimpan halaman privat maupun respons API sebagai cache offline.
+* Guru mengendalikan materi yang diunggah dan perlu menghindari memasukkan data pribadi siswa yang tidak diperlukan.
 
-Modul `apps/web/server/core/database.mjs` menyediakan koneksi PostgreSQL bersama
-untuk modular monolit. `database()` memakai `DATABASE_URL` dan mempertahankan
-satu Prisma Client per proses. `createDatabase()` menyediakan koneksi terpisah
-untuk pengujian dan proses yang mengelola lifecycle sendiri; tutup dengan
-`$disconnect()` setelah selesai. Tabel dasar `Teacher` menyimpan UUID, email
-unik, nama, hash password, profil awal, dan waktu pembuatan. Modul akun memakai
-database yang sama untuk sesi dan pembatasan percobaan.
+## Atribusi
 
-Secara default, tes database memakai PGlite khusus tes tanpa instalasi
-PostgreSQL. Untuk memakai PostgreSQL penuh, set `TEST_DATABASE_URL` ke database
-khusus tes sebelum menjalankan `npm test`. Tes membuat dan menghapus schema
-acak sehingga role tes memerlukan izin CREATE SCHEMA. Gunakan nilai environment
-yang sama pada proses server saat modul database mulai dipakai oleh API.
+### Desain dan aset
 
-## Registrasi guru
+| Sumber | Pemakaian dan atribusi |
+| --- | --- |
+| [Doodle Crew Footer, @kedhareswer di 21st.dev](https://21st.dev/community/bookmarks?tab=all&preview=%2F%40kedhareswer%2Fcomponents%2Fdoodle-crew-footer) | Referensi tampilan footer. Tim mendesain ulang penerapannya untuk karakter dan identitas ImajiLearn; dicantumkan sebagai referensi desain pihak ketiga. |
+| Logo dan maskot ImajiLearn | Dibuat tim dengan bantuan generasi AI, kemudian diintegrasikan ke aset dan komponen aplikasi. |
+| Konten/media demo fotosintesis | Contoh yang disiapkan tim pada `apps/web/app/demo` dan `apps/web/public/demo`. Konten tersimpan untuk demonstrasi; tidak merepresentasikan data atau hasil penelitian pada murid. |
+| Video pengenalan pada landing | Disusun tim dari tampilan aplikasi menggunakan [Remotion](https://www.remotion.dev/); berkas publik berada di `apps/web/public/videos`. |
+| Modul visual/isometrik | Kode pada `apps/web/lib/anatomy` mempertahankan [MIT notice Ryan](apps/web/lib/anatomy/LICENSE). |
+| Nunito Sans | [Nunito Sans / Google Fonts](https://github.com/google/fonts/tree/main/ofl/nunitosans), didistribusikan melalui `@fontsource-variable/nunito-sans`, SIL Open Font License 1.1. |
+| Google Sans | Digunakan untuk kontrol Google; [sumber](apps/web/public/fonts/google-sans/SOURCE.md) dan [SIL Open Font License 1.1](apps/web/public/fonts/google-sans/OFL.txt) disertakan. |
 
-`POST /api/v1/auth/register` menerima JSON `{name,email,password}`. Nama di-trim
-dan dibatasi 1–60 unit UTF-16; email di-trim, dinormalisasi lowercase, maksimal
-254 karakter dan unik. Password 8–128 unit UTF-16, tanpa trim atau normalisasi.
-Field lain ditolak. Batas body JSON 16 KiB. Password memakai scrypt N=32768,
-r=8, p=1, salt acak 16 byte dan output 64 byte.
+### Pustaka dan layanan pihak ketiga
 
-Salin juga konfigurasi `.env` ke `apps/web/.env.local` untuk menjalankan Next.js
-lokal, atau pasang environment variables yang sama di hosting. Semua write
-memerlukan header `Origin` persis sama dengan `APP_ORIGIN`; produksi memerlukan
-origin HTTPS. Respons sukses 201 berbentuk
-`{data:{user:{id,name,email,school,grade},expiresAt}}` dan menyetel cookie sesi.
-Akun dan sesi dibuat dalam satu transaksi. Token acak hanya ada pada cookie
-HttpOnly, SameSite=Lax, path=/; database menyimpan SHA-256 token. HTTPS memakai
-cookie `__Host-imajilearn_session` dengan Secure. Sesi awal berlaku 7 hari,
-dapat dikonfigurasi melalui `SESSION_ABSOLUTE_SECONDS`.
+* [Next.js](https://nextjs.org/), [React](https://react.dev/), [Prisma](https://www.prisma.io/), [`pg`](https://github.com/brianc/node-postgres), dan [PostgreSQL](https://www.postgresql.org/) untuk aplikasi dan database.
+* [Three.js](https://threejs.org/), [PDF.js](https://mozilla.github.io/pdf.js/), [Lucide](https://lucide.dev/), [Fontsource](https://fontsource.org/), dan [`jose`](https://github.com/panva/jose) untuk visual, pembacaan PDF, ikon, font, dan verifikasi identitas.
+* [Google Gemini](https://ai.google.dev/), [Kie.ai](https://kie.ai/), [Cloudflare Workers AI](https://developers.cloudflare.com/workers-ai/), dan Google Identity untuk integrasi layanan eksternal.
+* [Vercel](https://vercel.com/) dan [Neon](https://neon.tech/) untuk hosting dan database deployment tim.
+* [PGlite](https://pglite.dev/), ESLint, GitHub Actions, `concurrently`, dan `dotenv` untuk pengembangan serta pengujian.
 
-Email duplikat menghasilkan 409 `EMAIL_IN_USE`; isian tidak valid 422; Origin
-ditolak 403; JSON rusak 400; body terlalu besar 413; media type salah 415.
-Error memakai `{error:{code,message,fields?,requestId}}`, tanpa hash, token,
-stack, atau detail database. Semua respons memakai Cache-Control:no-store.
-
-Rate limit registrasi disimpan di database, default 5 percobaan per jam pada
-bucket IP; `REGISTER_IP_LIMIT` mengatur jumlahnya. Tanpa header proxy tepercaya,
-semua request memakai satu bucket bersama. Hanya isi `TRUSTED_CLIENT_IP_HEADER`
-jika reverse proxy menghapus dan mengganti header tersebut; header kiriman
-client seperti X-Forwarded-For diabaikan secara default. Percobaan dibatasi
-sebelum hashing; input yang gagal validasi tidak memakai kuota registrasi.
-Batas tercapai menghasilkan 429 dengan Retry-After. Form registrasi web dan
-PWA menggunakan API akun yang sama.
-
-## Sesi guru
-
-- `POST /api/v1/auth/login` menerima `{email,password}`. Email dinormalisasi
-  seperti registrasi; password 1–128 unit UTF-16 diterima untuk verifikasi,
-  tanpa trim. Kredensial salah selalu 401 `INVALID_CREDENTIALS`, baik email
-  ada maupun tidak. Unknown field ditolak. Login sukses 200 memakai bentuk
-  `{data:{user:{id,name,email,school,grade},expiresAt}}` dan cookie sesi baru.
-- `GET /api/v1/auth/session` mengembalikan identitas guru dan waktu kedaluwarsa
-  absolut dalam bentuk yang sama, atau JSON401 `SESSION_REQUIRED`. GET tidak
-  memerlukan Origin. Password hash dan token tidak dikirim dalam JSON.
-- `POST /api/v1/auth/logout` mencabut sesi dari cookie dan menghapus cookie.
-  Respons 204 tanpa body; mengulang logout tetap 204 dan tidak menghapus akun.
-
-Cookie yang dikirim saat login sukses dicabut dalam transaksi yang sama dengan
-pembuatan sesi baru. Password salah atau kegagalan pembuatan sesi tidak mencabut
-sesi lama. Logout hanya mencabut sesi yang dikirim, bukan seluruh perangkat.
-Cookie malformed/duplikat ditolak saat membaca sesi.
-
-Sesi kedaluwarsa setelah 7 hari secara absolut atau 24 jam tanpa aktivitas;
-atur `SESSION_ABSOLUTE_SECONDS` dan `SESSION_IDLE_SECONDS` pada server. Membaca
-sesi memperbarui waktu aktivitas, tanpa memperpanjang batas absolut. Modul
-`createSessionHandlers(database,config).requireTeacher(request)` menyediakan
-identitas terverifikasi untuk modul backend berikutnya dan menolak dengan401
-bila sesi tidak valid.
-
-Login dibatasi default 5 kegagalan per kombinasi email+IP dan 30 percobaan perIP
-dalam 15 menit (`LOGIN_FAILURE_LIMIT`, `LOGIN_IP_LIMIT`). Throttle disimpan di
-database dan memberi 429+Retry-After; logout tidak dibatasi throttle login.
-Konfigurasi proxy tepercaya sama dengan registrasi. Semua write tetap memerlukan
-Origin yang benar dan semua respons auth memakai Cache-Control:no-store.
-Form frontend dan guard halaman privat memakai sesi server ini.
-
-## Materi teks milik guru
-
-Tahap ini menyediakan tiga endpoint dengan sesi guru yang sama:
-
-| Method | Path | Body/ketentuan |
-| --- | --- | --- |
-| POST | `/api/v1/materials` | JSON `{title,text}` dan header `Idempotency-Key` |
-| GET | `/api/v1/materials/:materialId` | Detail materi milik guru |
-| PATCH | `/api/v1/materials/:materialId` | JSON `{archived:boolean}` dan header `If-Match` |
-
-Judul di-trim, wajib nonempty, maksimal 120 unit UTF-16. Teks wajib memiliki isi
-non-spasi, maksimal 40.000 unit UTF-16; spasi dan baris baru asli dipertahankan.
-Karakter NUL ditolak. Body POST dibatasi 256 KiB. Unknown field ditolak;
-identitas pemilik, status awal, ID, revisi sumber, dan waktu diterbitkan server.
-Materi teks manual langsung memiliki `extractionStatus:ready`, `file:null`,
-`folderId:null`, dan `pinned:false`. Hash revisi SHA-256 berasal dari judul dan
-teks tersimpan. Arsip/pemulihan tidak mengubah isi atau revisi sumber.
-
-POST sukses 201; GET/PATCH 200. Respons `{data:...}` menyertakan ETag sesuai
-`resourceVersion`. Detail memuat teks dan waktu ISO UTC, tanpa owner atau lock
-internal. Materi akun lain dan ID hilang sama-sama menghasilkan 404; tanpa sesi
-401. PATCH memakai `If-Match: "N"` dari respons terakhir: tanpa versi 428,
-format tidak valid 400, versi usang 412. Hanya status arsip yang dapat diubah.
-
-`Idempotency-Key` wajib berupa 1–100 karakter ASCII non-spasi. Ruang key terpisah
-per guru dan route. Key sama dengan payload tervalidasi yang sama mengembalikan
-respons create asli selama 24 jam; payload berbeda menghasilkan 409. Transaksi
-menyimpan materi dan respons idempotensi bersama, sehingga retry bersamaan dan
-kegagalan database tidak membuat duplikat atau reservasi setengah jadi.
-
-Modul `createMaterialService(database)` menyediakan pembacaan sumber milik guru,
-batch 1–100 sumber dengan ownership seluruhnya, dan `withOwnedMaterial` untuk
-operasi yang memerlukan lock materi. Reader transaksi
-`getOwnedMaterial(transaction,userId,id)` dapat dipakai modul dokumen dan
-mengembalikan snapshot sumber atau null. Transaksi pemanggil harus tetap terbuka
-sampai operasi yang memakai sumber selesai. Lock materi tidak mengubah versi
-atau waktu pembaruan publik; arsip dan operasi berikutnya memakai lock yang sama.
-
-Upload PDF/TXT, ekstraksi, pencarian, folder, file privat, penghapusan,
-serta preferensi media tersedia melalui layanan workspace.
-
-## Penyimpanan internal preferensi media
-
-`createMediaPreferenceStore(database)` di modul `documents/media-preferences`
-menyediakan `get(userId,materialId)` dan
-`save(userId,materialId,{selectedMedia,songTemplateId},expectedVersion)` untuk
-pemanggil backend. `userId` harus berasal dari sesi guru terverifikasi; store
-memeriksa kepemilikan materi lagi melalui modul materi. Endpoint baca batch
-dijelaskan di bawah; penyimpanan melalui HTTP memakai endpoint PUT terpisah.
-
-Satu materi memiliki paling banyak satu record preferensi. Media yang diizinkan
-adalah `reading`, `mindmap`, `slides`, `song`; pilihan harus unik, 0–4 media.
-Urutan disimpan sesuai katalog. Array kosong sah. Template lagu adalah
-`balonku`, `cicak_dinding`, atau `potong_bebek`; field yang tidak dikirim memakai
-default `balonku`. Template yang dikirim tetap tersimpan walaupun `song` tidak
-dipilih. Simpan kedua field untuk mempertahankan template pilihan sebelumnya.
-
-Materi tanpa record mengembalikan pilihan kosong, `songTemplateId:balonku`,
-`resourceVersion:0`, dan `updatedAt:null` tanpa membuat record baru. Gunakan versi
-0 untuk penyimpanan pertama; versi naik pada setiap save yang diterima. Versi
-preferensi terpisah dari versi materi. Versi usang menghasilkan 412, tanpa versi
-428, dan input tidak valid 422. ID asing/hilang sama-sama 404. ID UUID dengan
-huruf besar mengacu ke materi yang sama dan dikembalikan dalam bentuk kanonis.
-
-Store memakai lock transaksi yang sama dengan arsip/pemulihan materi. Materi
-arsip tetap dapat dibaca, tetapi save ditolak dengan 409 `MATERIAL_ARCHIVED`.
-Preferensi lama tetap utuh untuk dipakai setelah pemulihan. Constraint database
-menjaga katalog, keunikan pilihan, template, versi positif, dan kecocokan pemilik
-dengan materi melalui foreign key komposit. Save tidak mengubah revisi, versi,
-atau waktu pembaruan materi, serta tidak menjalankan AI.
-
-## GET batch preferensi media
-
-`GET /api/v1/media-preferences?materialIds=id1,id2` memerlukan sesi guru. Kirim
-tepat satu parameter `materialIds` berisi 1–100 ID unik; parameter lain, ID
-berulang, daftar kosong atau lebih dari 100 ID ditolak dengan 422. UUID dipetakan
-ke bentuk kanonis sehingga perbedaan huruf besar/kecil tidak membuat preferensi
-terbaca sebagai default kosong.
-
-Respons 200 berbentuk `{data:[...],page:{nextCursor:null}}`, mengikuti urutan ID
-permintaan. Setiap item memuat `materialId`, `selectedMedia`, `songTemplateId`,
-`resourceVersion`, dan `updatedAt`; preferensi belum tersimpan memakai default
-versi 0 tanpa membuat record baru. Materi arsip tetap dapat dibaca. Endpoint tidak
-mengirim teks sumber atau identitas pemilik dan memakai Cache-Control:no-store.
-
-Semua materi wajib milik guru yang sedang masuk. Jika satu ID hilang/asing,
-seluruh batch gagal 404 tanpa hasil parsial; tanpa sesi menghasilkan JSON 401.
-Pemeriksaan pemilik dan pembacaan preferensi memakai satu snapshot transaksi,
-sehingga hasil tidak mencampur dua keadaan database saat ada save bersamaan.
-Pembacaan batch memakai dua query tanpa mengambil teks sumber atau mengunci
-baris materi. Integrasi frontend tetap tahap terpisah.
-
-## PUT preferensi media
-
-`PUT /api/v1/media-preferences/:materialId` memerlukan sesi guru, Origin yang
-benar, Content-Type application/json, dan `If-Match: "N"` dari versi preferensi
-terakhir. Body maksimal 4 KiB berisi `{selectedMedia,songTemplateId}`; aturan
-katalog dan penyimpanan internal di atas tetap berlaku. Gunakan `If-Match: "0"`
-untuk preferensi yang belum tersimpan. Versi materi tidak dipakai sebagai versi
-preferensi.
-
-Respons sukses 200 berbentuk `{data:...}` dengan item preferensi yang sama seperti
-GET dan ETag baru. GET berikutnya membaca hasil tersimpan. Array kosong dapat
-dipakai untuk “Batalkan semua”; template lagu yang dikirim tetap disimpan meski
-media lagu tidak dipilih. Unknown field seperti userId/resourceVersion ditolak.
-
-Tanpa sesi 401; Origin salah 403; materi asing/hilang 404; tanpa If-Match 428;
-format If-Match salah 400; versi usang 412; materi arsip 409 MATERIAL_ARCHIVED;
-isian tidak valid 422; JSON rusak 400; MIME salah 415; body terlalu besar 413.
-Error tidak mengembalikan data parsial, stack atau detail database. Seluruh
-respons memakai Cache-Control:no-store dan requestId. Simpan preferensi tidak
-mengubah sumber materi, membuat dokumen, atau menjalankan AI.
-
-## Pemeriksaan integrasi backend
-
-```sh
-npm ci
-npm run db:validate
-npm test
-npm run lint
-npm run build
-npm run test:http
-```
-
-`test:http` menjalankan build produksi web pada port localhost yang tersedia,
-membuat schema tes acak, menerapkan migrasi, lalu menguji registrasi, sesi,
-materi, GET/PUT preferensi, folder, jadwal, serta naskah ujian. Data guru/sumber yang
-digunakan seluruhnya sintetis. Setelah selesai atau gagal, proses server tes
-dihentikan dan schema tes dibersihkan. Build harus tersedia terlebih dahulu.
-Perintah ini memakai database tes terisolasi dan tidak memigrasikan
-`DATABASE_URL` aplikasi.
-
-Tanpa `TEST_DATABASE_URL`, tes memakai PGlite. Tes concurrency yang membutuhkan
-PostgreSQL penuh ditandai skip pada `npm test`. Untuk menjalankan seluruh kasus
-termasuk concurrency, set `TEST_DATABASE_URL` ke PostgreSQL UTF8 khusus tes:
-
-```powershell
-$env:TEST_DATABASE_URL = "postgresql://imajilearn:local_password@localhost:5432/imajilearn_test"
-npm test
-npm run test:http
-```
-
-Workflow `Web and PWA verification` memakai PostgreSQL 17 UTF8 dan Node.js 24 pada
-push/pull request ke branch `backend` dan `pwa`, serta dapat dipicu manual. Pipeline
-memasang dependensi dari lockfile, memvalidasi schema, menguji migrate/replay,
-menjalankan seluruh tes, lint, build web/PWA, dan smoke HTTP development serta
-integrasi dua server produksi dengan upstream PWA yang dikonfigurasi. Workflow
-ini hanya memeriksa kode; tidak melakukan deploy, push atau merge.
-
-Lingkup B1 backend adalah penyimpanan preferensi dan endpoint GET/PUT dengan
-validasi, ownership, versi, serta proteksi arsip/race. Form/frontend, upload
-PDF/TXT, dan provider AI berada pada tahap integrasi masing-masing.
-
-
-## Login Google
-
-Google sign-in uses the existing private teacher session. Configure `GOOGLE_CLIENT_ID`
-and `GOOGLE_CLIENT_SECRET` on the web server alongside `APP_ORIGIN` and `DATABASE_URL`.
-For Next.js local development, keep these in `apps/web/.env.local` (ignored by Git).
-Do not expose the client secret through a `NEXT_PUBLIC_` variable.
-
-Register a Web application OAuth client in Google Auth Platform. The authorized
-redirect URI must exactly equal `APP_ORIGIN` followed by `/api/v1/auth/google/callback`:
-
-- Local: `http://localhost:3000/api/v1/auth/google/callback`
-- Production: `https://imajilearn.ai.id/api/v1/auth/google/callback`
-
-For PWA sign-in, also set `PWA_PUBLIC_ORIGIN` on both the web backend and PWA
-server and register its separate exact callback URI:
-`PWA_PUBLIC_ORIGIN/app/api/v1/auth/google/pwa/callback`. For local development this
-is `http://localhost:3002/app/api/v1/auth/google/pwa/callback`. Production requires
-an HTTPS public origin. Google credentials remain on the web backend. The PWA
-starts through `POST /app/api/v1/auth/google/pwa`; its callback goes through the
-same PWA proxy, sets the session cookie on the PWA host and returns to
-`/app/beranda`. Flow cookies and state are bound to this callback independently
-of web sign-in. Installing this code does not configure Google Auth Platform or
-verify the deployed domain.
-
-The application requests only `openid email profile`. While the Google project is
-in testing mode, configure the intended test accounts in Google Auth Platform.
-Production deployment must configure its own environment and authorized origin.
-
-The web sign-in/register pages show the Google action when configured. PWA pages
-also offer the action and report unavailability if backend configuration is missing. New verified
-Google identities create a teacher account. Existing email/password accounts must
-first sign in with their password, then explicitly connect the same Google email
-in account settings. Email matches never automatically merge accounts. Google-only
-accounts continue using Google; creating a local password or unlinking Google is
-not part of this flow. Existing teacher data stays associated with its teacher ID.
-
-Start login with `POST /api/v1/auth/google`. Connect an existing account with
-`POST /api/v1/me/google/link` and JSON `{currentPassword}` using the current session,
-Origin and `X-Teacher-Id`. Both return `{data:{url}}` and a temporary browser-binding
-cookie; navigate to that Google URL. Callback verification and the resulting
-session are server-side. Errors are fixed safe UI messages; no provider tokens
-or secrets are returned to the application frontend.
-
+Daftar versi dependensi langsung terdapat pada `package.json` root dan setiap workspace; dependensi transitif dikunci pada `package-lock.json`. Hak cipta dan lisensi pustaka/aset pihak ketiga tetap mengikuti pemiliknya. Repository ini tidak menyatakan lisensi pihak ketiga sebagai lisensi seluruh karya tim.
