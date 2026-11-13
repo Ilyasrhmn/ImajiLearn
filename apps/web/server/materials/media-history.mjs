@@ -1,22 +1,88 @@
 import { ApiError } from "../core/errors.mjs";
+import { Prisma } from "../generated/prisma/index.js";
 import { canonicalMaterialId } from "./readers.mjs";
 import { resolveVisualModel } from "../../lib/visual-templates.mjs";
 import { sectionLabel } from "../../lib/material-section-label.mjs";
 
 const models = {
-  reading: { content: "materialReading", images: "materialReadingIllustration", entries: "sections", index: "sectionIndex" },
-  slides: { content: "materialSlideDeck", images: "materialSlideIllustration", entries: "slides", index: "slideIndex" },
-  mindmap: { content: "materialVisual" },
-  song: { content: "materialSong" },
+  reading: { table: "MaterialReading", images: "MaterialReadingIllustration", entries: "sections", index: "sectionIndex" },
+  slides: { table: "MaterialSlideDeck", images: "MaterialSlideIllustration", entries: "slides", index: "slideIndex" },
+  mindmap: { table: "MaterialVisual" },
+  song: { table: "MaterialSong" },
 };
 const missing = () => new ApiError(404, "MATERIAL_NOT_FOUND", "Materi tidak ditemukan.");
 
+// Project lesson metadata in PostgreSQL so listing never transfers paragraphs or image/audio bytes.
+export async function* scanMediaHistory(db, userId, feature, { rootId = null, materialIds, offset = 0, take = 100 } = {}) {
+  const model = models[feature];
+  const table = Prisma.raw(`"${model.table}"`);
+  const entries = model.entries && Prisma.sql`CASE WHEN jsonb_typeof(e."content" -> ${model.entries}) = 'array'
+    THEN jsonb_array_length(e."content" -> ${model.entries}) ELSE 0 END`;
+  const prepared = model.images ? Prisma.sql`(${entries}) > 0 AND (${entries}) = (
+    SELECT count(*) FROM ${Prisma.raw(`"${model.images}"`)} i
+    WHERE i."materialId" = e."materialId" AND i."revision" = e."revision"
+      AND i.${Prisma.raw(`"${model.index}"`)} >= 0 AND i.${Prisma.raw(`"${model.index}"`)} < (${entries})
+      AND (i."bytes" IS NOT NULL OR i."sourceBytes" IS NOT NULL OR i."visualSkipped")
+  )` : Prisma.sql`false`;
+  const content = feature === "mindmap" ? Prisma.sql`e."content"` : Prisma.sql`jsonb_build_object(
+    'title', e."content" -> 'title',
+    'sections', jsonb_build_array(jsonb_build_object('heading', e."content" #> '{sections,0,heading}')),
+    'slides', jsonb_build_array(jsonb_build_object('title', e."content" #> '{slides,0,title}'))
+  )`;
+  const sortAt = feature === "song" ? Prisma.sql`e."updatedAt"` : Prisma.sql`e."generatedAt"`;
+  const tieAt = feature === "song" ? Prisma.sql`'-infinity'::timestamptz` : Prisma.sql`m."createdAt"`;
+  let cursor = null;
+  do {
+    const rows = await db.$queryRaw`
+      SELECT m."id" AS "materialId", m."title" AS "materialTitle", m."pageStart" AS "first", m."pageEnd" AS "last",
+        m."sectionPages" AS "pages", COALESCE(p."title", m."title") AS "sourceTitle",
+        f."name" AS "sourceName", f."mime" AS "sourceMime", folder."name" AS "folderName",
+        ${content} AS "content", ${prepared} AS "prepared",
+        ${feature === "song" ? Prisma.sql`e."status"` : Prisma.sql`NULL::text`} AS "songStatus",
+        e."leaseUntil", ${sortAt} AS "sortAt", m."createdAt" AS "createdAt",
+        ${feature === "song" ? Prisma.sql`NULL::timestamptz` : Prisma.sql`e."generatedAt"`} AS "generatedAt",
+        EXISTS (SELECT 1 FROM "MediaDraft" d JOIN "Material" dr ON dr."id" = d."rootId" AND dr."userId" = d."userId"
+          WHERE d."selectionId" = m."id" AND d."userId" = ${userId}::uuid
+          AND d."feature" = ${feature} AND NOT m."archived" AND NOT dr."archived") AS "saved"
+      FROM ${table} e
+      JOIN "Material" m ON m."id" = e."materialId" AND m."revision" = e."revision"
+      LEFT JOIN "Material" p ON p."id" = m."parentId" AND p."userId" = m."userId"
+      LEFT JOIN "MaterialFile" f ON f."materialId" = COALESCE(p."id", m."id") AND f."userId" = m."userId"
+      LEFT JOIN "Folder" folder ON folder."id" = CASE WHEN p."id" IS NULL THEN m."folderId" ELSE p."folderId" END
+        AND folder."userId" = m."userId"
+      WHERE m."userId" = ${userId}::uuid
+        AND ${rootId ? Prisma.sql`(m."id" = ${rootId}::uuid OR m."parentId" = ${rootId}::uuid)`
+          : Prisma.sql`NOT m."archived" AND NOT COALESCE(p."archived", false)`}
+        ${materialIds ? Prisma.sql`AND m."id" IN (${Prisma.join(materialIds.map(id => Prisma.sql`${id}::uuid`))})` : Prisma.empty}
+        ${cursor ? Prisma.sql`AND (COALESCE(${sortAt}, '-infinity'::timestamptz), ${tieAt}, m."id") <
+          (COALESCE(${cursor.sortAt}::timestamptz, '-infinity'::timestamptz),
+          ${feature === "song" ? Prisma.sql`'-infinity'::timestamptz` : Prisma.sql`${cursor.createdAt}::timestamptz`}, ${cursor.materialId}::uuid)` : Prisma.empty}
+      ORDER BY ${sortAt} DESC NULLS LAST, ${tieAt} DESC, m."id" DESC
+      LIMIT ${take} OFFSET ${cursor ? 0 : offset}`;
+    for (const row of rows) {
+      let status = "ready";
+      if (feature === "song") status = row.songStatus === "ready" ? "ready" : ["failed", "uncertain"].includes(row.songStatus) ? "incomplete" : "preparing";
+      else if (model.images && !row.prepared) status = row.leaseUntil > new Date() ? "preparing" : "incomplete";
+      else if (feature === "mindmap" && !resolveVisualModel(row.content)) status = "incomplete";
+      const title = row.content?.title;
+      const label = title && !/^(?:pilihan halaman|hlm\.|halaman \d)/iu.test(title) ? title
+        : row.content?.sections?.[0]?.heading ?? row.content?.slides?.[0]?.title ?? row.materialTitle;
+      yield { item: {
+        materialId: row.materialId, title: sectionLabel(label), status,
+        first: row.first, last: row.last, pages: row.pages,
+        generatedAt: (feature === "song" && status === "ready" ? row.sortAt : row.generatedAt)?.toISOString() ?? null,
+        sourceTitle: row.sourceTitle, sourceName: row.sourceName, sourceMime: row.sourceMime, folderName: row.folderName,
+      }, saved: row.saved, searchValues: [title, row.materialTitle, row.sourceTitle, row.sourceName, row.folderName] };
+    }
+    cursor = rows.length === take ? rows.at(-1) : null;
+  } while (cursor);
+}
+
 export async function materialMediaHistory(db, userId, materialId, params, { all = false } = {}) {
   const feature = params.get("feature");
-  const model = Object.hasOwn(models, feature) ? models[feature] : null;
   const offset = Number(params.get("offset") ?? 0);
   const query = (params.get("q") ?? "").trim().toLocaleLowerCase("id-ID");
-  if (query.length > 200 || !model || !Number.isInteger(offset) || offset < 0 || offset > 10000) {
+  if (query.length > 200 || !Object.hasOwn(models, feature) || !Number.isInteger(offset) || offset < 0 || offset > 10000) {
     throw new ApiError(422, "INVALID_MEDIA_HISTORY", "Riwayat media tidak valid.");
   }
   const studio = materialId === null;
@@ -24,64 +90,15 @@ export async function materialMediaHistory(db, userId, materialId, params, { all
   const material = id && await db.material.findFirst({ where: { id, userId }, select: { id: true, parentId: true } });
   if (!studio && !material) throw missing();
   const rootId = studio ? null : material.parentId ?? material.id;
-  const family = await db.material.findMany({
-    where: studio ? { userId, archived: false, OR: [{ parentId: null }, { parent: { archived: false } }] }
-      : { userId, OR: [{ id: rootId }, { parentId: rootId }] },
-    select: { id: true, title: true, revision: true, pageStart: true, pageEnd: true, sectionPages: true,
-      file: { select: { name: true, mime: true } },
-      folder: { select: { name: true } },
-      parent: { select: { title: true, file: { select: { name: true, mime: true } }, folder: { select: { name: true } } } },
-    },
-  });
-  const sources = new Map(family.map(source => [source.id, source]));
-  const rows = await db[model.content].findMany({
-    where: { OR: family.map(source => ({ materialId: source.id, revision: source.revision })) },
-    select: { materialId: true, revision: true, content: true,
-      ...(feature === "song" ? { status: true, updatedAt: true } : { generatedAt: true, leaseUntil: true }),
-    },
-    orderBy: feature === "song" ? [{ updatedAt: "desc" }, { materialId: "desc" }]
-      : [{ generatedAt: { sort: "desc", nulls: "last" } }, { material: { createdAt: "desc" } }, { materialId: "desc" }],
-    ...(all || query ? {} : { skip: offset, take: 21 }),
-  });
-  const matching = query ? rows.filter(row => {
-    const source = sources.get(row.materialId);
-    const root = source.parent ?? source;
-    return [row.content?.title, source.title, root.title, root.file?.name, root.folder?.name]
-      .some(value => typeof value === "string" && value.toLocaleLowerCase("id-ID").includes(query));
-  }) : rows;
-  const page = all ? matching : matching.slice(query ? offset : 0, query ? offset + 20 : 20);
-  const images = model.images && page.length ? await db[model.images].findMany({
-    where: { OR: page.map(row => ({ materialId: row.materialId, revision: row.revision })),
-      AND: { OR: [{ bytes: { not: null } }, { sourceBytes: { not: null } }, { visualSkipped: true }] },
-    },
-    select: { materialId: true, revision: true, [model.index]: true },
-  }) : [];
-  return {
-    parentId: rootId,
-    items: page.map(row => {
-      const source = sources.get(row.materialId);
-      let status = "ready";
-      if (feature === "song") status = row.status === "ready" ? "ready" : ["failed", "uncertain"].includes(row.status) ? "incomplete" : "preparing";
-      else if (model.images) {
-        const prepared = new Set(images.filter(image => image.materialId === row.materialId && image.revision === row.revision)
-          .map(image => image[model.index]));
-        if (!row.content?.[model.entries]?.length || !row.content[model.entries].every((_, index) => prepared.has(index))) {
-          status = row.leaseUntil > new Date() ? "preparing" : "incomplete";
-        }
-      } else if (!resolveVisualModel(row.content)) status = "incomplete";
-      const title = row.content?.title;
-      const label = title && !/^(?:pilihan halaman|hlm\.|halaman \d)/iu.test(title) ? title
-        : row.content?.sections?.[0]?.heading ?? row.content?.slides?.[0]?.title ?? source.title;
-      return {
-        materialId: source.id, title: sectionLabel(label), status,
-        first: source.pageStart, last: source.pageEnd, pages: source.sectionPages,
-        generatedAt: (feature === "song" && status === "ready" ? row.updatedAt : row.generatedAt)?.toISOString() ?? null,
-        sourceTitle: source.parent?.title ?? source.title,
-        sourceName: (source.parent ?? source).file?.name ?? null,
-        sourceMime: (source.parent ?? source).file?.mime ?? null,
-        folderName: (source.parent ?? source).folder?.name ?? null,
-      };
-    }),
-    nextOffset: !all && matching.length > (query ? offset + 20 : 20) ? offset + 20 : null,
-  };
+  const items = [];
+  let skipped = 0;
+  for await (const { item, searchValues } of scanMediaHistory(db, userId, feature,
+    { rootId, offset: !all && !query ? offset : 0, take: !all && !query ? 21 : 100 })) {
+    if (query && !searchValues.some(value => typeof value === "string" && value.toLocaleLowerCase("id-ID").includes(query))) continue;
+    if (!all && query && skipped++ < offset) continue;
+    items.push(item);
+    if (!all && items.length === 21) break;
+  }
+  const more = !all && items.length > 20;
+  return { parentId: rootId, items: more ? items.slice(0, 20) : items, nextOffset: more ? offset + 20 : null };
 }

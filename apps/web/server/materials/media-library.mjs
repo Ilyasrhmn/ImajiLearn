@@ -1,6 +1,6 @@
 import { ApiError } from "../core/errors.mjs";
 import { canonicalMaterialId, getOwnedMaterial } from "./readers.mjs";
-import { materialMediaHistory } from "./media-history.mjs";
+import { scanMediaHistory } from "./media-history.mjs";
 import { sectionLabel } from "../../lib/material-section-label.mjs";
 
 const missing = () => new ApiError(404, "MATERIAL_NOT_FOUND", "Materi tidak ditemukan.");
@@ -42,29 +42,46 @@ export async function mediaLibrary(db, userId, feature, params) {
   if (!["drafts", "history"].includes(tab) || !Number.isSafeInteger(requestedPage) || requestedPage < 1 || requestedPage > 10000 || query.length > 200) {
     throw new ApiError(422, "INVALID_MEDIA_LIBRARY", "Daftar media tidak valid.");
   }
-  const [history, saved] = await Promise.all([
-    materialMediaHistory(db, userId, null, new URLSearchParams({ feature }), { all: true }),
-    db.mediaDraft.findMany({ where: { userId, feature, root: { archived: false }, selection: { archived: false } },
-      orderBy: [{ updatedAt: "desc" }, { rootId: "desc" }],
-      select: { updatedAt: true, selection: { select: { id: true, title: true, pageStart: true, pageEnd: true, sectionPages: true } },
-        root: { select: { title: true, file: { select: { name: true, mime: true } }, folder: { select: { name: true } } } } } }),
-  ]);
-  const ready = history.items.filter(item => item.status === "ready");
-  const generated = new Map(history.items.map(item => [item.materialId, item]));
-  const drafts = saved.flatMap(({ selection, root, updatedAt }) => {
-    const existing = generated.get(selection.id);
-    if (existing?.status === "ready") return [];
-    return [{ ...(existing ?? { materialId: selection.id, title: sectionLabel(selection.title === "Pilihan halaman" ? root.title : selection.title), status: "draft",
-      first: selection.pageStart, last: selection.pageEnd, pages: selection.sectionPages,
-      generatedAt: null, sourceTitle: root.title, sourceName: root.file?.name ?? null,
-      sourceMime: root.file?.mime ?? null, folderName: root.folder?.name ?? null }), updatedAt: updatedAt.toISOString() }];
-  });
-  const savedIds = new Set(drafts.map(item => item.materialId));
-  drafts.push(...history.items.filter(item => item.status !== "ready" && !savedIds.has(item.materialId)));
-  const matches = (tab === "drafts" ? drafts : ready).filter(item => !query ||
-    [item.title, item.sourceTitle, item.sourceName, item.folderName].some(text => text?.toLocaleLowerCase("id").includes(query)));
-  const pages = Math.max(1, Math.ceil(matches.length / 10));
+  const counts = { drafts: 0, history: 0 };
+  let total = 0, items = [], lastPage = [];
+  const collect = (item, category) => {
+    counts[category]++;
+    if (category !== tab || (query && ![item.title, item.sourceTitle, item.sourceName, item.folderName]
+      .some(text => text?.toLocaleLowerCase("id").includes(query)))) return;
+    if (total % 10 === 0) lastPage = [];
+    lastPage.push(item);
+    if (Math.floor(total / 10) === requestedPage - 1) items.push(item);
+    total++;
+  };
+  let cursor = null;
+  do {
+    const saved = await db.mediaDraft.findMany({
+      where: { userId, feature, root: { archived: false }, selection: { archived: false },
+        ...(cursor ? { OR: [{ updatedAt: { lt: cursor.updatedAt } }, { updatedAt: cursor.updatedAt, rootId: { lt: cursor.rootId } }] } : {}),
+      }, orderBy: [{ updatedAt: "desc" }, { rootId: "desc" }], take: 100,
+      select: { rootId: true, updatedAt: true, selection: { select: { id: true, title: true, pageStart: true, pageEnd: true, sectionPages: true } },
+        root: { select: { title: true, file: { select: { name: true, mime: true } }, folder: { select: { name: true } } } } },
+    });
+    const generated = new Map();
+    if (saved.length) for await (const { item } of scanMediaHistory(db, userId, feature, { materialIds: saved.map(draft => draft.selection.id) })) {
+      generated.set(item.materialId, item);
+    }
+    for (const { selection, root, updatedAt } of saved) {
+      const existing = generated.get(selection.id);
+      if (existing?.status === "ready") continue;
+      collect({ ...(existing ?? { materialId: selection.id, title: sectionLabel(selection.title === "Pilihan halaman" ? root.title : selection.title), status: "draft",
+        first: selection.pageStart, last: selection.pageEnd, pages: selection.sectionPages,
+        generatedAt: null, sourceTitle: root.title, sourceName: root.file?.name ?? null,
+        sourceMime: root.file?.mime ?? null, folderName: root.folder?.name ?? null }), updatedAt: updatedAt.toISOString() }, "drafts");
+    }
+    cursor = saved.length === 100 ? saved.at(-1) : null;
+  } while (cursor);
+  for await (const { item, saved } of scanMediaHistory(db, userId, feature)) {
+    if (item.status === "ready") collect(item, "history");
+    else if (!saved) collect(item, "drafts");
+  }
+  const pages = Math.max(1, Math.ceil(total / 10));
   const page = Math.min(requestedPage, pages);
-  return { items: matches.slice((page - 1) * 10, page * 10), total: matches.length, page, pages,
-    counts: { drafts: drafts.length, history: ready.length } };
+  if (page !== requestedPage) items = lastPage;
+  return { items, total, page, pages, counts };
 }

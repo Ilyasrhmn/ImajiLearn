@@ -32,7 +32,7 @@ export function createGoogleProvider(config, { fetch: transport = fetch, keys = 
         method: "POST", redirect: "error", signal: AbortSignal.timeout(8000),
         headers: { "content-type": "application/x-www-form-urlencoded" },
         body: new URLSearchParams({ code, client_id: config.clientId, client_secret: config.clientSecret,
-          redirect_uri: `${config.origin}/api/v1/auth/google/callback`, grant_type: "authorization_code", code_verifier: verifier }),
+          redirect_uri: config.redirectUri ?? `${config.origin}/api/v1/auth/google/callback`, grant_type: "authorization_code", code_verifier: verifier }),
       });
       const result = await boundedJson(response);
       if (typeof result.id_token !== "string" || result.id_token.length > 16384) throw failure();

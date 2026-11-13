@@ -13,12 +13,12 @@ import { googleAvatarUrl } from "@imajilearn/shared/lib/google-avatar.mjs";
 
 const lifetime = 600;
 const opaque = () => randomBytes(32).toString("base64url");
-const flowCookieName = secure => secure ? "__Host-imajilearn_google_flow" : "imajilearn_google_flow";
-function flowCookie(token, secure, maxAge) {
-  return `${flowCookieName(secure)}=${token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${maxAge}${secure ? "; Secure" : ""}`;
+const flowCookieName = (secure, namespace) => `${secure ? "__Host-" : ""}imajilearn_${namespace}google_flow`;
+function flowCookie(token, secure, maxAge, namespace) {
+  return `${flowCookieName(secure, namespace)}=${token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${maxAge}${secure ? "; Secure" : ""}`;
 }
-function browserToken(request, secure) {
-  const name = flowCookieName(secure);
+function browserToken(request, secure, namespace) {
+  const name = flowCookieName(secure, namespace);
   const cookies = (request.headers.get("cookie") ?? "").split(";").map(value => value.trim()).filter(value => value.startsWith(`${name}=`));
   const value = cookies.length === 1 ? cookies[0].slice(name.length + 1) : "";
   return /^[a-f\d]{64}$/.test(value) ? value : null;
@@ -29,6 +29,9 @@ class FlowError extends Error {
 
 export function createGoogleHandlers(db, config, { provider = createGoogleProvider(config) } = {}) {
   const secure = config.origin.startsWith("https://");
+  const namespace = config.flowNamespace ?? "", applicationPath = config.applicationPath ?? "";
+  const redirectUri = config.redirectUri ?? `${config.origin}/api/v1/auth/google/callback`;
+  const stateDigest = state => digest(`${redirectUri}:${state}`);
   const { requireTeacher } = createSessionHandlers(db, config);
   async function start(request, binding) {
     const ip = config.trustedIpHeader ? (request.headers.get(config.trustedIpHeader)?.slice(0, 200) || "unknown") : "shared";
@@ -36,13 +39,13 @@ export function createGoogleHandlers(db, config, { provider = createGoogleProvid
     const now = new Date();
     await db.$executeRaw`DELETE FROM "GoogleOAuthFlow" WHERE "tokenHash" IN (SELECT "tokenHash" FROM "GoogleOAuthFlow" WHERE "expiresAt" <= ${now} ORDER BY "expiresAt" LIMIT 100)`;
     const token = randomBytes(32).toString("hex"), state = opaque(), nonce = opaque(), verifier = opaque();
-    await db.googleOAuthFlow.create({ data: { tokenHash: digest(token), stateHash: digest(state), nonceHash: digest(nonce),
+    await db.googleOAuthFlow.create({ data: { tokenHash: digest(token), stateHash: stateDigest(state), nonceHash: digest(nonce),
       verifier, intent: binding ? "link" : "login", ...binding, expiresAt: new Date(now.getTime() + lifetime * 1000) } });
     const url = new URL("https://accounts.google.com/o/oauth2/v2/auth");
-    for (const [key, value] of Object.entries({ client_id: config.clientId, redirect_uri: `${config.origin}/api/v1/auth/google/callback`,
+    for (const [key, value] of Object.entries({ client_id: config.clientId, redirect_uri: redirectUri,
       response_type: "code", scope: "openid email profile", state, nonce, prompt: "select_account",
       code_challenge: createHash("sha256").update(verifier).digest("base64url"), code_challenge_method: "S256" })) url.searchParams.set(key, value);
-    return Response.json({ data: { url: url.toString() } }, { headers: { "set-cookie": flowCookie(token, secure, lifetime) } });
+    return Response.json({ data: { url: url.toString() } }, { headers: { "set-cookie": flowCookie(token, secure, lifetime, namespace) } });
   }
   async function completeLink(tx, flow, identity, request) {
     const [teacher] = await tx.$queryRaw`SELECT "id", "email", "passwordHash" FROM "Teacher" WHERE "id" = ${flow.teacherId}::uuid FOR UPDATE`;
@@ -93,13 +96,13 @@ export function createGoogleHandlers(db, config, { provider = createGoogleProvid
     }, config.origin),
     callback: async request => {
       let intent = "login", session;
-      const redirect = code => new Response(null, { status: 303, headers: { location: `${intent === "link" ? "/akun" : "/masuk"}?google=${code}`,
-        "set-cookie": flowCookie("", secure, 0), "cache-control": "no-store", "referrer-policy": "no-referrer" } });
+      const redirect = code => new Response(null, { status: 303, headers: { location: `${applicationPath}${intent === "link" ? "/akun" : "/masuk"}?google=${code}`,
+        "set-cookie": flowCookie("", secure, 0, namespace), "cache-control": "no-store", "referrer-policy": "no-referrer" } });
       try {
-        const params = new URL(request.url).searchParams, token = browserToken(request, secure);
+        const params = new URL(request.url).searchParams, token = browserToken(request, secure, namespace);
         const state = params.get("state");
         if (!token || params.getAll("state").length !== 1 || !/^[A-Za-z0-9_-]{43}$/.test(state ?? "")) throw new FlowError("expired");
-        const tokenHash = digest(token), stateHash = digest(state), now = new Date();
+        const tokenHash = digest(token), stateHash = stateDigest(state), now = new Date();
         // DELETE RETURNING gives only one callback access to the verifier, including simultaneous callbacks.
         const [flow] = await db.$queryRaw`DELETE FROM "GoogleOAuthFlow" WHERE "tokenHash" = ${tokenHash} AND "stateHash" = ${stateHash} AND "expiresAt" > ${now} RETURNING *`;
         if (!flow) throw new FlowError("expired");
@@ -114,7 +117,7 @@ export function createGoogleHandlers(db, config, { provider = createGoogleProvid
       }
       const response = redirect(intent === "link" ? "linked" : "signed_in");
       if (intent === "login") {
-        response.headers.set("location", "/beranda?google=signed_in");
+        response.headers.set("location", `${applicationPath}/beranda?google=signed_in`);
         response.headers.append("set-cookie", session.cookie);
       }
       return response;

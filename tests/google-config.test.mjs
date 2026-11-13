@@ -11,3 +11,15 @@ test("Google configuration exposes availability only and rejects incomplete cred
  }
  const config=googleConfig({...valid,GOOGLE_START_LIMIT:"7"});assert.equal(config.origin,valid.APP_ORIGIN);assert.equal(config.googleStartLimit,7);assert.equal(config.googleEnabled,true);
 });
+
+test("PWA Google callback uses only the configured public origin and requires HTTPS in production", async () => {
+ const { pwaGoogleConfig } = await import("../apps/web/server/accounts/google/config.mjs");
+ const env = { APP_ORIGIN: "https://web.example.test", PWA_PUBLIC_ORIGIN: "https://pwa.example.test", GOOGLE_CLIENT_ID: "synthetic-client", GOOGLE_CLIENT_SECRET: "synthetic-secret", NODE_ENV: "production" };
+ const config = pwaGoogleConfig(env);
+ assert.equal(config.origin, env.PWA_PUBLIC_ORIGIN);
+ assert.equal(config.redirectUri, "https://pwa.example.test/app/api/v1/auth/google/pwa/callback");
+ assert.equal(config.applicationPath, "/app");
+ for (const value of [undefined, "http://pwa.example.test", "https://pwa.example.test/path", "https://user:pass@pwa.example.test"]) {
+   assert.throws(() => pwaGoogleConfig({ ...env, PWA_PUBLIC_ORIGIN: value }), error => error.code === "GOOGLE_UNAVAILABLE");
+ }
+});
