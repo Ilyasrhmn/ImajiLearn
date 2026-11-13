@@ -38,8 +38,6 @@
 .pwa-material-workspace .immersive-reading .reading-content h2 { font-size:26px; line-height:1.25; margin-bottom:20px; }
 .pwa-material-workspace .immersive-reading .reading-content p { font-size:18px; line-height:1.7; }
 .pwa-material-workspace .immersive-reading .lesson-pagination { gap:8px; }
-.pwa-material-workspace .immersive-reading .lesson-pagination > .button { min-height:44px; padding:10px; font-size:14px; }
-.pwa-material-workspace .immersive-reading .lesson-pagination > .text-button { font-size:14px; }
 .pwa-material-workspace .immersive-reading .lesson-pagination > span { font-size:13px; white-space:nowrap; }
 .pwa-material-workspace .karaoke-stage { grid-template-columns:minmax(0,1fr); padding:20px 16px 130px; min-height:320px; }
 .pwa-material-workspace .karaoke-line { font-size:23px; padding:8px 0; }

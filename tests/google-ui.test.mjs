@@ -24,6 +24,16 @@ test("Google linking sends the current password with the teacher identity check"
   } });
 });
 
+test("PWA Google login posts through its own same-origin callback namespace", async () => {
+ const result = await requestGoogleAuthorization({}, { loginEndpoint: "/app/api/v1/auth/google/pwa", fetchImpl: async (path, options) => {
+   assert.equal(path, "/app/api/v1/auth/google/pwa");
+   assert.equal(options.method, "POST");
+   assert.equal(options.credentials, "same-origin");
+   return Response.json({ data: { url: authorizationUrl } });
+ } });
+ assert.equal(result.url, authorizationUrl);
+});
+
 test("Google start refuses an unexpected redirect and does not render raw server failures", async () => {
   for (const response of [Response.json({ data: { url: "https://unexpected.example/auth" } }), Response.json({ error: { message: "private upstream detail" } }, { status: 500 })]) {
     await assert.rejects(requestGoogleAuthorization({}, { fetchImpl: async () => response }), error => !error.message.includes("private") && error.message.includes("Coba lagi"));

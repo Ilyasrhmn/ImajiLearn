@@ -1,0 +1,23 @@
+.pwa-install-screen {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 16px;
+  width: min(100%, 460px);
+  min-height: 100svh;
+  margin-inline: auto;
+  padding: 28px;
+  background: var(--paper);
+}
+.pwa-install-screen img { border-radius: 16px; }
+.pwa-install-screen h1 { margin: 0; font-size: clamp(27px, 6vw, 34px); line-height: 1.2; }
+.pwa-install-screen p { margin: 0; line-height: 1.55; }
+.pwa-install-screen :is(.primary, .secondary) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  text-decoration: none;
+}

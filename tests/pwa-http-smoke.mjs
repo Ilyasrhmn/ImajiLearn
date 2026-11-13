@@ -37,6 +37,7 @@ try {
     IMAJILEARN_TEST_BUILD: production ? "pwa-production" : "pwa-http",
     PWA_INTERNAL_ORIGIN: `http://127.0.0.1:${pwaPort}`, DATABASE_URL: storage.connectionUrl(),
     PWA_BACKEND_ORIGIN: origin, PWA_BACKEND_PUBLIC_ORIGIN: appOrigin,
+    GOOGLE_CLIENT_ID: "synthetic-client", GOOGLE_CLIENT_SECRET: "synthetic-secret",
     PWA_PUBLIC_ORIGIN: production ? "https://pwa-direct.example.test" : `http://127.0.0.1:${pwaPort}` };
   if (production) {
     for (const app of ["pwa", "web"]) await runNode(["node_modules/next/dist/bin/next", "build", `apps/${app}`], { env });
@@ -54,6 +55,19 @@ try {
     body: body ? JSON.stringify(body) : undefined,
   });
   assert.equal((await direct("/auth/session")).status, 401);
+  const googleStart = await direct("/auth/google/pwa", { method: "POST" });
+  assert.equal(googleStart.status, 200);
+  const googleUrl = new URL((await googleStart.json()).data.url);
+  assert.equal(googleUrl.searchParams.get("redirect_uri"), `${env.PWA_PUBLIC_ORIGIN}/app/api/v1/auth/google/pwa/callback`);
+  assert.equal(googleUrl.searchParams.get("code_challenge_method"), "S256");
+  const googleCookie = googleStart.headers.getSetCookie()[0].split(";")[0];
+  const callbackUrl = `${env.PWA_INTERNAL_ORIGIN}/app/api/v1/auth/google/pwa/callback?state=${googleUrl.searchParams.get("state")}&error=access_denied`;
+  const googleCancel = await fetch(callbackUrl, { headers: { cookie: googleCookie }, redirect: "manual" });
+  assert.equal(googleCancel.status, 303);
+  assert.equal(googleCancel.headers.get("location"), "/app/masuk?google=cancelled");
+  assert.match(googleCancel.headers.get("set-cookie"), /Max-Age=0/);
+  assert.equal((await fetch(callbackUrl, { headers: { cookie: googleCookie }, redirect: "manual" })).headers.get("location"), "/app/masuk?google=expired");
+  assert.equal((await direct("/auth/google/pwa", { method: "POST", requestOrigin: "https://foreign.example" })).status, 403);
   const directRegistration = await direct("/auth/register", { method: "POST", body: {
     name: "Direct PWA teacher", email: `direct-${randomUUID()}@example.test`, password: "Synthetic password" } });
   assert.equal(directRegistration.status, 201);
@@ -81,6 +95,7 @@ try {
   assert.match(authHtml, /mascot-book/);
   assert.match(authHtml, /name="email"/);
   assert.match(authHtml, /name="password"/);
+  assert.match(authHtml, /Lanjutkan dengan Google/);
   assert.match(authHtml, /\/app\/daftar/);
   const manifest = await (await fetch(`${origin}/app/manifest.webmanifest`)).json();
   assert.equal(manifest.scope, "/app/");

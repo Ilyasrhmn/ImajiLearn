@@ -1,5 +1,6 @@
 import { proxyBackend } from "../../../../lib/backend-proxy.mjs";
 
+export const maxDuration = 300;
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const GET = proxyBackend;

@@ -69,6 +69,11 @@ export function copyRemedial(exam) {
 
 export function finalGrade(score, maximum) { return maximum > 0 ? Math.round(score / maximum * 100) : 0; }
 
+export function isBlankExamQuestion(question) {
+  return [question.prompt, question.answer, question.explanation, question.rubric, question.topic,
+    question.learningOutcome, question.indicator, ...question.options].every(value => !value.trim());
+}
+
 export function examRequest(config, materials) {
   const error = validateExamConfig(config);
   if (error) throw new Error(error);
