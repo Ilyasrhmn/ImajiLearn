@@ -20,7 +20,7 @@ export async function materialSections(db, userId, materialId, params) {
     throw new ApiError(422, "INVALID_PAGE_RANGE", "Rentang halaman tidak valid.");
   }
   const pages = [...new Set(ranges.flatMap(([first, last]) => Array.from({ length: last - first + 1 }, (_, i) => first + i)))].sort((a, b) => a - b);
-  if (pages.length === metadata.pages) {
+  if (pages.length === metadata.pages && !["SOURCE_TEXT_UNREADABLE", "SOURCE_EXTRACTION_TIMEOUT"].includes(material.extractionError)) {
     if (material.extractionStatus !== "ready") {
       throw new ApiError(422, material.extractionError ?? "SOURCE_TEXT_UNREADABLE",
         material.extractionError === "SOURCE_TEXT_TOO_LONG" ? sourceTextLimitMessage : "Teks sumber belum dapat dibaca. Pilih bagian lain.");
@@ -31,7 +31,8 @@ export async function materialSections(db, userId, materialId, params) {
   const contiguous = pages.length === last - first + 1;
   const text = await extractPdf(file.bytes, { first, last, pages });
   if (!text || text.includes("\0")) throw new ApiError(422, "SOURCE_TEXT_UNREADABLE", "Teks pada halaman ini tidak terbaca.");
-  const title = contiguous && metadata.sections.find(section => !section.pageGroup && section.first === first && section.last === last)?.title || "Pilihan halaman";
+  const title = pages.length === metadata.pages ? material.title
+    : contiguous && metadata.sections.find(section => !section.pageGroup && section.first === first && section.last === last)?.title || "Pilihan halaman";
   const revision = digest(JSON.stringify(contiguous ? [material.revision, first, last, text] : [material.revision, pages, text]));
   return service.withOwnedMaterial(userId, materialId, (tx, parent) => {
     if (parent.archived) throw new ApiError(409, "MATERIAL_ARCHIVED", "Pulihkan materi untuk memilih bagian.");

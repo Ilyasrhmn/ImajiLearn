@@ -46,6 +46,13 @@ test("PDF sections isolate outputs and keep a single document in the library", a
     const outline = await materialSections(db, owner.id, material.id);
     assert.deepEqual(outline.sections.map(({ first, last }) => [first, last]), [[1, 1], [2, 2], [3, 3]]);
     assert.equal((await pick(1, 3)).id, material.id);
+    await db.material.update({ where: { id: material.id }, data: { text: "", extractionStatus: "failed", extractionError: "SOURCE_TEXT_UNREADABLE" } });
+    const recovered = await pick(1, 3);
+    assert.notEqual(recovered.id, material.id);
+    assert.equal((await service.get(owner.id, recovered.id)).extractionStatus, "ready");
+    assert.match((await service.get(owner.id, recovered.id)).text, /Benih[\s\S]*Cahaya/);
+    assert.equal((await pick(1, 3)).id, recovered.id);
+    await db.material.update({ where: { id: material.id }, data: { text: material.text, extractionStatus: "ready", extractionError: null } });
     await assert.rejects(pick(1, 4), { code: "INVALID_PAGE_RANGE" });
     await assert.rejects(pick(1, 1, other.id), { status: 404 });
     const [first, second] = await Promise.all([pick(1, 1), pick(2, 2)]);

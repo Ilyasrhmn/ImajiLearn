@@ -1,11 +1,17 @@
 import assert from "node:assert/strict";
-import { access } from "node:fs/promises";
+import { access, readFile } from "node:fs/promises";
 import { createServer } from "node:net";
 import { testDatabase } from "./support/database.mjs";
 import { startNode, runNode, stopNode } from "./support/process.mjs";
 
 try { await access(new URL("../apps/web/.next/BUILD_ID", import.meta.url)); }
 catch { throw new Error("Run npm run build before npm run test:http."); }
+
+for (const route of ["route", "[materialId]/sections/route", "[materialId]/source/route"]) {
+  const trace = JSON.parse(await readFile(new URL(`../apps/web/.next/server/app/api/v1/materials/${route}.js.nft.json`, import.meta.url)));
+  assert.ok(trace.files.some(file => file.endsWith("pdfjs-dist/legacy/build/pdf.worker.mjs")), `${route}: PDF worker missing from deployment`);
+  assert.ok(trace.files.some(file => /@napi-rs\/canvas[^/]*\/.*\.node$/.test(file)), `${route}: PDF rendering binary missing from deployment`);
+}
 
 const storage = await testDatabase({ socketConnections: 12 });
 let server;
