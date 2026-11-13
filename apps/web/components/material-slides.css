@@ -194,3 +194,7 @@
   margin-top: auto;
   padding-top: clamp(10px, 2dvh, 24px);
 }
+.material-slide-regenerate .is-busy { animation:slide-image-spin 1s linear infinite; transform-origin:center; }
+.material-slide-regeneration-limit { margin:0; font-size:14px; color:#647772; }
+@keyframes slide-image-spin { to { transform:rotate(360deg); } }
+@media(prefers-reduced-motion:reduce) { .material-slide-regenerate .is-busy { animation:none; } }

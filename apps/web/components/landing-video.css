@@ -1,4 +1,4 @@
-.landing-video-section { padding-block: 0 clamp(32px, 5vw, 72px); }
+.landing-video-section { padding-block: clamp(32px, 5vw, 72px); }
 .landing-video { max-width: 1120px; margin-inline: auto; border: 1px solid #d7ded4; border-radius: 26px; overflow: hidden; background: #f5f3e9; }
 .landing-video-controls { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 24px; border-bottom: 1px solid #d7ded4; background: #fff8e9; }
 .landing-video-controls button { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 10px 12px; border: 0; border-radius: 8px; background: transparent; color: #233f46; font: inherit; cursor: pointer; }

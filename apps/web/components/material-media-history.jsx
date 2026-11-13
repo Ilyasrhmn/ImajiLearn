@@ -1,6 +1,8 @@
 "use client";
+import LoadingSkeleton from "@imajilearn/shared/components/loading-skeleton.jsx";
 
 import Link from "next/link";
+import NavigationPending from "./navigation-pending";
 import { ArrowRight, BookOpenText, CalendarDays, ChevronRight, FileText, Files, Folder, History, Plus, Search } from "lucide-react";
 import { Mascot } from "./mascot";
 import { NO_SUBJECT_LABEL } from "../lib/materials";
@@ -34,9 +36,7 @@ export default function MaterialMediaHistory({ format, history, error, loading, 
     </label>}
     {error && <div className="material-history-error"><p role="alert">{error}</p>
       <button type="button" className="source-secondary" onClick={onRetry}>Coba lagi</button></div>}
-    {history === null && !error && <div className="material-history-loading" role="status" aria-label="Memuat riwayat">
-      {[0, 1, 2].map(index => <div key={index} />)}
-    </div>}
+    {history === null && !error && <LoadingSkeleton label="Memuat riwayat" />}
     {history?.items.length === 0 && !error && <div className="empty-library" role="status">
       <div aria-hidden="true"><Mascot kind="correction" mood="calm" /></div>
       <h3>{query.trim() ? "Tidak ada hasil pencarian" : emptyLabel ?? `Belum ada ${format.action}`}</h3>
@@ -46,8 +46,9 @@ export default function MaterialMediaHistory({ format, history, error, loading, 
         const draft = resumeInDialog && item.status !== "ready";
         const Card = draft ? "button" : Link;
         return <li key={item.materialId}>
-        <Card {...(draft ? { type: "button", disabled: creating } : { href: hrefFor ? hrefFor(item) : `/materi/${encodeURIComponent(item.materialId)}/${format.segment}${item.status === "ready" ? "?open=1" : "?resume=1"}` })}
+        <Card {...(draft ? { type: "button", disabled: creating } : { scroll: false, href: hrefFor ? hrefFor(item) : `/materi/${encodeURIComponent(item.materialId)}/${format.segment}${item.status === "ready" ? "?open=1" : "?resume=1"}` })}
           onClick={event => onOpen(event, item)}>
+          {!draft && <NavigationPending />}
           <span className="material-file-icon" aria-hidden="true">{item.sourceMime === "application/pdf" ? <FileText size={30} /> : <BookOpenText size={30} />}</span>
           <span className="material-history-copy"><strong>{item.title}</strong>
             <span className="material-history-origin">

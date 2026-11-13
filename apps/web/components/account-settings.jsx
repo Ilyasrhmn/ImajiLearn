@@ -1,4 +1,5 @@
 "use client";
+import LoadingSkeleton from "@imajilearn/shared/components/loading-skeleton.jsx";
 import { startTransition, useCallback, useEffect, useRef, useState, ViewTransition } from "react";
 import { Check, Eye, EyeOff, LockKeyhole, UserRound } from "lucide-react";
 import ThemedSelect from "./themed-select";
@@ -115,7 +116,7 @@ export default function AccountSettings({ teacherId, name, account, googleNotice
   const tabs = [{ id: "profile", label: "Profil", Icon: UserRound }, { id: "password", label: profile.auth?.googleEnabled || profile.auth?.googleLinked ? "Metode masuk" : "Kata sandi", Icon: LockKeyhole }];
   return <TeacherWorkspace name={profile.name || name} account={account} current="/akun">
     <main id="main" className="teacher-home account-main">
-      {!ready ? <div className="materials-skeleton" role="status" aria-label="Memuat akun"><span /><span /></div> : loadError ? <div><p role="alert">{loadError}</p><button type="button" className="upload-button" onClick={() => { setReady(false); setLoadError(""); setRetry(attempt => attempt + 1); }}>Coba lagi</button></div> : <><div className="account-heading"><h1>Pengaturan akun</h1><div aria-hidden="true"><Mascot kind="pen" mood="calm" /></div></div>
+      {!ready ? <LoadingSkeleton variant="account" label="Memuat akun" /> : loadError ? <div><p role="alert">{loadError}</p><button type="button" className="upload-button" onClick={() => { setReady(false); setLoadError(""); setRetry(attempt => attempt + 1); }}>Coba lagi</button></div> : <><div className="account-heading"><h1>Pengaturan akun</h1><div aria-hidden="true"><Mascot kind="pen" mood="calm" /></div></div>
         <div className="account-tabs" role="tablist" aria-label="Pengaturan akun">{tabs.map((item, index) => <button key={item.id} id={`account-tab-${item.id}`} role="tab" type="button" aria-selected={tab === item.id} aria-controls="account-panel" tabIndex={tab === item.id ? 0 : -1} onClick={() => startTransition(() => setTab(item.id))} onKeyDown={event => { if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return; event.preventDefault(); const next = event.key === "Home" ? "profile" : event.key === "End" ? "password" : index === 0 ? "password" : "profile"; startTransition(() => setTab(next)); document.getElementById(`account-tab-${next}`)?.focus(); }}><item.Icon size={20} aria-hidden="true" />{item.label}</button>)}</div>
         <ViewTransition update="panel-swap" default="none"><section id="account-panel" role="tabpanel" aria-labelledby={`account-tab-${tab}`} className="account-panel">{tab === "profile" ? <form method="post" className="account-form" onSubmit={save} aria-busy={saving}>
           <div className="auth-field"><label htmlFor="profile-name">Nama</label><input id="profile-name" name="name" autoComplete="name" readOnly={saving} required pattern={/.*\S.*/.source} maxLength={60} value={profile.name} onChange={change} /></div>

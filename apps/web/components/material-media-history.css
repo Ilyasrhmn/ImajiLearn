@@ -9,9 +9,11 @@
 .material-history-status { color:#873e29; }
 .material-history-action { display:inline-flex; align-items:center; gap:8px; flex-shrink:0; color:var(--rust); font-weight:750; }
 .material-media-history > .source-secondary { margin-top:18px; }
-.material-history-loading { display:grid; gap:14px; }
-.material-history-loading > div { min-height:134px; background:var(--material-gutter,#f2ede3); border-radius:22px; }
 .material-history-error p { color:#a53d2f; }
+.navigation-pending { position:fixed; inset:0; z-index:1000; display:flex; align-items:center; justify-content:center; flex-direction:column; gap:14px; background:rgba(253,250,243,.94); color:#243e43; cursor:wait; }
+.navigation-pending svg { animation:history-loading-spin 1s linear infinite; }
+@keyframes history-loading-spin { to { transform:rotate(360deg); } }
+@media(prefers-reduced-motion:reduce) { .navigation-pending svg { animation:none; } }
 .material-history-search { display:flex; align-items:center; gap:12px; margin-bottom:24px; padding:0 16px; border:1px solid #bdcdc2; border-radius:12px; background:#fff; }
 .material-history-search input { flex:1; width:100%; min-width:0; min-height:48px; border:0; outline:none; background:transparent; color:inherit; font:inherit; }
 .material-history-search:focus-within { outline:2px solid var(--rust); outline-offset:2px; }
