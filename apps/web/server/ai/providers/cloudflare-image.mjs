@@ -30,9 +30,10 @@ export function createCloudflareImage(env = process.env, transport = fetch) {
       } finally { reader.releaseLock(); }
       const data = JSON.parse(Buffer.concat(chunks, size).toString("utf8"));
       const codes = data.errors?.map(error => error.code) ?? [];
-      if (response.status === 429 || codes.includes(3042)) {
+      if (codes.includes(3042) || codes.includes(4006)) {
         throw new ApiError(429, "ILLUSTRATION_QUOTA_EXHAUSTED", "Kuota ilustrasi Cloudflare habis. Coba lagi nanti.");
       }
+      if (response.status === 429) throw new ApiError(429, "ILLUSTRATION_RATE_LIMITED", "Permintaan gambar sedang dibatasi. Coba lagi sebentar.");
       if (!response.ok || data.success !== true || typeof data.result?.image !== "string") throw new Error("provider failure");
       const bytes = Buffer.from(data.result.image, "base64");
       const png = bytes.subarray(0, 8).toString("hex") === "89504e470d0a1a0a";

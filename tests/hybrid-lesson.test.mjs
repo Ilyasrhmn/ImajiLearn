@@ -97,3 +97,38 @@ test("concurrent claims cannot exceed thirteen and resuming a paid task does not
     assert.equal((await storage.db.materialSlideDeck.findFirst({ where: { materialId: source.id } })).zImageRequests, 13);
   } finally { await storage.close(); }
 });
+
+test("Cloudflare quota exhaustion falls back beyond thirteen for reading and slides without resubmitting saved paid tasks", async () => {
+  const storage = await testDatabase();
+  const png = Buffer.concat([Buffer.from("89504e470d0a1a0a", "hex"), Buffer.alloc(40)]);
+  try {
+    for (const migration of storage.migrations) await storage.migrate(migration);
+    const owner = await storage.db.teacher.create({ data: { name: "Guru", email: "backup@example.test" } });
+    const source = await createMaterialService(storage.db).create(owner.id, { title: "Organ", text: "Paru-paru merupakan organ pernapasan." }, randomUUID());
+    const key = { materialId: source.id, revision: source.revision };
+    for (const feature of ["reading", "slides"]) {
+      const lesson = feature === "reading" ? "materialReading" : "materialSlideDeck";
+      const images = feature === "reading" ? "materialReadingIllustration" : "materialSlideIllustration";
+      const index = feature === "reading" ? "sectionIndex" : "slideIndex";
+      await storage.db[lesson].create({ data: { ...key, content: {}, zImageRequests: 13 } });
+      const reservation = { ...key, [index]: 0, leaseId: randomUUID() };
+      await storage.db[images].create({ data: { ...reservation, leaseUntil: new Date(Date.now() + 60_000) } });
+      const calls = [];
+      const generate = budgetedImageGenerator(storage.db, feature, reservation, "cloudflare", async (prompt, task) => {
+        calls.push(task.provider);
+        if (task.provider === "cloudflare") throw Object.assign(new Error("Daily quota"), { code: "ILLUSTRATION_QUOTA_EXHAUSTED" });
+        return png;
+      });
+      assert.deepEqual(await generate("Lungs"), png);
+      assert.deepEqual(calls, ["cloudflare", "z-image"]);
+      assert.equal((await storage.db[lesson].findFirst({ where: key })).zImageRequests, 13);
+      assert.equal((await storage.db[images].findFirst({ where: key })).imageProvider, "z-image");
+      await generate(null, { taskId: "already-submitted-task" });
+      assert.deepEqual(calls, ["cloudflare", "z-image", "z-image"]);
+      assert.equal((await storage.db[lesson].findFirst({ where: key })).zImageRequests, 13);
+      await assert.rejects(budgetedImageGenerator(storage.db, feature, reservation, "cloudflare", async () => {
+        throw Object.assign(new Error("Offline"), { code: "ILLUSTRATION_UNAVAILABLE" });
+      })("Lungs"), { code: "ILLUSTRATION_UNAVAILABLE" });
+    }
+  } finally { await storage.close(); }
+});

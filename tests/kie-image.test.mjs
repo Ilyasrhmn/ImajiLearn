@@ -69,6 +69,40 @@ test("the lesson planner's maximum prompt fits Z-Image without discarding the ma
   }, { userId: "owner", source: { text: "", title: "A plant" }, title: "A plant", lines: [], sourceFigures: [] });
 });
 
+test("reading and slides enforce unlabeled scene prompts and reject requests for written labels before charging", async () => {
+  for (const feature of ["reading", "slides"]) {
+    const options = { feature, userId: "owner", source: { text: "Hidung menyaring debu.", title: "Hidung" }, title: "Hidung", lines: ["Hidung menyaring debu."], sourceFigures: [] };
+    let imageCalls = 0;
+    const generate = async prompt => {
+      imageCalls++;
+      assert.ok(prompt.startsWith("UNLABELED IMAGE."));
+      assert.match(prompt, /No title, poster layout, callout lines/);
+      assert.ok(!prompt.includes("textbook illustration"));
+      return png;
+    };
+    const plan = { figureId: null, generate: true, subject: "Nose filtering dust", composition: "Side cutaway of nasal cavity", details: "Dust caught in nasal hairs" };
+    await resolveLessonIllustration({}, async () => ({ content: plan }), generate, options);
+    await assert.rejects(resolveLessonIllustration({}, async () => ({ content: { ...plan, composition: "Side cutaway with labels and a legend" } }), generate, options), { code: "INVALID_ILLUSTRATION_PLAN" });
+    for (const composition of ["An inset of a liver with arrows from a vessel", "Pipa dengan cincin berbentuk huruf C", "x".repeat(361)]) {
+      await assert.rejects(resolveLessonIllustration({}, async () => ({ content: { ...plan, composition } }), generate, options), { code: "INVALID_ILLUSTRATION_PLAN" });
+    }
+    assert.equal(imageCalls, 1);
+  }
+});
+
+test("an organ heading with a subtitle and equivalent spelling reuses the correct PDF figure", async () => {
+  const figure = { page: 4, caption: "Gambar 39. Tenggorokan (trachea)", bytes: png };
+  for (const feature of ["reading", "slides"]) {
+    const result = await resolveLessonIllustration({}, () => assert.fail("An exact organ figure does not need a generated plan"), () => assert.fail("Do not spend image credits"), {
+      feature, userId: "owner", source: { title: "Organ Pernapasan", text: "Trakea memiliki cincin tulang rawan." },
+      title: "Trakea: Pipa dengan Cincin Tulang Rawan", lines: ["Trakea memiliki cincin tulang rawan."],
+      sourceFigures: [{ page: 3, caption: "Gambar 38. Faring", bytes: Buffer.alloc(40) }, figure],
+    });
+    assert.equal(result.sourcePage, 4);
+    assert.deepEqual(result.bytes, png);
+  }
+});
+
 
 test("reading and slide services persist provider tasks across retries and enforce ownership", async () => {
   const { testDatabase } = await import("./support/database.mjs");

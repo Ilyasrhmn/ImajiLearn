@@ -39,4 +39,6 @@ test("geometry read contract rejects missing, unsupported and duplicate shapes",
   const views = geometryScenes({ ...visual, shapes: [item, { shape: "sphere", evidence: "Bola", detail: "Sisi lengkung." }] });
   assert.deepEqual(views[0].pins.map(pin => pin.go), [1,2]);
   assert.deepEqual(views.slice(1).map(view => view.parent), [0,0]);
+  assert.ok(views[0].distance <= 6, "Two objects should fill the overview instead of sitting at the old fixed distance of 13");
+  assert.equal(views[0].detail, visual.title);
 });

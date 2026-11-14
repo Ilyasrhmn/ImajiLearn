@@ -3,6 +3,8 @@ import { aiCorrection, aiRepairHeader } from "@imajilearn/shared/lib/ai-repair.m
 
 const repairs = new AsyncLocalStorage();
 
+export const isImageQualityRetry = () => repairs.getStore() === "ILLUSTRATION_QUALITY_REJECTED";
+
 export function runWithAIRepair(request, handler) {
   const code = request.method === "POST" ? request.headers.get(aiRepairHeader) : null;
   return repairs.run(aiCorrection(code) ? code : null, handler);

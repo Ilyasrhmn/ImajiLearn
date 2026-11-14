@@ -12,7 +12,7 @@ const models = {
 };
 const missing = () => new ApiError(404, "MATERIAL_NOT_FOUND", "Materi tidak ditemukan.");
 
-// Project lesson metadata in PostgreSQL so listing never transfers paragraphs or image/audio bytes.
+// Only visual history needs source text to reject cached models for the wrong subject; image/audio bytes stay in PostgreSQL.
 export async function* scanMediaHistory(db, userId, feature, { rootId = null, materialIds, offset = 0, take = 100 } = {}) {
   const model = models[feature];
   const table = Prisma.raw(`"${model.table}"`);
@@ -38,6 +38,7 @@ export async function* scanMediaHistory(db, userId, feature, { rootId = null, ma
         m."sectionPages" AS "pages", COALESCE(p."title", m."title") AS "sourceTitle",
         f."name" AS "sourceName", f."mime" AS "sourceMime", folder."name" AS "folderName",
         ${content} AS "content", ${prepared} AS "prepared",
+        ${feature === "mindmap" ? Prisma.sql`m."text"` : Prisma.sql`NULL::text`} AS "validationText",
         ${feature === "song" ? Prisma.sql`e."status"` : Prisma.sql`NULL::text`} AS "songStatus",
         e."leaseUntil", ${sortAt} AS "sortAt", m."createdAt" AS "createdAt",
         ${feature === "song" ? Prisma.sql`NULL::timestamptz` : Prisma.sql`e."generatedAt"`} AS "generatedAt",
@@ -63,7 +64,7 @@ export async function* scanMediaHistory(db, userId, feature, { rootId = null, ma
       let status = "ready";
       if (feature === "song") status = row.songStatus === "ready" ? "ready" : ["failed", "uncertain"].includes(row.songStatus) ? "incomplete" : "preparing";
       else if (model.images && !row.prepared) status = row.leaseUntil > new Date() ? "preparing" : "incomplete";
-      else if (feature === "mindmap" && !resolveVisualModel(row.content)) status = "incomplete";
+      else if (feature === "mindmap" && !resolveVisualModel(row.content, { title: row.materialTitle, text: row.validationText })) status = "incomplete";
       const title = row.content?.title;
       const label = title && !/^(?:pilihan halaman|hlm\.|halaman \d)/iu.test(title) ? title
         : row.content?.sections?.[0]?.heading ?? row.content?.slides?.[0]?.title ?? row.materialTitle;

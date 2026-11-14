@@ -11,6 +11,7 @@ const instructions = [
   "Jika gambar membantu, sertakan illustration dengan sectionIndex dan paragraphIndex (indeks mulai 0), dan scene (deskripsi visual konkret dalam bahasa Inggris, maksimal 450 karakter).",
   "Judul maksimal 120 karakter, heading maksimal 100 karakter, dan setiap paragraf maksimal 600 karakter.",
   "Pilih satu paragraf yang paling terbantu oleh gambar. Di scene sebutkan subjek, tindakan dan hubungan yang didukung paragraf. Gambarkan satu adegan tanpa teks, poster, label, panah, maskot, atau objek dekoratif yang mengubah makna. Jangan salin judul atau kalimat bacaan ke scene.",
+  "Fokuskan scene pada satu objek atau proses di paragraf terpilih, bukan seluruh bab. Jangan menambahkan panel sisipan, garis penunjuk, atau organ dari paragraf lain. Jika gambar anatomi diperlukan, jelaskan tampak luar atau penampang organ yang nyata dan mudah dikenali, bukan pengganti berbentuk abstrak.",
   "Setiap soal berisi question, options (tepat tiga pilihan berbeda), answerIndex (indeks jawaban 0–2), explanation, dan sectionIndex (indeks bagian terkait, mulai 0). Pertanyaan dan jawabannya harus bisa ditemukan dalam bacaan.",
 ].join("\n");
 

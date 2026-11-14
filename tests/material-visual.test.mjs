@@ -7,6 +7,28 @@ import { AIError } from "../apps/web/server/ai/errors.mjs";
 import { resolveVisualModel } from "../apps/web/lib/visual-templates.mjs";
 import { testDatabase } from "./support/database.mjs";
 
+test("organ descriptions cannot become geometry, including previously cached recovery output", async () => {
+  const storage = await testDatabase();
+  try {
+    for (const migration of storage.migrations) await storage.migrate(migration);
+    const owner = await storage.db.teacher.create({ data: { name: "Teacher", email: "organ@example.test" } });
+    const evidence = "Alveolus memiliki struktur berbentuk bola-bola mungil.";
+    const source = await createMaterialService(storage.db).create(owner.id, {
+      title: "Organ Pernapasan", text: evidence + " Kerongkongan adalah tabung berotot. Vili memperluas permukaan penyerapan.",
+    }, randomUUID());
+    const wrong = { kind: "geometry", title: "Mengenal bangun", shapes: [{ shape: "sphere", evidence, detail: evidence }] };
+    const service = content => createMaterialVisual(storage.db, async () => ({ content }));
+    await assert.rejects(service({ kind: "unsupported" }).generate(owner.id, source.id), { code: "VISUAL_MODEL_UNSUPPORTED" });
+    await assert.rejects(service(wrong).generate(owner.id, source.id), { code: "INVALID_VISUAL" });
+    await storage.db.materialVisual.create({ data: { materialId: source.id, revision: source.revision, content: wrong } });
+    assert.equal(await service().get(owner.id, source.id), null);
+    const { materialMediaHistory } = await import("../apps/web/server/materials/media-history.mjs");
+    const history = await materialMediaHistory(storage.db, owner.id, source.id, new URLSearchParams({ feature: "mindmap" }));
+    assert.equal(history.items[0].status, "incomplete");
+    await assert.rejects(service({ kind: "unsupported" }).generate(owner.id, source.id), { code: "VISUAL_MODEL_UNSUPPORTED" });
+  } finally { await storage.close(); }
+});
+
 test("geometry generation grounds shapes in owned source and reuses saved results", async () => {
   const storage = await testDatabase();
   try {

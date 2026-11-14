@@ -119,6 +119,8 @@ flowchart TD
 
 Visual dirender dari deskripsi terstruktur yang cocok dengan katalog aplikasi. File sumber dan keluaran media disimpan melalui database sesuai model Prisma; kode tidak membutuhkan bucket objek eksternal untuk alur yang ada.
 
+Ilustrasi generatif diperiksa terhadap bagian pelajaran sebelum disimpan, untuk menemukan kesalahan besar seperti objek yang salah atau tulisan acak yang dominan. Pemeriksaan memakai Gemini melalui `AI_IMAGE_REVIEW_API_KEY` / `AI_IMAGE_REVIEW_MODEL`, atau kredensial dan model `AI_TEXT_FALLBACK_*` jika konfigurasi khusus tidak diisi. Pemeriksaan AI mengurangi kesalahan, bukan jaminan akurasi ilmiah. Gambar yang relevan dan dapat dikenali tetap diterima meskipun detail kecilnya tidak sempurna. Penolakan kualitas dapat memicu satu pengganti otomatis; pemeriksaan pengganti lebih longgar terhadap detail kecil. Penolakan kedua berhenti dan tidak memicu generasi berbayar berikutnya. Jika pemeriksa tambahan tidak tersedia, hasil gambar tetap disimpan tanpa membuat ulang, sehingga gangguan pemeriksa tidak menghentikan pembuatan media. Gambar PDF yang sesuai tetap diprioritaskan dan tidak dilarang memiliki label aslinya.
+
 Web dan PWA berbagi komponen/model browser melalui `packages/shared`. Backend database dan provider AI berada pada web server. PWA meneruskan permintaan melalui origin PWA agar sesi dan pemeriksaan origin tetap berlaku pada host yang sesuai.
 
 ```text
@@ -182,7 +184,7 @@ Pada bacaan/slide, AI juga membantu merencanakan ilustrasi sesuai isi. Rencana m
 | Status tugas Kie | `GET https://api.kie.ai/api/v1/jobs/recordInfo?taskId=...` | Polling hasil menggunakan ID tugas yang disimpan. |
 | Cloudflare Workers AI | `POST https://api.cloudflare.com/client/v4/accounts/{accountId}/ai/run/@cf/black-forest-labs/flux-1-schnell` | Bearer `CLOUDFLARE_API_TOKEN`, account dari `CLOUDFLARE_ACCOUNT_ID`; body memuat prompt dan `steps: 4`. |
 
-Visual kompleks diprioritaskan ke Z-Image; visual sederhana dan kelebihan alokasi memakai Cloudflare. Implementasi membatasi reservasi Z-Image per keluaran. Byte hasil diperiksa sebelum disimpan. Jika status submit berbayar belum pasti, adapter mempertahankan status tugas agar tidak otomatis mengirim submit baru yang berpotensi menggandakan biaya.
+Visual kompleks diprioritaskan ke Z-Image, maksimal 13 alokasi utama per keluaran; visual sederhana dan kelebihan alokasi memakai Cloudflare. Jika kuota Cloudflare habis, Z-Image menjadi cadangan yang boleh melampaui alokasi utama tersebut. Byte hasil diperiksa sebelum disimpan. Jika status submit berbayar belum pasti, adapter mempertahankan status tugas agar tidak otomatis mengirim submit baru yang berpotensi menggandakan biaya.
 
 Implementasi: [`lesson-image.mjs`](apps/web/server/ai/providers/lesson-image.mjs), [`kie-image.mjs`](apps/web/server/ai/providers/kie-image.mjs), dan [`cloudflare-image.mjs`](apps/web/server/ai/providers/cloudflare-image.mjs).
 

@@ -14,8 +14,18 @@ export function orbitalModel(step) {
   return sun ? "sun" : earth ? "earth" : null;
 }
 
-export function resolveVisualModel(visual) {
+export function isGeometryLesson(source) {
+  const title = source?.title ?? "";
+  const topic = /\bbangun\s+(?:datar|ruang)\b|\bgeometri\b|\bjaring[\s-]+jaring\b/iu;
+  if (topic.test(title)) return true;
+  if (/organ|pernapasan|pencernaan|alveol|kerongkongan|peredaran|fotosintesis/iu.test(title)) return false;
+  if (Object.values(geometryCatalog).some(spec => title.trim().toLowerCase() === spec.label.toLowerCase())) return true;
+  return topic.test(source?.text ?? "") || /\b(?:rumus|menghitung|hitunglah)\s+(?:luas|keliling|volume)\b/iu.test(source?.text ?? "");
+}
+
+export function resolveVisualModel(visual, source) {
   if (typeof visual?.title !== "string" || !visual.title.trim()) return null;
+  if (source && ["geometry", "cube_net"].includes(visual.kind) && !isGeometryLesson(source)) return null;
   if (visual.kind !== "flow") return isSupportedModel(visual) ? visual : null;
   if (!validItems(visual.steps, step => validText(step.label) && validText(step.detail), 2)) return null;
   const evidence = visual.steps.map(step => step.evidence ?? "").join(" ");

@@ -13,14 +13,14 @@ export function createGeneratedMaterial(db, generateJson, { delegate, feature, i
   return {
     async get(userId, materialId) {
       const id = canonicalMaterialId(materialId);
-      const source = id && await db.material.findFirst({ where: { id, userId }, select: { id: true, revision: true } });
+      const source = id && await db.material.findFirst({ where: { id, userId }, select: { id: true, revision: true, ...(readContent ? { title: true, text: true } : {}) } });
       if (!source) throw missingMaterial();
       const row = await db[delegate].findUnique({
         where: { materialId_revision: { materialId: source.id, revision: source.revision } },
         select: { content: true },
       });
       const content = row?.content?.__lessonParts ? null : row?.content ?? null;
-      return readContent ? readContent(content) : content;
+      return readContent ? readContent(content, source) : content;
     },
 
     async generate(userId, materialId, { regenerate = false, incremental = false } = {}) {
@@ -35,7 +35,7 @@ export function createGeneratedMaterial(db, generateJson, { delegate, feature, i
         const where = { materialId_revision: key };
         const existing = await tx[delegate].findUnique({ where, select: { content: true, leaseUntil: true } });
         const saved = existing?.content?.__lessonParts ? null : existing?.content;
-        const cached = readContent ? readContent(saved) : saved;
+        const cached = readContent ? readContent(saved, source) : saved;
         if (cached && !regenerate) return { content: cached };
         if (existing?.leaseUntil > new Date()) {
           throw new ApiError(409, ...inProgress);

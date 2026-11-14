@@ -71,6 +71,16 @@ export function budgetedImageGenerator(db, feature, reservation, preferred, gene
       if (!saved.count) throw new ApiError(409, "SOURCE_CHANGED", "Materi berubah. Buka ulang lalu coba lagi.");
       return selected;
     });
-    return generateImage(prompt, { ...task, provider });
+    try {
+      return await generateImage(prompt, { ...task, provider });
+    } catch (error) {
+      if (provider !== "cloudflare" || task.taskId || error.code !== "ILLUSTRATION_QUOTA_EXHAUSTED") throw error;
+      // Daily Cloudflare exhaustion is the approved exception to the primary Z-Image budget.
+      await db.$transaction(async tx => {
+        const saved = await tx[images].updateMany({ where: reservation, data: { imageProvider: "z-image" } });
+        if (!saved.count) throw new ApiError(409, "SOURCE_CHANGED", "Materi berubah. Buka ulang lalu coba lagi.");
+      });
+      return generateImage(prompt, { ...task, provider: "z-image" });
+    }
   };
 }

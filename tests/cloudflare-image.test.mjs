@@ -23,6 +23,11 @@ test("Cloudflare quota, malformed images and missing credentials fail without le
   await assert.rejects(createCloudflareImage(env, async () => Response.json({ success: true, result: { image: "not an image" } }))("A leaf"), { code: "ILLUSTRATION_UNAVAILABLE" });
 });
 
+test("Cloudflare daily quota errors are recognized from code 4006 even inside an HTTP 200 response", async () => {
+  await assert.rejects(createCloudflareImage(env, async () => Response.json({ success: false, errors: [{ code: 4006, message: "daily free allocation exhausted" }] }))("A leaf"), { code: "ILLUSTRATION_QUOTA_EXHAUSTED" });
+  await assert.rejects(createCloudflareImage(env, async () => Response.json({ success: false, errors: [] }, { status: 429 }))("A leaf"), { code: "ILLUSTRATION_RATE_LIMITED" });
+});
+
 test("the dispatcher respects Cloudflare allocation and does not silently spend a Z-Image slot", async () => {
   let calls = 0;
   const generate = createLessonImage(env, async url => {

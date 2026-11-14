@@ -1,4 +1,4 @@
-import { earthLayers, resolveVisualModel } from "../../lib/visual-templates.mjs";
+import { earthLayers, isGeometryLesson, resolveVisualModel } from "../../lib/visual-templates.mjs";
 import { geometryCatalog } from "../../lib/geometry-catalog.mjs";
 import { ApiError } from "../core/errors.mjs";
 import { createGeneratedMaterial } from "./generated-material.mjs";
@@ -30,6 +30,8 @@ const instructions = [
   "Gunakan assembly hanya jika bentuk dan posisi sesuai sumber. Susun bagian yang bersentuhan dengan tepi yang pas tanpa tumpang tindih volume, misalnya papan tuas mulai pada tinggi puncak tumpuan. Gunakan koordinat at antara -100 dan 100, size antara 4 dan 180, dan spread antara -80 dan 80. Cylinder dan ring punya lebar dan kedalaman yang sama. Saat dirakit dan sepanjang gerak, bagian tidak saling menembus. Gunakan flow jika bentuk sederhana tidak dapat mewakili objek.",
   'Kind "flow" hanya untuk Tata Surya atau pembekuan darah. Isinya title, layout "sequence" dan steps berisi 2–5 objek dengan label pendek, detail satu kalimat, serta evidence berupa kutipan persis dari sumber. Untuk topik yang tidak punya model atau interaksi yang cocok di atas (termasuk setelah memeriksa geometry), keluarkan {"kind":"unsupported"}.',
   "Susun steps sesuai urutan proses jika ada, atau urutan penjelasan yang masuk akal. Jangan mengarang hubungan sebab-akibat.",
+  "Tentukan topik utama dari judul pilihan dan isi sumber. Kemiripan bentuk bukan topik geometri: alveolus berbentuk bola dan kerongkongan berbentuk tabung tetap merupakan materi organ, bukan pelajaran bola atau tabung. Jangan mengganti organ dengan bangun geometri. Jika model yang tersedia tidak dapat menjelaskan organ tersebut, gunakan unsupported.",
+  "Setiap keterangan harus menjelaskan fungsi bagian atau mekanisme yang terlihat, bukan sekadar menyalin kutipan sumber, URL, istilah etimologi, atau memberi nama bentuk. Kutipan asli hanya ditempatkan pada evidence.",
   "Pakai judul maksimal 120 karakter, label maksimal 80 karakter, dan keterangan maksimal 300 karakter.",
 ].join("\n");
 
@@ -137,6 +139,7 @@ function validateVisual(content, source) {
     content = recovered;
   }
   const title = text(content?.title, 120);
+  if (["geometry", "cube_net"].includes(content.kind) && !isGeometryLesson(source)) throw invalidVisual();
   if (content.kind === "geometry") {
     if (!Array.isArray(content.shapes) || content.shapes.length < 1 || content.shapes.length > 8) throw invalidVisual();
     const sourceText = normalizeSource(source.text);
@@ -188,7 +191,7 @@ function validateVisual(content, source) {
 }
 
 function recoverGeometry(source) {
-  if (!/bangun\s+(?:datar|ruang)|geometri|luas|keliling|volume|jaring[\s-]+jaring/iu.test(source.text)) return null;
+  if (!isGeometryLesson(source)) return null;
   const sentences = sentencesIn(source.text);
   const shapes = Object.entries(geometryCatalog).flatMap(([shape, spec]) => {
     const evidence = sentences.find(sentence => spec.pattern.test(sentence.text))?.text;

@@ -127,6 +127,6 @@ export function geometryScenes(visual) {
     return { label: geometryCatalog[shape].label, go: index + 1, at: () => new T.Vector3(x,y,0),
       side: index % columns < columns / 2 ? "left" : "right", lift: row * 4 };
   });
-  return [{ name: "Bangun", group, target: new T.Vector3(), distance: 13, mobileFit: 1.2, angle: 0, pitch: 0,
-    detail: "", pins }, ...scenes];
+  return [{ name: "Bangun", group, target: new T.Vector3(), distance: Math.max(5, columns * 1.8, rows * 2.7), mobileFit: 1.2, angle: 0, pitch: 0,
+    detail: visual.title, pins }, ...scenes];
 }
