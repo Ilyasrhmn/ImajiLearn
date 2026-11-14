@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { studioRequest } from "@imajilearn/shared/lib/studio-api.mjs";
 import { requestAccount } from "@imajilearn/shared/lib/account-client.mjs";
-import { sessionLoginPath } from "@imajilearn/shared/lib/session.mjs";
+import { sessionLoginPath, sessionChangeKey } from "@imajilearn/shared/lib/session.mjs";
 
 test("connection failures are actionable while cancellation remains an abort", async t => {
   t.mock.method(globalThis, "fetch", async () => { throw new TypeError("Failed to fetch"); });
@@ -18,11 +18,15 @@ test("expired sessions keep the caller in the correct web or mobile login flow",
   t.after(() => { if (oldWindow) Object.defineProperty(globalThis, "window", oldWindow); else delete globalThis.window; });
   t.mock.method(globalThis, "fetch", async () => Response.json({ error: { code: "SESSION_REQUIRED", message: "Masuk kembali" } }, { status: 401 }));
   for (const [pathname, target] of [["/app", "/app/masuk"], ["/dashboard", "/masuk"]]) {
-    const redirects = [];
-    Object.defineProperty(globalThis, "window", { configurable: true, value: { location: { pathname, replace: path => redirects.push(path) } } });
+    const redirects = [], events = [];
+    const browser = new EventTarget();
+    browser.location = { pathname, replace: path => { events.push("redirect"); redirects.push(path); } };
+    browser.addEventListener(sessionChangeKey, () => events.push("session-change"));
+    Object.defineProperty(globalThis, "window", { configurable: true, value: browser });
     await assert.rejects(studioRequest("teacher", "/materials"), error => error.status === 401);
     assert.equal(await requestAccount("teacher"), null);
     assert.deepEqual(redirects, [target, target]);
+    assert.deepEqual(events, ["session-change", "redirect", "session-change", "redirect"]);
   }
 });
 

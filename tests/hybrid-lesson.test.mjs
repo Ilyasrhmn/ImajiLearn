@@ -35,14 +35,22 @@ test("reading and slides preserve all sections, persist allocation, and run both
       };
       const calls = [], active = { "z-image": 0, cloudflare: 0 }, peak = { "z-image": 0, cloudflare: 0 };
       let overlap = false;
+      const bothProviders = Promise.withResolvers();
+      let overlapTimer;
       const generate = async (_prompt, task) => {
         calls.push(task.provider);
         active[task.provider]++;
         peak[task.provider] = Math.max(peak[task.provider], active[task.provider]);
-        if (active.cloudflare && active["z-image"]) overlap = true;
-        await new Promise(resolve => setTimeout(resolve, 10));
-        active[task.provider]--;
-        return image;
+        if (active.cloudflare && active["z-image"]) {
+          overlap = true;
+          clearTimeout(overlapTimer);
+          bothProviders.resolve();
+        } else if (!overlapTimer && !overlap) {
+          overlapTimer = setTimeout(() => bothProviders.reject(new Error("Both image providers must start before either completes")), 5000);
+        }
+        // Hold the first batch until both providers arrive, independent of database timing.
+        try { await bothProviders.promise; return image; }
+        finally { active[task.provider]--; }
       };
       const text = reading ? createMaterialReading(storage.db, async () => ({ content })) : createMaterialSlides(storage.db, async () => ({ content }));
       const prepared = createPreparedLesson(storage.db, text, feature, generate, plan);
