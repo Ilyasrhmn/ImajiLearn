@@ -25,6 +25,17 @@ function buildBody(config, request) {
     if (!isObject(request.schema)) throw new AIError("INVALID_AI_INPUT", { field: "schema" });
     body.response_format.json_schema = { name: `${config.feature}_result`, strict: true, schema: request.schema };
   }
+  if (config.protocol === "openai-responses") {
+    const format = config.responseFormat === "json_schema"
+      ? { type: "json_schema", ...body.response_format.json_schema } : { type: "json_object" };
+    for (const key of ["messages", "max_tokens", "max_completion_tokens", "response_format", "reasoning_effort"]) delete body[key];
+    body.input = request.messages;
+    body.text = { format };
+    if (config.reasoningEffort !== undefined) body.reasoning = { effort: config.reasoningEffort };
+    if (config.model === "deepseek-v4-1-flash") {
+      delete body.temperature;
+    } else body.max_output_tokens = config.maxOutputTokens;
+  }
   let serialized;
   try { serialized = JSON.stringify(body); } catch { throw new AIError("INVALID_AI_INPUT"); }
   if (Buffer.byteLength(serialized, "utf8") > byteLimit) throw new AIError("INPUT_TOO_LARGE");
@@ -77,9 +88,25 @@ function parseCompletion(payload, config) {
   return { content, usage, meta: { feature: config.feature, model: config.model, protocol: config.protocol, finishReason: "stop" } };
 }
 
+function parseResponse(payload, config) {
+  const usage = {
+    prompt_tokens: payload?.usage?.input_tokens, completion_tokens: payload?.usage?.output_tokens,
+    total_tokens: payload?.usage?.total_tokens,
+  };
+  if (payload?.status === "incomplete") throw new AIError("INCOMPLETE_OUTPUT", { usage: usageOf(usage) });
+  if (!Array.isArray(payload?.output)) throw new AIError("INVALID_PROVIDER_RESPONSE");
+  const parts = payload.output.flatMap(item => item.content ?? []);
+  if (parts.some(part => part.type === "refusal")) throw new AIError("PROVIDER_REFUSAL");
+  if (payload.status !== "completed" || payload.output.some(item => !["message", "reasoning"].includes(item.type))) {
+    throw new AIError("INVALID_PROVIDER_RESPONSE", { usage: usageOf(usage) });
+  }
+  const content = parts.filter(part => part.type === "output_text").map(part => part.text).join("");
+  return parseCompletion({ usage, choices: [{ finish_reason: "stop", message: { content } }] }, config);
+}
+
 export async function requestJson(config, request, transport = fetch) {
   if (config.kind !== "text") throw new AIError("UNSUPPORTED_MODALITY");
-  if (config.protocol !== "openai-chat") throw new AIError("INVALID_AI_CONFIG");
+  if (!["openai-chat", "openai-responses"].includes(config.protocol)) throw new AIError("INVALID_AI_CONFIG");
   const body = buildBody(config, request);
   if (request.signal?.aborted) throw new AIError("CANCELED");
   const controller = new AbortController();
@@ -93,7 +120,7 @@ export async function requestJson(config, request, transport = fetch) {
       controller.signal.throwIfAborted();
       let connectionCode;
       try {
-        response = await transport(new URL("chat/completions", config.baseUrl), {
+        response = await transport(new URL(config.protocol === "openai-responses" ? "responses" : "chat/completions", config.baseUrl), {
           method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${config.apiKey}` },
           body, signal: controller.signal, redirect: "error", cache: "no-store",
         });
@@ -118,7 +145,11 @@ export async function requestJson(config, request, transport = fetch) {
     }
     const payload = await readJson(response);
     controller.signal.throwIfAborted();
-    return parseCompletion(payload, config);
+    if (config.protocol === "openai-responses" && (payload?.error || Number(payload?.code) >= 400)) {
+      const status = Number(payload.code ?? payload.error?.code);
+      throw new AIError(status === 429 ? "RATE_LIMITED" : [401, 403].includes(status) ? "PROVIDER_AUTH_ERROR" : "PROVIDER_UNAVAILABLE");
+    }
+    return config.protocol === "openai-responses" ? parseResponse(payload, config) : parseCompletion(payload, config);
   } catch (error) {
     if (request.signal?.aborted) throw new AIError("CANCELED");
     if (timedOut) throw new AIError("PROVIDER_TIMEOUT");

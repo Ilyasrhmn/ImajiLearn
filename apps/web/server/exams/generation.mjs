@@ -20,6 +20,7 @@ const instructions = [
   "Jangan ulang pertanyaan yang sudah ada. Berikan pembahasan, materi, capaian pembelajaran, indikator, dan level kognitif.",
   "Kembalikan satu objek JSON dengan questions. Setiap soal berisi number, prompt, options, answer, explanation, topic, learningOutcome, indicator, cognitiveLevel, rubric.",
   "Jawaban pilihan ganda adalah satu huruf A–D sesuai opsi. Untuk isian dan uraian options adalah array kosong. Rubric hanya untuk uraian.",
+  'Kolom rubric wajib berupa string teks, bukan array atau objek. Untuk uraian tulis pedoman skor dalam satu string maksimal 500 karakter, contoh "Skor 10 jika lengkap; skor 5 jika sebagian; skor 0 jika salah." Untuk soal lain isi rubric dengan string kosong "".',
   "Isi options hanya teks pilihan, tanpa awalan label A., B., C., atau D.; label ditambahkan aplikasi.",
   "Gunakan C1, C2, C3, atau C4 untuk cognitiveLevel. Buat semua teks ringkas, maksimal 500 karakter per kolom.",
 ].join("\n");

@@ -27,6 +27,7 @@ test("exam generation fills batches of blank slots while preserving manual edits
     let calls = 0;
     const generation = createExamGeneration(storage.db, async (feature, { messages }) => {
       assert.equal(feature, "exam");
+      assert.match(messages[0].content, /rubric.*string.*bukan array/u);
       assert.doesNotMatch(messages[1].content, /PRIVATE_SCHOOL|@example/);
       const payload = JSON.parse(messages[1].content);
       assert.match(payload.sources[0].text, /Akar menyerap air/);

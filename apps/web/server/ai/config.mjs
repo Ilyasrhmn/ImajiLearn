@@ -52,7 +52,7 @@ export function readFeatureConfig(feature, env = process.env) {
   };
   if (!audio) {
     Object.assign(config, {
-      protocol: choice(env, prefix, "PROTOCOL", ["openai-chat"], "openai-chat"),
+      protocol: choice(env, prefix, "PROTOCOL", ["openai-chat", "openai-responses"], "openai-chat"),
       maxOutputTokens: number(env, prefix, "MAX_OUTPUT_TOKENS", feature === "song" ? 2048 : feature === "mindmap" ? 3072 : 4096, 1, 8192),
       tokenLimitField: choice(env, prefix, "TOKEN_LIMIT_FIELD", ["max_completion_tokens", "max_tokens"], "max_completion_tokens"),
       responseFormat: choice(env, prefix, "RESPONSE_FORMAT", ["json_object", "json_schema"], "json_object"),
