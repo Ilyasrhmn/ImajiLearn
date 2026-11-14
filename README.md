@@ -80,7 +80,7 @@ Akun dapat dipakai untuk mencoba area guru dan membuka hasil yang telah tersimpa
 | Backend | Next.js Route Handlers, modul layanan di `apps/web/server`, Node.js, dan validasi kontrak sisi server. |
 | Database | PostgreSQL melalui Prisma 7.10.1, `@prisma/adapter-pg`, dan `pg`; deployment tim memakai Neon. |
 | Hosting | Vercel untuk deployment aplikasi tim. |
-| AI teks | Gemini melalui endpoint Google yang kompatibel dengan OpenAI; konfigurasi model terpisah per fitur. |
+| AI teks | DeepSeek V4.1 Flash melalui KIE, reasoning none; Gemini Flash Lite sebagai cadangan. |
 | Ilustrasi | Z-Image melalui Kie.ai dan FLUX.1 Schnell melalui Cloudflare Workers AI. |
 | Musik | Suno V6 melalui Kie.ai untuk musik/vokal dan timestamp lirik. |
 | Visual | Three.js serta renderer SVG/isometrik untuk objek dan interaksi yang didukung. |
@@ -101,7 +101,7 @@ flowchart TD
     API --> Auth[Validasi sesi, pemilik, input, dan versi]
     Auth --> Services[Layanan materi, AI, ujian, dan jadwal]
     Services --> DB[(PostgreSQL / Neon via Prisma)]
-    Services --> Text[Gemini: keluaran JSON terstruktur]
+    Services --> Text[DeepSeek / Gemini: JSON terstruktur]
     Services --> Image[Kie Z-Image / Cloudflare FLUX]
     Services --> Music[Kie / Suno V6]
     Text --> Services
@@ -137,15 +137,15 @@ tests/                Pengujian unit, layanan, dan integrasi HTTP
 
 | Keluaran | Profil/provider | Peran AI |
 | --- | --- | --- |
-| Bacaan dan kuis | `AI_READING_*`, Gemini | Menyusun bagian bacaan dan pertanyaan berdasarkan sumber. |
-| Slide | `AI_SLIDES_*`, Gemini | Menyusun urutan slide dan poin pembelajaran. |
-| Lirik | `AI_SONG_*`, Gemini | Mengolah materi menjadi lirik dan arahan musik. |
+| Bacaan dan kuis | `AI_READING_*`, DeepSeek | Menyusun bagian bacaan dan pertanyaan berdasarkan sumber. |
+| Slide | `AI_SLIDES_*`, DeepSeek | Menyusun urutan slide dan poin pembelajaran. |
+| Lirik | `AI_SONG_*`, DeepSeek | Mengolah materi menjadi lirik dan arahan musik. |
 | Musik dan vokal | `AI_MUSIC_*` + `KIE_API_KEY`, Suno V6 melalui Kie.ai | Membuat audio dan memperoleh informasi waktu lirik. |
-| Visual | `AI_MINDMAP_*`, Gemini | Memilih/mendeskripsikan model interaktif yang cocok dan menghubungkan penjelasan dengan kutipan sumber. Nama profil internal `MINDMAP` dipertahankan untuk kompatibilitas konfigurasi. |
-| Ujian | `AI_EXAM_*`, Gemini | Mengisi slot soal, opsi, jawaban, pembahasan, indikator, dan rubrik berdasarkan materi. |
+| Visual | `AI_MINDMAP_*`, DeepSeek | Memilih/mendeskripsikan model interaktif yang cocok dan menghubungkan penjelasan dengan kutipan sumber. Nama profil internal `MINDMAP` dipertahankan untuk kompatibilitas konfigurasi. |
+| Ujian | `AI_EXAM_*`, DeepSeek | Mengisi slot soal, opsi, jawaban, pembahasan, indikator, dan rubrik berdasarkan materi. |
 | Ilustrasi | `KIE_API_KEY` atau kredensial Cloudflare | Menghasilkan ilustrasi sesuai arahan visual dan rencana provider dari layanan aplikasi. |
 
-Contoh konfigurasi memakai `gemini-3.1-flash-lite` untuk lima profil teks dan `V6` untuk audio. Model teks dibaca dari environment per fitur; adapter gambar menggunakan `z-image` dan `@cf/black-forest-labs/flux-1-schnell`. Gemini diakses melalui protokol yang kompatibel dengan OpenAI; penggunaan protokol ini bukan berarti model teksnya GPT.
+Contoh konfigurasi memakai `deepseek-v4-1-flash` dengan `reasoning.effort: "none"` untuk lima profil teks. `AI_TEXT_FALLBACK_*` menunjuk Gemini `gemini-3.1-flash-lite`; cadangan dipanggil setelah kegagalan layanan atau format respons utama. Pembatalan dan penolakan konten tidak dialihkan ke provider lain. Musik tetap Suno `V6`, gambar tetap Z-Image dan Cloudflare.
 
 **Pengembangan dan aset:** tim memakai bantuan AI, termasuk OpenAI Codex, untuk implementasi, pemeriksaan kode, pengujian, dan dokumentasi. Logo/maskot dibuat tim dengan bantuan generasi AI. Ide produk, keputusan desain, pengarahan implementasi, integrasi, dan peninjauan hasil dikerjakan tim.
 
@@ -154,26 +154,20 @@ Contoh konfigurasi memakai `gemini-3.1-flash-lite` untuk lima profil teks dan `V
 ## Rincian integrasi API dan layanan
 
 <details>
-<summary>Gemini: bacaan, slide, visual, lirik, dan ujian</summary>
+<summary>Teks: DeepSeek utama dan Gemini cadangan</summary>
 
-Backend menggunakan adapter HTTP pada [`openai-chat.mjs`](apps/web/server/ai/providers/openai-chat.mjs). Base URL contoh `https://generativelanguage.googleapis.com/v1beta/openai/` digabung dengan `chat/completions`, sehingga permintaan dikirim ke:
+Backend memilih provider melalui [`text-provider.mjs`](apps/web/server/ai/text-provider.mjs). Lima profil `AI_READING_*`, `AI_SLIDES_*`, `AI_MINDMAP_*`, `AI_SONG_*`, dan `AI_EXAM_*` memakai:
 
 ```text
-POST https://generativelanguage.googleapis.com/v1beta/openai/chat/completions
-Authorization: Bearer <API key pada server>
+AI_*_BASE_URL=https://api.kie.ai/openai/v1/
+AI_*_MODEL=deepseek-v4-1-flash
+AI_*_PROTOCOL=openai-responses
+AI_*_REASONING_EFFORT=none
 ```
 
-Body berisi `model`, `messages`, batas token, `response_format`, dan `stream: false`. Konfigurasi mendukung `json_object` atau `json_schema`; contoh proyek memakai `json_object`. Respons diurai menjadi JSON lalu diperiksa kembali oleh validator fitur sebelum disimpan. Batas token, timeout, temperature, dan reasoning dibaca melalui [`config.mjs`](apps/web/server/ai/config.mjs).
+Adapter mengirim `POST /openai/v1/responses` dengan `input`, `text.format`, `reasoning`, dan `stream: false`. DeepSeek di KIE mengabaikan batas output token; batas ukuran respons dan validator fitur tetap berlaku. Format JSON yang valid tetap harus lolos validasi isi fitur sebelum disimpan.
 
-Profil teks dipisah agar model dan batas setiap pekerjaan dapat diatur sendiri:
-
-| Profil | Model contoh | Batas output contoh | Keluaran |
-| --- | --- | --- | --- |
-| `AI_READING_*` | `gemini-3.1-flash-lite` | 4.096 token | Bagian bacaan dan kuis. |
-| `AI_SLIDES_*` | `gemini-3.1-flash-lite` | 4.096 token | Judul dan poin slide. |
-| `AI_MINDMAP_*` | `gemini-3.1-flash-lite` | 3.072 token | Deskripsi visual terstruktur, pemilihan model, dan kutipan sumber. |
-| `AI_SONG_*` | `gemini-3.1-flash-lite` | 2.048 token | Lirik dan arahan lagu. |
-| `AI_EXAM_*` | `gemini-3.1-flash-lite` | 4.096 token | Soal, jawaban, pembahasan, indikator, dan rubrik. |
+Cadangan `AI_TEXT_FALLBACK_*` memakai `https://generativelanguage.googleapis.com/v1beta/openai/`, model `gemini-3.1-flash-lite`, dan protokol `openai-chat`. Key kedua provider disimpan di env server; contoh lengkap ada di [`apps/web/.env.example`](apps/web/.env.example).
 
 Pada bacaan/slide, AI juga membantu merencanakan ilustrasi sesuai isi. Rencana membedakan visual sederhana dan kompleks; alokasi provider diatur oleh [`image-routing.mjs`](apps/web/server/materials/image-routing.mjs).
 
@@ -197,7 +191,7 @@ Implementasi: [`lesson-image.mjs`](apps/web/server/ai/providers/lesson-image.mjs
 <details>
 <summary>Musik: Suno V6 melalui Kie.ai</summary>
 
-Lirik disusun melalui profil Gemini `AI_SONG_*`. Musik dan vokal memakai adapter Kie yang berbeda, [`kie-music.mjs`](apps/web/server/ai/providers/kie-music.mjs):
+Lirik disusun melalui profil teks `AI_SONG_*` (DeepSeek dengan cadangan Gemini). Musik dan vokal memakai adapter Kie yang berbeda, [`kie-music.mjs`](apps/web/server/ai/providers/kie-music.mjs):
 
 1. `POST /jobs/createTask` pada `https://api.kie.ai/api/v1`, dengan task model `ai-music-api/generate`, `custom_mode: true`, `instrumental: false`, dan pilihan model musik `V6`.
 2. `GET /jobs/recordInfo?taskId=...` untuk membaca status dan variasi audio yang dikembalikan provider.
