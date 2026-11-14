@@ -14,9 +14,13 @@ export default function VisualScene({ visual, step, fallback }) {
     function unavailable() {
       if (live) setFailed(true);
     }
-    import("../lib/anatomy/scene-viewer.mjs").then(({ mountVisualScene }) => {
+    const models = visual.kind !== "learning_model" ? Promise.resolve(null)
+      : visual.model === "indonesia" ? import("../lib/anatomy/indonesia-scenes.mjs").then(module => module.indonesiaScenes)
+      : visual.model === "food_chain" ? import("../lib/anatomy/food-chain-scenes.mjs").then(module => module.foodChainScenes)
+      : import("../lib/anatomy/learning-scenes.mjs").then(module => module.learningScenes);
+    Promise.all([import("../lib/anatomy/scene-viewer.mjs"), models]).then(([{ mountVisualScene }, createViews]) => {
       if (!live) return;
-      dispose = mountVisualScene(root, visual, step, unavailable);
+      dispose = mountVisualScene(root, visual, step, unavailable, createViews);
       setReady(true);
     }).catch(unavailable);
     return () => {

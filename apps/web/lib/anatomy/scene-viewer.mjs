@@ -5,7 +5,7 @@ import { geometryScenes } from "./geometry-scenes.mjs";
 const v = (x, y, z) => new T.Vector3(x, y, z);
 const svgElement = tag => document.createElementNS("http://www.w3.org/2000/svg", tag);
 
-export function mountVisualScene(root, visual, step, unavailable) {
+export function mountVisualScene(root, visual, step, unavailable, createModelViews) {
   const stage = root.querySelector("[data-scene-stage]");
   const leaders = root.querySelector("[data-scene-leaders]");
   const split = root.querySelector("input");
@@ -20,6 +20,7 @@ export function mountVisualScene(root, visual, step, unavailable) {
   scene.background = new T.Color(0xe9eee0);
   const renderer = new T.WebGLRenderer({ antialias: true });
   const views = visual.kind === "blood_clot" ? clotScenes()
+    : visual.kind === "learning_model" ? createModelViews(visual)
     : visual.kind === "geometry" ? geometryScenes(visual)
     : visual.kind === "cube_net" ? cubeScenes(visual.detail)
     : visual.kind === "solar_system" ? solarScenes(visual)

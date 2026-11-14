@@ -1,5 +1,6 @@
 import { earthLayers, isGeometryLesson, resolveVisualModel } from "../../lib/visual-templates.mjs";
 import { geometryCatalog } from "../../lib/geometry-catalog.mjs";
+import { learningModels, learningModelInstructions, validLearningModel } from "../../lib/learning-models.mjs";
 import { ApiError } from "../core/errors.mjs";
 import { createGeneratedMaterial } from "./generated-material.mjs";
 
@@ -30,6 +31,8 @@ const instructions = [
   "Gunakan assembly hanya jika bentuk dan posisi sesuai sumber. Susun bagian yang bersentuhan dengan tepi yang pas tanpa tumpang tindih volume, misalnya papan tuas mulai pada tinggi puncak tumpuan. Gunakan koordinat at antara -100 dan 100, size antara 4 dan 180, dan spread antara -80 dan 80. Cylinder dan ring punya lebar dan kedalaman yang sama. Saat dirakit dan sepanjang gerak, bagian tidak saling menembus. Gunakan flow jika bentuk sederhana tidak dapat mewakili objek.",
   'Kind "flow" hanya untuk Tata Surya atau pembekuan darah. Isinya title, layout "sequence" dan steps berisi 2–5 objek dengan label pendek, detail satu kalimat, serta evidence berupa kutipan persis dari sumber. Untuk topik yang tidak punya model atau interaksi yang cocok di atas (termasuk setelah memeriksa geometry), keluarkan {"kind":"unsupported"}.',
   "Susun steps sesuai urutan proses jika ada, atau urutan penjelasan yang masuk akal. Jangan mengarang hubungan sebab-akibat.",
+  'Model tambahan: gunakan kind "learning_model", title, model, parts berisi 2–5 objek {id, detail, evidence}. Katalog: ' + learningModelInstructions + '. Pilih hanya id yang didukung sumber. Evidence kutipan persis, detail penjelasan fungsi/mekanisme berbahasa SD. Respiratory harus organ sebenarnya, bukan bangun geometri. Angklung khusus alat musik angklung, bukan semua seni budaya. Deliberation khusus musyawarah, bukan pengganti gambar lambang Pancasila. Circuit khusus rangkaian listrik dengan komponen fisik, bukan semua energi. Jika tidak cocok jangan memaksakan model ini.',
+  'Model food_chain hanya untuk rantai rumput-kelinci-ular-elang yang organisme dan hubungan makannya benar-benar didukung materi. Jangan mengganti padi dengan rumput atau belalang dengan kelinci. Untuk food_chain tambahkan links:[{from,to,evidence}], arah dari yang dimakan ke pemakannya. Kutipan harus menyebut kedua organisme serta hubungan dimakan/memakan. Semua organisme yang dipilih wajib terhubung dalam satu rantai tanpa cabang atau siklus. Jika contoh sumber berbeda, gunakan unsupported. Model indonesia berupa peta wilayah Indonesia dengan pulau besar yang dapat diklik, bukan gambar pakaian adat atau generalisasi semua budaya; detail hanya fakta pulau dari sumber.',
   "Tentukan topik utama dari judul pilihan dan isi sumber. Kemiripan bentuk bukan topik geometri: alveolus berbentuk bola dan kerongkongan berbentuk tabung tetap merupakan materi organ, bukan pelajaran bola atau tabung. Jangan mengganti organ dengan bangun geometri. Jika model yang tersedia tidak dapat menjelaskan organ tersebut, gunakan unsupported.",
   "Setiap keterangan harus menjelaskan fungsi bagian atau mekanisme yang terlihat, bukan sekadar menyalin kutipan sumber, URL, istilah etimologi, atau memberi nama bentuk. Kutipan asli hanya ditempatkan pada evidence.",
   "Pakai judul maksimal 120 karakter, label maksimal 80 karakter, dan keterangan maksimal 300 karakter.",
@@ -139,6 +142,13 @@ function validateVisual(content, source) {
     content = recovered;
   }
   const title = text(content?.title, 120);
+  if (content.kind === "learning_model") {
+    if (!validLearningModel(content, source)) throw invalidVisual();
+    return { kind: "learning_model", title, model: content.model, ...(content.model === "food_chain" ? { links: content.links.map(link => ({ from: link.from, to: link.to, evidence: text(link.evidence, 600) })) } : {}), parts: content.parts.map(part => ({
+      id: part.id, label: learningModels[content.model].parts[part.id].label,
+      detail: text(part.detail, 300), evidence: text(part.evidence, 600),
+    })) };
+  }
   if (["geometry", "cube_net"].includes(content.kind) && !isGeometryLesson(source)) throw invalidVisual();
   if (content.kind === "geometry") {
     if (!Array.isArray(content.shapes) || content.shapes.length < 1 || content.shapes.length > 8) throw invalidVisual();

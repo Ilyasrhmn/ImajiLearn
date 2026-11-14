@@ -1,4 +1,5 @@
 import { geometryCatalog } from "./geometry-catalog.mjs";
+import { validLearningModel } from "./learning-models.mjs";
 
 export const earthLayers = [
   { id: "crust", label: "Kerak Bumi", radius: 172, inner: 155, offset: 0, fill: "#89a782", side: "#587559" },
@@ -25,6 +26,7 @@ export function isGeometryLesson(source) {
 
 export function resolveVisualModel(visual, source) {
   if (typeof visual?.title !== "string" || !visual.title.trim()) return null;
+  if (visual.kind === "learning_model") return validLearningModel(visual, source) ? visual : null;
   if (source && ["geometry", "cube_net"].includes(visual.kind) && !isGeometryLesson(source)) return null;
   if (visual.kind !== "flow") return isSupportedModel(visual) ? visual : null;
   if (!validItems(visual.steps, step => validText(step.label) && validText(step.detail), 2)) return null;
